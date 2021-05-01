@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import os
-assert 'VIRTUAL_ENV' in os.environ, 'Please activate the environment first.'
+#assert 'VIRTUAL_ENV' in os.environ, 'Please activate the environment first.'
 
 import random
 import socket
@@ -43,7 +43,7 @@ if not args.no_cuda:
 else:
     args.device = torch.device("cpu")
 
-assert torch.cuda.is_available(), colored('A cuda device is required!', 'red')
+#assert torch.cuda.is_available(), colored('A cuda device is required!', 'red')
 
 # Reproducability.
 # Set up the random seed based on the arg.

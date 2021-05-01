@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-import torchvision.models.vgg as VGG
+import models.newvgg as VGG
 import torchvision.models.resnet as Resnet
 
 class MNIST_VGG(nn.Module):

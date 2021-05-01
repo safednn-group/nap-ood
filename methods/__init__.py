@@ -55,12 +55,12 @@ class AbstractModelWrapper(nn.Module):
         output = None
         cache  = None
 
-        if self.cache.has_key(group):
+        if group in self.cache:
             cache = self.cache[group]
         else:
             cache = {}
 
-        all_indices = [cache.has_key(ind) for ind in indices]
+        all_indices = [ind in cache for ind in indices]
         if torch.ByteTensor(all_indices).all():
             # Then fetch from the cache.
             all_outputs = [cache[ind] for ind in indices]

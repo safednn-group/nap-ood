@@ -29,7 +29,7 @@ class IterativeTrainer(object):
             'visualize': True,
             'sigmoid_viz': True,
         }
-        for key, value in defaults.iteritems():
+        for key, value in iter(defaults.items()):
             if not hasattr(self.config, key):
                 print(colored('Setting default value %s to %s'%(key, value), 'red'))
                 setattr(self.config, key, value)
@@ -161,7 +161,7 @@ class IterativeTrainer(object):
 
                 if backward and not stochastic:
                     optimizer.step()
-        except IOError, e:
+        except IOError as  e:
             if e.errno != errno.EINTR:
                 raise
             else:

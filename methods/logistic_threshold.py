@@ -19,7 +19,7 @@ class KWayLogisticWrapper(nn.Module):
         self.model = parent_model
     
     def forward(self, x, **kwargs):
-        if kwargs.has_key('softmax'):
+        if 'softmax' in kwargs:
             del kwargs['softmax']
         model_output = self.model(x, softmax=False, **kwargs)
         return model_output

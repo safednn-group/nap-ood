@@ -5,6 +5,17 @@ import torch.nn.functional as F
 from torch.nn.utils import weight_norm as wn
 import numpy as np
 
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+
+#from tensorflow.contrib.framework.python.ops import add_arg_scope
+
+def concat_elu(x):
+    """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
+    axis = len(x.get_shape())-1
+    return tf.nn.elu(tf.concat([x, -x], axis))
+
 class nin(nn.Module):
     def __init__(self, dim_in, dim_out):
         super(nin, self).__init__()

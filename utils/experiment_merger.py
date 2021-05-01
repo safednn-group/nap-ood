@@ -51,7 +51,7 @@ for exp_id in exp_list:
                 sys.exit(1)
             else:
                 results.append(r)
-                if method_count.has_key(r[0]):
+                if r[0] in method_count:
                     method_count[r[0]] += 1
                 else:
                     method_count[r[0]] = 1

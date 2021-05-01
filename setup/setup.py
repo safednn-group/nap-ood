@@ -1,12 +1,14 @@
 import os
 import socket
 import sys
-import virtualenv
+import venv
+import subprocess
 
 # Setup information.
 workspace_name = 'workspace'
 env_name = 'env'
-requirements = 'setup/requirements.txt'
+#requirements = 'setup/requirements.txt'
+requirements = 'requirements.txt'
 
 # Data location mapping.
 datastore = {
@@ -17,6 +19,7 @@ datastore = {
                 },
             }
         }
+
 
 def setup_workspace():
     """Sets up the workspace for the project by creating a virtual environment,
@@ -35,12 +38,25 @@ def setup_workspace():
     env_path = os.path.join(workspace_path, env_name)
     if not os.path.isdir(env_path):
         print('Creating environment: {}'.format(env_path))
-        virtualenv.create_environment(home_dir=env_path, site_packages=False)
+        # virtualenv.create_environment(home_dir=env_path, site_packages=False)
+        venv.create(env_dir=env_path)
 
     # Activate the environment.
     print('Activating virtual environment.')
     activate_script = os.path.join(env_path, 'bin', 'activate_this.py')
-    execfile(activate_script, dict(__file__=activate_script))
+
+    # activate on windows
+    if not os.path.exists(activate_script):
+        activate_script = os.path.join(env_path, 'Scripts', 'activate.bat')
+
+    subprocess.call(activate_script)
+
+    with open(activate_script) as f:
+        code = compile(f.read(), activate_script, 'exec')
+        exec (code, dict(__file__=activate_script))
+    # execfile(activate_script, dict(__file__=activate_script))
+    #exec(compile(open(activate_script, "rb").read(), activate_script, 'exec'), dict(__file__=activate_script))
+
     if hasattr(sys, 'real_prefix'):
         print('Activation done.')
     else:

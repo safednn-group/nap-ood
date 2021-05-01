@@ -1,9 +1,11 @@
 import torch 
 import torch.nn as nn
 import torch.nn.functional as F
-from layers import * 
+from models.pixelcnn.layers import *
 from utils import * 
 import numpy as np
+
+
 
 class PixelCNNLayer_up(nn.Module):
     def __init__(self, nr_resnet, nr_filters, resnet_nonlinearity):
@@ -60,7 +62,7 @@ class PixelCNN(nn.Module):
         self.netid = 'nr-resnet{}.nr-filters{}.nr-logmix{}'.format(nr_resnet, nr_filters, nr_logistic_mix)
 
         if resnet_nonlinearity == 'concat_elu' : 
-            self.resnet_nonlinearity = lambda x : concat_elu(x)
+            self.resnet_nonlinearity = nn.concat_elu
         else : 
             raise Exception('right now only concat elu is supported as resnet nonlinearity.')
 

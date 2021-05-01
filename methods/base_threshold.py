@@ -63,6 +63,8 @@ class ProbabilityThreshold(AbstractMethodInterface):
 
         # Set up the criterion
         criterion = nn.NLLLoss().to(self.args.device)
+        criterion.size_average = True
+
 
         # Set up the model
         import global_vars as Global

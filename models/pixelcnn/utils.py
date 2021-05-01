@@ -285,6 +285,6 @@ def load_part_of_model(model, path):
                 model.state_dict()[name].copy_(param)
                 added += 1
             except Exception as e:
-                print e
+                print(e)
                 pass
     print('added %s of params:' % (added / float(len(model.state_dict().keys()))))

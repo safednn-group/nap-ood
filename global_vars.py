@@ -149,22 +149,22 @@ for dscls in all_dataset_classes:
     all_datasets[dscls.__name__] = dscls
 
 def get_ref_classifier(dataset):
-    if dataset_reference_classifiers.has_key(dataset):
+    if dataset in dataset_reference_classifiers:
         return dataset_reference_classifiers[dataset]
     raise NotImplementedError()
 
 def get_ref_autoencoder(dataset):
-    if dataset_reference_autoencoders.has_key(dataset):
+    if dataset in dataset_reference_autoencoders:
         return dataset_reference_autoencoders[dataset]
     raise NotImplementedError()
 
 def get_ref_vae(dataset):
-    if dataset_reference_vaes.has_key(dataset):
+    if dataset in dataset_reference_vaes:
         return dataset_reference_vaes[dataset]
     raise NotImplementedError()
 
 def get_ref_pixelcnn(dataset):
-    if dataset_reference_pcnns.has_key(dataset):
+    if dataset in dataset_reference_pcnns:
         return dataset_reference_pcnns[dataset]
     raise NotImplementedError()
 
