@@ -4,14 +4,15 @@ import torch.nn.functional as F
 from models.pixelcnn.layers import *
 from utils import * 
 import numpy as np
+from models.pixelcnn.utils import *
 
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
-
-def concat_elu(x):
-    """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
-    axis = len(x.get_shape())-1
-    return tf.nn.elu(tf.concat([x, -x], axis))
+# import tensorflow.compat.v1 as tf
+# tf.disable_v2_behavior()
+#
+# def concat_elu(x):
+#     """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
+#     axis = len(x.get_shape())-1
+#     return tf.nn.elu(tf.concat([x, -x], axis))
 
 class PixelCNNLayer_up(nn.Module):
     def __init__(self, nr_resnet, nr_filters, resnet_nonlinearity):
