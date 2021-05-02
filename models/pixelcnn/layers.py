@@ -5,27 +5,28 @@ import torch.nn.functional as F
 from torch.nn.utils import weight_norm as wn
 import numpy as np
 
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
-
-
-#from tensorflow.contrib.framework.python.ops import add_arg_scope
-
-def concat_elu(x):
-    """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
-    axis = len(x.get_shape())-1
-    return tf.nn.elu(tf.concat([x, -x], axis))
-def int_shape(x):
-    return list(map(int, x.get_shape()))
-
-def down_shift(x, pad=None):
-    # Pytorch ordering
-    xs = [int(y) for y in x.size()]
-    # when downshifting, the last row is removed
-    x = x[:, :, :xs[2] - 1, :]
-    # padding left, padding right, padding top, padding bottom
-    pad = nn.ZeroPad2d((0, 0, 1, 0)) if pad is None else pad
-    return pad(x)
+from models.pixelcnn.utils import *
+# import tensorflow.compat.v1 as tf
+# tf.disable_v2_behavior()
+#
+#
+# #from tensorflow.contrib.framework.python.ops import add_arg_scope
+#
+# def concat_elu(x):
+#     """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
+#     axis = len(x.get_shape())-1
+#     return tf.nn.elu(tf.concat([x, -x], axis))
+# def int_shape(x):
+#     return list(map(int, x.get_shape()))
+#
+# def down_shift(x, pad=None):
+#     # Pytorch ordering
+#     xs = [int(y) for y in x.size()]
+#     # when downshifting, the last row is removed
+#     x = x[:, :, :xs[2] - 1, :]
+#     # padding left, padding right, padding top, padding bottom
+#     pad = nn.ZeroPad2d((0, 0, 1, 0)) if pad is None else pad
+#     return pad(x)
 
 class nin(nn.Module):
     def __init__(self, dim_in, dim_out):
