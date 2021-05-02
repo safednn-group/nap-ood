@@ -470,6 +470,7 @@ class MNIST_Simple(nn.Module):
         print(x.size())
         x = x.view(x.size(0), 20 * 4 * 4)
         # x = x.reshape(-1, 20 * 5 * 5)
+        print(x.size())
         #x = F.relu(self.fc1(x))
         #x = F.relu(self.fc2(x))
         x = self.dr1(F.relu(self.fc1(x)))  # ReLU(fc(240))
