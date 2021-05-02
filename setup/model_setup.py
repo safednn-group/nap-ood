@@ -19,6 +19,9 @@ import categories.pixelcnn_setup as PCNNSetup
 if args.exp != 'model_ref':
     print(colored('The exp is NOT model_ref!', 'yellow'))
 
+num_classes = 10
+sizeOfNeuronsToMonitor = 84
+
 def needs_processing(args, dataset_class, models, suffix):
     """
         This function checks whether this model is already trained and can be skipped.
@@ -44,6 +47,7 @@ task_list = [
     (Global.dataset_reference_vaes, AESetup.train_variational_autoencoder,      False, []),
     #(Global.dataset_reference_pcnns, PCNNSetup.train_pixelcnn,                  False, []),
 ]
+
 
 # Do a for loop to run the training tasks.
 for task_id, (ref_list, train_func, skippable, suffix) in enumerate(task_list):
