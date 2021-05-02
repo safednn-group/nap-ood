@@ -5,7 +5,13 @@ from models.pixelcnn.layers import *
 from utils import * 
 import numpy as np
 
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
+def concat_elu(x):
+    """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
+    axis = len(x.get_shape())-1
+    return tf.nn.elu(tf.concat([x, -x], axis))
 
 class PixelCNNLayer_up(nn.Module):
     def __init__(self, nr_resnet, nr_filters, resnet_nonlinearity):
@@ -62,7 +68,7 @@ class PixelCNN(nn.Module):
         self.netid = 'nr-resnet{}.nr-filters{}.nr-logmix{}'.format(nr_resnet, nr_filters, nr_logistic_mix)
 
         if resnet_nonlinearity == 'concat_elu' : 
-            self.resnet_nonlinearity = nn.concat_elu
+            self.resnet_nonlinearity = concat_elu
         else : 
             raise Exception('right now only concat elu is supported as resnet nonlinearity.')
 
