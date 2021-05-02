@@ -15,6 +15,12 @@ def concat_elu(x):
     """ like concatenated ReLU (http://arxiv.org/abs/1603.05201), but then with ELU """
     axis = len(x.get_shape())-1
     return tf.nn.elu(tf.concat([x, -x], axis))
+def int_shape(x):
+    return list(map(int, x.get_shape()))
+
+def down_shift(x):
+    xs = int_shape(x)
+    return tf.concat([tf.zeros([xs[0],1,xs[2],xs[3]]), x[:,:xs[1]-1,:,:]],1)
 
 class nin(nn.Module):
     def __init__(self, dim_in, dim_out):
@@ -54,7 +60,7 @@ class down_shifted_conv2d(nn.Module):
         elif norm == 'batch_norm':
             self.bn = nn.BatchNorm2d(num_filters_out)
 
-        if shift_output_down :
+        if shift_output_down:
             self.down_shift = lambda x : down_shift(x, pad=nn.ZeroPad2d((0, 0, 1, 0)))
     
     def forward(self, x):
