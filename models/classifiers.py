@@ -444,6 +444,8 @@ class TinyImagenet_Resnet(nn.Module):
         return config
 
 
+num_classes = 10
+sizeOfNeuronsToMonitor = 84
 class MNIST_Simple(nn.Module):
     """
         Simple CNN for MNIST.
@@ -479,10 +481,10 @@ class MNIST_Simple(nn.Module):
     def output_size(self):
         return torch.LongTensor([1, 10])
 
-    def train_config(self):
-        config = {}
-        config['optim'] = optim.Adam(self.parameters(), lr=1e-3)
-        config['scheduler'] = optim.lr_scheduler.ReduceLROnPlateau(config['optim'], patience=10, threshold=1e-2,
-                                                                   min_lr=1e-6, factor=0.1, verbose=True)
-        config['max_epoch'] = 60
-        return config
+    # def train_config(self):
+    #     config = {}
+    #     config['optim'] = optim.Adam(self.parameters(), lr=1e-3)
+    #     config['scheduler'] = optim.lr_scheduler.ReduceLROnPlateau(config['optim'], patience=10, threshold=1e-2,
+    #                                                                min_lr=1e-6, factor=0.1, verbose=True)
+    #     config['max_epoch'] = 60
+    #     return config

@@ -59,7 +59,7 @@ import models.pixelcnn.model as PCNN
     For instance, VGGs are all 0 and Resnets are all 1.
 """
 dataset_reference_classifiers = {
-    'MNIST':                  [CLS.MNIST_VGG,         CLS.MNIST_Resnet],
+    'MNIST':                  [CLS.MNIST_VGG,         CLS.MNIST_Resnet, CLS.MNIST_Simple],
     'FashionMNIST':           [CLS.MNIST_VGG,         CLS.MNIST_Resnet],
     'CIFAR10':                [CLS.CIFAR10_VGG,       CLS.CIFAR10_Resnet],
     'CIFAR100':               [CLS.CIFAR100_VGG,      CLS.CIFAR100_Resnet],
