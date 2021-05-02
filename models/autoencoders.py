@@ -50,7 +50,7 @@ class Generic_AE(nn.Module):
         modules = []
         in_channels = n_hidden
         if self.__class__ == Generic_VAE:
-            in_channels = in_channels / 2
+            in_channels = int(in_channels / 2)
         current_index = len(all_channels)-1
         r_ind = len(remainder_layers)-1
         for i in range(depth):
