@@ -31,6 +31,7 @@ def get_classifier_config(args, model, dataset):
 
     # Set up the criterion
     criterion = nn.NLLLoss().to(args.device)
+    criterion.size_average = True
 
     # Set up the model
     model = model.to(args.device)

@@ -140,6 +140,7 @@ class DeepEnsemble(ProbabilityThreshold):
 
         # Set up the criterion
         criterion = nn.NLLLoss().cuda()
+        criterion.size_average = True
 
         # Set up the model
         model_class = Global.get_ref_classifier(dataset.name)[self.default_model]
