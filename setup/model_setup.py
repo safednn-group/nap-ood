@@ -19,9 +19,6 @@ import categories.pixelcnn_setup as PCNNSetup
 if args.exp != 'model_ref':
     print(colored('The exp is NOT model_ref!', 'yellow'))
 
-num_classes = 10
-sizeOfNeuronsToMonitor = 84
-
 def needs_processing(args, dataset_class, models, suffix):
     """
         This function checks whether this model is already trained and can be skipped.

@@ -444,14 +444,13 @@ class TinyImagenet_Resnet(nn.Module):
         return config
 
 
-num_classes = 10
-sizeOfNeuronsToMonitor = 84
+
 class MNIST_Simple(nn.Module):
     """
         Simple CNN for MNIST.
     """
 
-    def __init__(self, num_classes, sizeOfNeuronsToMonitor):
+    def __init__(self, num_classes=10, sizeOfNeuronsToMonitor=84):
         super(MNIST_Simple, self).__init__()
         self.conv1 = nn.Conv2d(3, 40, 5)
         self.conv1_bn = nn.BatchNorm2d(40)
