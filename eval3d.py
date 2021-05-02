@@ -47,6 +47,17 @@ if args.exp == 'test-eval':
                         ]
 ########################################################
 """
+    Simple evaluation
+"""
+if args.exp == 'simple-eval':
+    d1_tasks     = ['MNIST']
+    d2_tasks     = ['UniformNoise', 'NormalNoise']
+    d3_tasks     = ['UniformNoise', 'NormalNoise']
+    method_tasks     = [
+                        'prob_threshold/1',
+                        ]
+########################################################
+"""
     Default Evaluation
 """
 if len(d1_tasks) == 0:
