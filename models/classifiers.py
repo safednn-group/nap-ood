@@ -467,7 +467,7 @@ class MNIST_Simple(nn.Module):
         x = self.pool(F.relu(self.conv1_bn(self.conv1(x))))
         x = self.pool(F.relu(self.conv2_bn((self.conv2(x)))))
         # Flatten it to an array of inputs
-        print(x)
+        print(x.size())
         x = x.view(-1, 20 * 5 * 5)
         # x = x.reshape(-1, 20 * 5 * 5)
         #x = F.relu(self.fc1(x))
