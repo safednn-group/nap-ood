@@ -14,7 +14,14 @@ class GTSRB(AbstractDomainInterface):
     def __init__(self):
         super(GTSRB, self).__init__()
 
-        im_transformer = transforms.Compose([transforms.ToTensor()])
+        im_transformer = transforms.Compose([
+            transforms.ToTensor(),
+            # Change the image to PIL format, such that resize can be done
+            transforms.ToPILImage(),
+            transforms.Resize((32, 32)),
+            # Bring it back to tensor
+            transforms.ToTensor()
+        ])
         root_path = './workspace/datasets/gtsrb'
 
         # in training  26640
@@ -57,7 +64,7 @@ class GTSRB(AbstractDomainInterface):
 
     def conformity_transform(self):
         return transforms.Compose([transforms.ToPILImage(),
-                                   transforms.Resize((28, 28)),
+                                   transforms.Resize((32, 32)),
                                    transforms.Grayscale(),
                                    transforms.ToTensor()
                                    ])
