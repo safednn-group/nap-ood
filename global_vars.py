@@ -44,7 +44,7 @@ d2_compatiblity = {
 # We can augment the following training data with mirroring.
 # We make sure there's no information leak in-between tasks.
 mirror_augment = {
-    'FashionMNIST', 'CIFAR10','GTSRB', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'
+    'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'
 }
 
 """
