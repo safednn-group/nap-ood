@@ -497,7 +497,7 @@ class CIFAR_Simple(nn.Module):
     """
 
     def __init__(self, num_classes=10, sizeOfNeuronsToMonitor=84):
-        super(MNIST_Simple, self).__init__()
+        super(CIFAR_Simple, self).__init__()
         self.conv1 = nn.Conv2d(3, 40, 5)
         self.conv1_bn = nn.BatchNorm2d(40)
         self.pool = nn.MaxPool2d(2, 2)
