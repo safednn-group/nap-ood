@@ -536,3 +536,87 @@ class GTSRB_Simple(nn.Module):
                                                                    min_lr=1e-6, factor=0.1, verbose=True)
         config['max_epoch'] = 40
         return config
+
+class GTSRB_VGG(nn.Module):
+    """
+        TinyImagenet_VGG is based on VGG16+BatchNorm
+        We replace the classifier block to accomodate
+        the requirements of TinyImagenet.
+    """
+    def __init__(self):
+        super(GTSRB_VGG, self).__init__()
+
+        # Based on the imagenet normalization params.
+        self.offset = 0.44900
+        self.multiplier = 4.42477
+
+        self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M']
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=43)
+        # TinyImagenet would have a different sized feature map.
+        self.model.classifier = nn.Sequential(
+            nn.Linear(512 * 2 * 2, 4096), nn.ReLU(True), nn.Dropout(),
+            nn.Linear(4096, 4096), nn.ReLU(True), nn.Dropout(),
+            nn.Linear(4096, 43),
+        )
+        self.model._initialize_weights()
+
+    def forward(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output = self.model(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def output_size(self):
+        return torch.LongTensor([1, 43])
+
+    def train_config(self):
+        config = {}
+        config['optim']     = optim.Adam(self.parameters(), lr=1e-3)
+        config['scheduler'] = optim.lr_scheduler.ReduceLROnPlateau(config['optim'], patience=10, threshold=1e-2, min_lr=1e-6, factor=0.1, verbose=True)
+        config['max_epoch'] = 120
+        return config
+
+class GTSRB_Resnet(nn.Module):
+    """
+        TinyImagenet_Resnet is based on Resnet50
+        We replace the average pooling block to accomodate
+        the requirements of TinyImagenet.
+    """
+    def __init__(self):
+        super(GTSRB_Resnet, self).__init__()
+
+        # Based on the imagenet normalization params.
+        self.offset = 0.44900
+        self.multiplier = 4.42477
+
+        # Resnet50.
+        self.model = Resnet.ResNet(Resnet.Bottleneck, [3, 4, 6, 3], num_classes=43)
+
+        # TinyImagenet would have a different sized feature map.
+        self.model.avgpool = nn.AdaptiveAvgPool2d((1,1))
+        # The first part also needs to be fixed.
+        self.model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False) # Replace the harsh convolution.
+        # del self.model.maxpool
+        # self.model.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+    def forward(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output = self.model(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def output_size(self):
+        return torch.LongTensor([1, 43])
+
+    def train_config(self):
+        config = {}
+        config['optim']     = optim.Adam(self.parameters(), lr=1e-3)
+        config['scheduler'] = optim.lr_scheduler.ReduceLROnPlateau(config['optim'], patience=10, threshold=1e-2, min_lr=1e-6, factor=0.1, verbose=True)
+        config['max_epoch'] = 120
+        return config
