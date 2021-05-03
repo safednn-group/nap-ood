@@ -578,7 +578,7 @@ class GTSRB_VGG(nn.Module):
         config = {}
         config['optim']     = optim.Adam(self.parameters(), lr=1e-3)
         config['scheduler'] = optim.lr_scheduler.ReduceLROnPlateau(config['optim'], patience=10, threshold=1e-2, min_lr=1e-6, factor=0.1, verbose=True)
-        config['max_epoch'] = 60
+        config['max_epoch'] = 40
         return config
 
 class GTSRB_Resnet(nn.Module):
@@ -620,5 +620,5 @@ class GTSRB_Resnet(nn.Module):
         config = {}
         config['optim']     = optim.Adam(self.parameters(), lr=1e-3)
         config['scheduler'] = optim.lr_scheduler.ReduceLROnPlateau(config['optim'], patience=10, threshold=1e-2, min_lr=1e-6, factor=0.1, verbose=True)
-        config['max_epoch'] = 120
+        config['max_epoch'] = 40
         return config
