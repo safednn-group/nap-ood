@@ -13,9 +13,10 @@ import datasets.CIFAR as CIFAR
 import datasets.noise as noise
 import datasets.STL as STL
 import datasets.TinyImagenet as TI
+import datasets.GTSRB as GTSRB
 
 all_dataset_classes = [ MNIST.MNIST, FMNIST.FashionMNIST, NMNIST.NotMNIST,
-                        CIFAR.CIFAR10, CIFAR.CIFAR100,
+                        CIFAR.CIFAR10, GTSRB.GTSRB, CIFAR.CIFAR100,
                         STL.STL10, TI.TinyImagenet,
                         noise.UniformNoise, noise.NormalNoise,
                         STL.STL10d32, TI.TinyImagenetd32]
@@ -32,6 +33,7 @@ d2_compatiblity = {
     'NotMNIST'                              : ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
     'FashionMNIST'                          : ['MNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
     'CIFAR10'                               : ['MNIST', 'FashionMNIST', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
+    'GTSRB'                                 : ['MNIST', 'FashionMNIST','CIFAR10', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
     'CIFAR100'                              : ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
     'STL10'                                 : ['MNIST', 'FashionMNIST', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
     'TinyImagenet'                          : ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'STL10d32'],
@@ -42,7 +44,7 @@ d2_compatiblity = {
 # We can augment the following training data with mirroring.
 # We make sure there's no information leak in-between tasks.
 mirror_augment = {
-    'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'
+    'FashionMNIST', 'CIFAR10','GTSRB', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'
 }
 
 """
@@ -61,7 +63,8 @@ import models.pixelcnn.model as PCNN
 dataset_reference_classifiers = {
     'MNIST':                  [CLS.MNIST_VGG,         CLS.MNIST_Resnet, CLS.MNIST_Simple],
     'FashionMNIST':           [CLS.MNIST_VGG,         CLS.MNIST_Resnet],
-    'CIFAR10':                [CLS.CIFAR10_VGG,       CLS.CIFAR10_Resnet],
+    'CIFAR10':                [CLS.CIFAR10_VGG,       CLS.CIFAR10_Resnet, CLS.CIFAR_Simple],
+    'GTSRB':                  [CLS.CIFAR10_VGG,       CLS.CIFAR10_Resnet, CLS.CIFAR_Simple],
     'CIFAR100':               [CLS.CIFAR100_VGG,      CLS.CIFAR100_Resnet],
     'STL10':                  [CLS.STL10_VGG,         CLS.STL10_Resnet],
     'TinyImagenet':           [CLS.TinyImagenet_VGG,  CLS.TinyImagenet_Resnet],
@@ -78,6 +81,7 @@ dataset_reference_autoencoders = {
     'MNIST':              [ModelFactory(AES.Generic_AE, dims=(1, 28, 28), max_channels=256, depth=8, n_hidden=96)],
     'FashionMNIST':       [ModelFactory(AES.Generic_AE, dims=(1, 28, 28), max_channels=256, depth=8, n_hidden=96)],
     'CIFAR10':            [ModelFactory(AES.Generic_AE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
+    'GTSRB':              [ModelFactory(AES.Generic_AE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
     'CIFAR100':           [ModelFactory(AES.Generic_AE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
     'STL10':              [ModelFactory(AES.Generic_AE, dims=(3, 96, 96), max_channels=512, depth=12, n_hidden=512)],
     'TinyImagenet':       [ModelFactory(AES.Generic_AE, dims=(3, 64, 64), max_channels=512, depth=12, n_hidden=512)],
@@ -87,6 +91,7 @@ dataset_reference_vaes = {
     'MNIST':              [ModelFactory(AES.Generic_VAE, dims=(1, 28, 28), max_channels=256, depth=8, n_hidden=96)],
     'FashionMNIST':       [ModelFactory(AES.Generic_VAE, dims=(1, 28, 28), max_channels=256, depth=8, n_hidden=96)],
     'CIFAR10':            [ModelFactory(AES.Generic_VAE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
+    'GTSRB':              [ModelFactory(AES.Generic_VAE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
     'CIFAR100':           [ModelFactory(AES.Generic_VAE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
     'STL10':              [ModelFactory(AES.Generic_VAE, dims=(3, 96, 96), max_channels=512, depth=12, n_hidden=512)],
     'TinyImagenet':       [ModelFactory(AES.Generic_VAE, dims=(3, 64, 64), max_channels=512, depth=12, n_hidden=512)],
@@ -96,6 +101,7 @@ dataset_reference_pcnns = {
     'MNIST':              [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=32, input_channels=1, nr_logistic_mix=5)],
     'FashionMNIST':       [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=64, input_channels=1, nr_logistic_mix=5)],
     'CIFAR10':            [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
+    'GTSRB':            [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
     'CIFAR100':           [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
     'TinyImagenetd32':    [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
     'STL10d32':           [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
