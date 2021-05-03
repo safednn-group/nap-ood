@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import models.newvgg as VGG
+import torchvision.models.vgg as VGG2
 import torchvision.models.resnet as Resnet
 
 class MNIST_VGG(nn.Module):
@@ -551,7 +552,7 @@ class GTSRB_VGG(nn.Module):
         self.multiplier = 4.42477
 
         self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M']
-        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=43)
+        self.model = VGG2.VGG(VGG2.make_layers(self.cfg, batch_norm=True), num_classes=43)
         # TinyImagenet would have a different sized feature map.
         self.model.classifier = nn.Sequential(
             nn.Linear(512 * 2 * 2, 4096), nn.ReLU(True), nn.Dropout(),
