@@ -69,7 +69,7 @@ else:
 print('Saving results to %s'%output_folder)
 
 total = 0
-for method, count in method_count.iteritems():
+for method, count in iter(method_count.items()): # method_count.iteritems():
     print ('%25s\t%-5s'%(method, colored('%d'%count, 'green')))
     total += count
 print('%s'%colored('-'*37, 'red'))

@@ -102,7 +102,7 @@ class BinaryClassifier(ProbabilityThreshold):
         
         if hasattr(model, 'train_config'):
             model_train_config = model.train_config()
-            for key, value in model_train_config.iteritems():
+            for key, value in iter(model_train_config.items()): #model_train_config.iteritems():
                 print('Overriding config.%s'%key)
                 config.__setattr__(key, value)
 
