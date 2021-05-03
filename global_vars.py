@@ -63,8 +63,8 @@ import models.pixelcnn.model as PCNN
 dataset_reference_classifiers = {
     'MNIST':                  [CLS.MNIST_VGG,         CLS.MNIST_Resnet, CLS.MNIST_Simple],
     'FashionMNIST':           [CLS.MNIST_VGG,         CLS.MNIST_Resnet],
-    'CIFAR10':                [CLS.CIFAR10_VGG,       CLS.CIFAR10_Resnet, CLS.CIFAR_Simple],
-    'GTSRB':                  [CLS.CIFAR10_VGG,       CLS.CIFAR10_Resnet, CLS.CIFAR_Simple],
+    'CIFAR10':                [CLS.CIFAR10_VGG,       CLS.CIFAR10_Resnet],
+    'GTSRB':                  [CLS.CIFAR10_VGG,       CLS.CIFAR10_Resnet, CLS.GTSRB_Simple],
     'CIFAR100':               [CLS.CIFAR100_VGG,      CLS.CIFAR100_Resnet],
     'STL10':                  [CLS.STL10_VGG,         CLS.STL10_Resnet],
     'TinyImagenet':           [CLS.TinyImagenet_VGG,  CLS.TinyImagenet_Resnet],

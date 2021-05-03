@@ -491,13 +491,13 @@ class MNIST_Simple(nn.Module):
         config['max_epoch'] = 40
         return config
 
-class CIFAR_Simple(nn.Module):
+class GTSRB_Simple(nn.Module):
     """
         Simple CNN for CIFAR.
     """
 
-    def __init__(self, num_classes=10, sizeOfNeuronsToMonitor=84):
-        super(CIFAR_Simple, self).__init__()
+    def __init__(self, num_classes=43, sizeOfNeuronsToMonitor=84):
+        super(GTSRB_Simple, self).__init__()
         self.conv1 = nn.Conv2d(3, 40, 5)
         self.conv1_bn = nn.BatchNorm2d(40)
         self.pool = nn.MaxPool2d(2, 2)
@@ -527,7 +527,7 @@ class CIFAR_Simple(nn.Module):
         return output
 
     def output_size(self):
-        return torch.LongTensor([1, 10])
+        return torch.LongTensor([1, 43])
 
     def train_config(self):
         config = {}
