@@ -457,7 +457,7 @@ class MNIST_Simple(nn.Module):
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(40, 20, 5)
         self.conv2_bn = nn.BatchNorm2d(20)
-        self.fc1 = nn.Linear(20 * 5 * 5, 240)
+        self.fc1 = nn.Linear(20 * 4 * 4, 240)
         self.fc2 = nn.Linear(240, sizeOfNeuronsToMonitor)
         self.fc3 = nn.Linear(sizeOfNeuronsToMonitor, num_classes)
         self.dr1 = nn.Dropout()
@@ -467,10 +467,10 @@ class MNIST_Simple(nn.Module):
         x = self.pool(F.relu(self.conv1_bn(self.conv1(x))))
         x = self.pool(F.relu(self.conv2_bn((self.conv2(x)))))
         # Flatten it to an array of inputs
-        print(x.size())
+        #print(x.size())
         x = x.view(-1,  20 * 4 * 4)
         #x = x.reshape(-1, 20 * 4 * 4)
-        print(x.size())
+        #print(x.size())
         #x = F.relu(self.fc1(x))
         #x = F.relu(self.fc2(x))
         x = self.dr1(F.relu(self.fc1(x)))  # ReLU(fc(240))
@@ -483,10 +483,10 @@ class MNIST_Simple(nn.Module):
     def output_size(self):
         return torch.LongTensor([1, 10])
 
-    # def train_config(self):
-    #     config = {}
-    #     config['optim'] = optim.Adam(self.parameters(), lr=1e-3)
-    #     config['scheduler'] = optim.lr_scheduler.ReduceLROnPlateau(config['optim'], patience=10, threshold=1e-2,
-    #                                                                min_lr=1e-6, factor=0.1, verbose=True)
-    #     config['max_epoch'] = 60
-    #     return config
+    def train_config(self):
+        config = {}
+        config['optim'] = optim.Adam(self.parameters(), lr=1e-3)
+        config['scheduler'] = optim.lr_scheduler.ReduceLROnPlateau(config['optim'], patience=10, threshold=1e-2,
+                                                                   min_lr=1e-6, factor=0.1, verbose=True)
+        config['max_epoch'] = 40
+        return config
