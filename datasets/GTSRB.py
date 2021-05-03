@@ -29,14 +29,14 @@ class GTSRB(AbstractDomainInterface):
         #                                train=True,
         #                                transform=im_transformer,
         #                                download=True)
-        self.ds_train = datasets.ImageFolder(root='../data/GTSRB-Training_fixed/GTSRB/Training', transform=im_transformer)
+        self.ds_train = datasets.ImageFolder(root='/home/kradlak/source_code/od-test/data/GTSRB-Training_fixed/GTSRB/Training', transform=im_transformer)
 
         # in testing 12569
         # self.ds_test = datasets.MNIST(root_path,
         #                               train=False,
         #                               transform=im_transformer,
         #                               download=True)
-        self.ds_test = datasets.ImageFolder(root='../data/GTSRB_Online-Test-Images-Sorted/GTSRB/Online-Test-sort', transform=im_transformer)
+        self.ds_test = datasets.ImageFolder(root='/home/kradlak/source_code/od-test/data/GTSRB_Online-Test-Images-Sorted/GTSRB/Online-Test-sort', transform=im_transformer)
 
     def get_D1_train(self):
         return SubDataset(self.name, self.ds_train, self.D1_train_ind)
