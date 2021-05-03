@@ -540,9 +540,9 @@ class GTSRB_Simple(nn.Module):
 
 class GTSRB_VGG(nn.Module):
     """
-        TinyImagenet_VGG is based on VGG16+BatchNorm
+        CIFAR_VGG is based on VGG16+BatchNorm
         We replace the classifier block to accomodate
-        the requirements of TinyImagenet.
+        the requirements of CIFAR.
     """
     def __init__(self):
         super(GTSRB_VGG, self).__init__()
@@ -551,9 +551,10 @@ class GTSRB_VGG(nn.Module):
         self.offset = 0.44900
         self.multiplier = 4.42477
 
-        self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M']
-        self.model = VGG2.VGG(VGG2.make_layers(self.cfg, batch_norm=True), num_classes=43)
-        # TinyImagenet would have a different sized feature map.
+        # VGG16 minus last maxpool.
+        self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512]
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=43)
+        # Cifar 10 would have a different sized feature map.
         self.model.classifier = nn.Sequential(
             nn.Linear(512 * 2 * 2, 4096), nn.ReLU(True), nn.Dropout(),
             nn.Linear(4096, 4096), nn.ReLU(True), nn.Dropout(),
@@ -577,7 +578,7 @@ class GTSRB_VGG(nn.Module):
         config = {}
         config['optim']     = optim.Adam(self.parameters(), lr=1e-3)
         config['scheduler'] = optim.lr_scheduler.ReduceLROnPlateau(config['optim'], patience=10, threshold=1e-2, min_lr=1e-6, factor=0.1, verbose=True)
-        config['max_epoch'] = 120
+        config['max_epoch'] = 60
         return config
 
 class GTSRB_Resnet(nn.Module):
