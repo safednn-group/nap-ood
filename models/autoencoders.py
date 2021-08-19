@@ -41,7 +41,7 @@ class Generic_AE(nn.Module):
                 in_spatial_size = math.floor(in_spatial_size/2)
 
         # Final layer
-        modules.append(nn.Conv2d(in_channels, n_hidden, kernel_size=kernel_size, padding=(kernel_size-1)/2))
+        modules.append(nn.Conv2d(in_channels, n_hidden, kernel_size=kernel_size, padding=int((kernel_size-1)/2)))
         modules.append(nn.BatchNorm2d(n_hidden))
         modules.append(nonLin())
         self.encoder = nn.Sequential(*modules)
@@ -54,7 +54,7 @@ class Generic_AE(nn.Module):
         current_index = len(all_channels)-1
         r_ind = len(remainder_layers)-1
         for i in range(depth):
-            modules.append(nn.Conv2d(in_channels, all_channels[current_index], kernel_size=kernel_size, padding=(kernel_size-1)/2))
+            modules.append(nn.Conv2d(in_channels, all_channels[current_index], kernel_size=kernel_size, padding=int((kernel_size-1)/2)))
             modules.append(nn.BatchNorm2d(all_channels[current_index]))
             modules.append(nonLin())
             if max_pool_layers[i]:
@@ -66,7 +66,7 @@ class Generic_AE(nn.Module):
             in_channels = all_channels[current_index]
             current_index -= 1
         # Final layer
-        modules.append(nn.Conv2d(in_channels, dims[0], kernel_size=kernel_size, padding=(kernel_size-1)/2))
+        modules.append(nn.Conv2d(in_channels, dims[0], kernel_size=kernel_size, padding=int((kernel_size-1)/2)))
         self.decoder = nn.Sequential(*modules)
 
     def encode(self, x):

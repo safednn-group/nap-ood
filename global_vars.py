@@ -29,14 +29,14 @@ all_dataset_classes = [ MNIST.MNIST, FMNIST.FashionMNIST, NMNIST.NotMNIST,
 """
 d2_compatiblity = {
     # This can be used as d2 for            # this
-    'MNIST'                                 : ['FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
-    'NotMNIST'                              : ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
-    'FashionMNIST'                          : ['MNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
-    'CIFAR10'                               : ['MNIST', 'FashionMNIST', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
+    'MNIST'                                 : ['FashionMNIST', 'CIFAR10','GTSRB', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
+    'NotMNIST'                              : ['MNIST', 'FashionMNIST', 'CIFAR10','GTSRB', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
+    'FashionMNIST'                          : ['MNIST', 'CIFAR10','GTSRB', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
+    'CIFAR10'                               : ['MNIST', 'FashionMNIST','GTSRB', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
     'GTSRB'                                 : ['MNIST', 'FashionMNIST','CIFAR10', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
-    'CIFAR100'                              : ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
-    'STL10'                                 : ['MNIST', 'FashionMNIST', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
-    'TinyImagenet'                          : ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'STL10d32'],
+    'CIFAR100'                              : ['MNIST', 'FashionMNIST', 'CIFAR10', 'GTSRB','STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
+    'STL10'                                 : ['MNIST', 'FashionMNIST', 'GTSRB','CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
+    'TinyImagenet'                          : ['MNIST', 'FashionMNIST', 'CIFAR10', 'GTSRB','CIFAR100', 'STL10', 'STL10d32'],
     # STL10 is not compatible with CIFAR10 because of the 9-overlapping classes.
     # Erring on the side of caution.
 }

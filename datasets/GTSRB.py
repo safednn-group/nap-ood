@@ -1,6 +1,6 @@
 import torch
 import torchvision.transforms as transforms
-from datasets import SubDataset, AbstractDomainInterface
+from datasets import SubDataset, AbstractDomainInterface, ExpandRGBChannels
 from torchvision import datasets
 
 
@@ -24,13 +24,15 @@ class GTSRB(AbstractDomainInterface):
         ])
         root_path = './workspace/datasets/gtsrb'
 
+        train_indices = torch.randperm(26640).int()# torch.arange(0, 26640).int()
+        test_indices = torch.randperm(12569).int()
         # in training  26640
-        self.D1_train_ind = torch.arange(0, 22200).int()
-        self.D1_valid_ind = torch.arange(22200, 26640).int()
-        self.D1_test_ind = torch.arange(0, 4440).int()
+        self.D1_train_ind = train_indices[torch.arange(0, 22200).long()]
+        self.D1_valid_ind = train_indices[torch.arange(22200, 26640).long()]
+        self.D1_test_ind = train_indices[torch.arange(0, 4440).long()]
 
-        self.D2_valid_ind = torch.arange(0, 12569).int()
-        self.D2_test_ind = torch.arange(0, 2095).int()
+        self.D2_valid_ind = test_indices[torch.arange(0, 12569).long()]
+        self.D2_test_ind = test_indices[torch.arange(0, 2095).long()]
 
         # self.ds_train = datasets.MNIST(root_path,
         #                                train=True,
@@ -68,8 +70,8 @@ class GTSRB(AbstractDomainInterface):
         return SubDataset(self.name, self.ds_test, self.D2_test_ind, label=1, transform=D1.conformity_transform())
 
     def conformity_transform(self):
-        return transforms.Compose([transforms.ToPILImage(),
+        return transforms.Compose([ExpandRGBChannels(),
+                                   transforms.ToPILImage(),
                                    transforms.Resize((32, 32)),
-                                   transforms.Grayscale(),
-                                   transforms.ToTensor()
+                                   transforms.ToTensor(),
                                    ])

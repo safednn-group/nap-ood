@@ -14,7 +14,7 @@ from utils.logger import Logger
 from datasets import MirroredDataset
 
 def get_classifier_config(args, model, dataset):
-    print("Preparing training D1 for %s"%(dataset.name))
+    print("Preparing t7raining D1 for %s"%(dataset.name))
 
     # 80%, 20% for local train+test
     train_ds, valid_ds = dataset.split_dataset(0.8)

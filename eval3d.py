@@ -50,11 +50,13 @@ if args.exp == 'test-eval':
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks     = ['MNIST']
-    d2_tasks     = ['UniformNoise', 'NormalNoise']
-    d3_tasks     = ['UniformNoise', 'NormalNoise']
-    method_tasks     = [
-                        'prob_threshold/1',
+    d1_tasks     = ['GTSRB']
+    # d2_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    # d3_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    d2_tasks     = [ 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    d3_tasks     = [ 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    method_tasks     = ['mcdropout/0',
+                        'mcdropout/2'
                         ]
 ########################################################
 """
