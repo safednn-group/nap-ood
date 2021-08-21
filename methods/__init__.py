@@ -1,21 +1,23 @@
 import torch
 import torch.nn as nn
 
+
 class AbstractMethodInterface(object):
     def __init__(self):
         self.name = self.__class__.__name__
 
     def propose_H(self, dataset):
-        raise NotImplementedError("%s does not have implementations for this"%(self.name))
+        raise NotImplementedError("%s does not have implementations for this" % (self.name))
 
     def train_H(self, dataset):
-        raise NotImplementedError("%s does not have implementations for this"%(self.name))
+        raise NotImplementedError("%s does not have implementations for this" % (self.name))
 
     def test_H(self, dataset):
-        raise NotImplementedError("%s does not have implementations for this"%(self.name))
-    
+        raise NotImplementedError("%s does not have implementations for this" % (self.name))
+
     def method_identifier(self):
-        raise NotImplementedError("Please implement the identifier method for %s"%(self.name))
+        raise NotImplementedError("Please implement the identifier method for %s" % (self.name))
+
 
 class AbstractModelWrapper(nn.Module):
     def __init__(self, base_model):
@@ -26,9 +28,9 @@ class AbstractModelWrapper(nn.Module):
         if hasattr(self.base_model, 'parameters'):
             for parameter in self.base_model.parameters():
                 parameter.requires_grad = False
-            
+
         self.eval_direct = False
-        self.cache = {} #Be careful what you cache! You wouldn't have infinite memory.
+        self.cache = {}  # Be careful what you cache! You wouldn't have infinite memory.
 
     def set_eval_direct(self, eval_direct):
         self.eval_direct = eval_direct
@@ -53,7 +55,7 @@ class AbstractModelWrapper(nn.Module):
 
     def subnetwork_cached_eval(self, x, indices, group):
         output = None
-        cache  = None
+        cache = None
 
         if group in self.cache:
             cache = self.cache[group]
@@ -64,7 +66,7 @@ class AbstractModelWrapper(nn.Module):
         if torch.ByteTensor(all_indices).all():
             # Then fetch from the cache.
             all_outputs = [cache[ind] for ind in indices]
-            output = torch.cat(all_outputs)        
+            output = torch.cat(all_outputs)
         else:
             output = self.subnetwork_eval(x)
             for i, entry in enumerate(output):
@@ -95,12 +97,13 @@ class SVMLoss(nn.Module):
         super(SVMLoss, self).__init__()
         self.margin = margin
         self.size_average = True
-    
+        self.reduction = "mean"
+
     def forward(self, x, target):
         target = target.clone()
         # 0 labels should be set to -1 for this loss.
-        target.data[target.data<0.1]=-1
-        error = self.margin-x*target
+        target.data[target.data < 0.1] = -1
+        error = self.margin - x * target
         loss = torch.clamp(error, min=0)
         if self.size_average:
             loss = loss.mean()
@@ -108,11 +111,12 @@ class SVMLoss(nn.Module):
             loss = loss.sum()
         return loss
 
+
 def get_cached(model, dataset_loader, device):
     from tqdm import tqdm
 
     outputX, outputY = [], []
-    with torch.set_grad_enabled(False):
+    with torch.no_grad():
         with tqdm(total=len(dataset_loader)) as pbar:
             pbar.set_description('Caching data')
             for i, (image, label) in enumerate(dataset_loader):

@@ -29,7 +29,7 @@ class Generic_AE(nn.Module):
         in_channels = dims[0]
         in_spatial_size = dims[1]
         for i in range(depth):
-            modules.append(nn.Conv2d(in_channels, current_channels, kernel_size=kernel_size, padding=(kernel_size-1)/2))
+            modules.append(nn.Conv2d(in_channels, current_channels, kernel_size=kernel_size, padding=int((kernel_size-1)/2)))
             modules.append(nn.BatchNorm2d(current_channels))
             modules.append(nonLin())
             in_channels = current_channels

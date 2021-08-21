@@ -87,7 +87,7 @@ class ODINModelWrapper(AbstractModelWrapper):
         probabilities = F.softmax(new_output, dim=1)
 
         # Get the max probability out
-        input = probabilities.max(1)[0].detach().unsqueeze_(1)
+        input = probabilities.max(1)[0].unsqueeze_(1)
 
         return input.detach()
 
