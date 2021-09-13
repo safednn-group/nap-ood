@@ -80,8 +80,10 @@ class ReconstructionThreshold(ProbabilityThreshold):
         criterion = None
         if self.default_model == 0:
             criterion = nn.BCEWithLogitsLoss().to(self.args.device)
+            self.add_identifier = "BCE"
         else:
             criterion = nn.MSELoss().to(self.args.device)
+            self.add_identifier = "MSE"
             model.default_sigmoid = True
 
         # Set up the config

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 #from .utils import load_state_dict_from_url
 from torch.utils.model_zoo import load_url as load_state_dict_from_url
 
@@ -27,6 +28,8 @@ class VGG(nn.Module):
         super(VGG, self).__init__()
         self.features = features
         #self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.maxpool = nn.AdaptiveMaxPool2d((1,1))
         self.classifier = nn.Sequential(
             nn.Linear(512 * 7 * 7, 4096),
             nn.ReLU(True),
@@ -45,6 +48,29 @@ class VGG(nn.Module):
         x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
+
+    def forward_nap(self, x, quantile=None):
+        self.classifier.eval()
+        x = self.features(x)
+        # immediate1 = torch.flatten(self.avgpool(x), 1)
+        immediate1 = torch.flatten(self.maxpool(x), 1)
+        x = torch.flatten(x, 1)
+        counter = 0
+        for layer in self.classifier:
+            immediate2 = x
+            x = layer.forward(x)
+            if counter == 1:
+                immediate3 = x
+            counter += 1
+        immediate1 = torch.tensor(np.where(immediate1.cpu().numpy() > np.quantile(immediate1.cpu().numpy(), quantile[0]), immediate1.cpu(), 0))
+        immediate2 = torch.tensor(np.where(immediate2.cpu().numpy() > np.quantile(immediate2.cpu().numpy(), quantile[1]), immediate2.cpu(), 0))
+        immediate3 = torch.tensor(np.where(immediate3.cpu().numpy() > np.quantile(immediate3.cpu().numpy(), quantile[2]), immediate3.cpu(), 0))
+        immediate = torch.cat((immediate2, immediate1, immediate3), dim=1)
+        # print(f" nonzeros {(immediate[0] > 0).sum()}")
+        # print(f" q: {quantile}")
+        # print(f" shape: {immediate.shape}")
+        return x, immediate, (immediate2.shape[-1], immediate1.shape[-1], immediate3.shape[-1])
+        # return x, immediate3, [immediate3.shape[-1]]
 
     def _initialize_weights(self):
         for m in self.modules():

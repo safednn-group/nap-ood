@@ -3,8 +3,10 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import models.newvgg as VGG
-import torchvision.models.vgg as VGG2
-import torchvision.models.resnet as Resnet
+import models.nap_resnet as Resnet
+# import torchvision.models.resnet as Resnet
+
+
 
 class MNIST_VGG(nn.Module):
     """
@@ -52,6 +54,15 @@ class MNIST_VGG(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
+
+    def forward_nap(self, x, softmax=True, quantile=0.):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
     
     def output_size(self):
         return torch.LongTensor([1, 10])
@@ -94,6 +105,15 @@ class MNIST_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
+
+    def forward_nap(self, x, softmax=True, quantile=0.):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
 
     def output_size(self):
         return torch.LongTensor([1, 10])
@@ -138,6 +158,15 @@ class CIFAR10_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
+    def forward_nap(self, x, softmax=True, quantile=0.):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
+
     def output_size(self):
         return torch.LongTensor([1, 10])
 
@@ -179,6 +208,15 @@ class CIFAR10_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
+
+    def forward_nap(self, x, softmax=True, quantile=0.):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
 
     def output_size(self):
         return torch.LongTensor([1, 10])
@@ -223,6 +261,15 @@ class CIFAR100_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
+    def forward_nap(self, x, softmax=True, quantile=0.):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
+
     def output_size(self):
         return torch.LongTensor([1, 100])
 
@@ -264,6 +311,15 @@ class CIFAR100_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
+
+    def forward_nap(self, x, softmax=True, quantile=0.):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
 
     def output_size(self):
         return torch.LongTensor([1, 100])
@@ -308,6 +364,15 @@ class STL10_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
+    def forward_nap(self, x, softmax=True, quantile=0.):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
+
     def output_size(self):
         return torch.LongTensor([1, 10])
 
@@ -349,6 +414,15 @@ class STL10_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
+
+    def forward_nap(self, x, softmax=True, quantile=None):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
 
     def output_size(self):
         return torch.LongTensor([1, 10])
@@ -392,6 +466,15 @@ class TinyImagenet_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
+    def forward_nap(self, x, softmax=True, quantile=0.):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
+
     def output_size(self):
         return torch.LongTensor([1, 200])
 
@@ -433,6 +516,15 @@ class TinyImagenet_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
+
+    def forward_nap(self, x, softmax=True, quantile=0.):
+        # Perform late normalization.
+        x = (x-self.offset)*self.multiplier
+
+        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, intermediate, sizes
 
     def output_size(self):
         return torch.LongTensor([1, 200])

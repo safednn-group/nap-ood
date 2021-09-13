@@ -6,6 +6,7 @@ import torch
 
 from utils.args import args
 import global_vars as Global
+from utils.plot import *
 
 #########################################################
 """
@@ -41,17 +42,20 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['MNIST']
-    d2_tasks = ['UniformNoise', 'NormalNoise']
-    d3_tasks = ['UniformNoise', 'NormalNoise']
+    # d1_tasks = ['STL10']
+    d1_tasks = ['CIFAR100']
+    d2_tasks = ['STL10', 'TinyImagenet']
+    d3_tasks = ['STL10', 'TinyImagenet']
+    # d2_tasks = ['TinyImagenet', 'STL10']
+    # d3_tasks = ['TinyImagenet', 'STL10']
     method_tasks = [
-        'binclass/0',
-        'odin/0',
-        'reconst_thresh/0', 'reconst_thresh/1',
-        'bceaeknn/1',
-        'vaeaeknn/1',
-        'mseaeknn/1',
-
+        # 'binclass/0',
+        # 'odin/0',
+        # 'reconst_thresh/0', 'reconst_thresh/1',
+        # 'prob_threshold/0', 'prob_threshold/1',
+        'nap/1',
+        # 'vaeaeknn/1',
+        # 'mseaeknn/1',
     ]
     # method_tasks = [
     #     'prob_threshold/0', 'prob_threshold/1', 'mcdropout/0', 'mcdropout/2',
@@ -95,7 +99,7 @@ for m in [d1_tasks, d2_tasks, d3_tasks]:
 
 results = []
 # If results exists already, just continue where left off.
-results_path = os.path.join(args.experiment_path, 'results.pth')
+results_path = os.path.join(args.experiment_path, 'workspace/results.pth')
 if os.path.exists(results_path) and not args.force_run:
     print("Loading previous checkpoint")
     results = torch.load(results_path)
@@ -113,6 +117,7 @@ if __name__ == '__main__':
         args.D1 = d1
         for method in method_tasks:
             BT = Global.get_method(method, args)
+            print(BT)
             for d2 in d2_tasks:
                 args.D2 = d2
 
@@ -221,12 +226,23 @@ if __name__ == '__main__':
                     d2_test.trim_dataset(final_len)
                     test_mixture = d1_test + d2_test
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
-
+                    print(test_mixture.datasets)
+                    # print(test_mixture.__getitem__(1).)
+                    print(test_mixture.__getitem__(0)[1])
+                    print(test_mixture.__getitem__(1)[1])
+                    print(test_mixture.__getitem__(-2)[1])
+                    print(test_mixture.__getitem__(-1)[1])
+                    # for it in test_mixture:
+                    #     print(it)
                     test_acc = BT.test_H(test_mixture)
                     results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc))
-
+                    # for name, param in BT.base_model.named_parameters():
+                    #     print(name)
+                    #     print(param.shape)
+                        # print(param)
                     # Take a snapshot after each experiment.
                     torch.save(results, results_path)
 
     for i, (m, ds, dm, dt, mi, a_train, a_test) in enumerate(results):
-        print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%%' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100))
+        print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%% %s' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100, mi))
+    save_results_as_csv(results)
