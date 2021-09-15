@@ -42,10 +42,10 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    # d1_tasks = ['STL10']
-    d1_tasks = ['CIFAR100']
-    d2_tasks = ['STL10', 'TinyImagenet']
-    d3_tasks = ['STL10', 'TinyImagenet']
+    d1_tasks = ['CIFAR10']
+    # d1_tasks = ['CIFAR100']
+    d2_tasks = ['CIFAR100', 'TinyImagenet']
+    d3_tasks = ['CIFAR100', 'TinyImagenet']
     # d2_tasks = ['TinyImagenet', 'STL10']
     # d3_tasks = ['TinyImagenet', 'STL10']
     method_tasks = [
@@ -68,13 +68,14 @@ if args.exp == 'test-eval':
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = ['GTSRB']
+    d1_tasks = ['MNIST']
     # d2_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     # d3_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    d2_tasks = ['CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    d3_tasks = ['CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    method_tasks = ['mcdropout/0'
-                    ]
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
+    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
+    method_tasks = ['nap/1']
 ########################################################
 """
     Default Evaluation
@@ -99,7 +100,7 @@ for m in [d1_tasks, d2_tasks, d3_tasks]:
 
 results = []
 # If results exists already, just continue where left off.
-results_path = os.path.join(args.experiment_path, 'workspace/results.pth')
+results_path = os.path.join(args.experiment_path, 'results.pth')
 if os.path.exists(results_path) and not args.force_run:
     print("Loading previous checkpoint")
     results = torch.load(results_path)

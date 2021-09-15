@@ -1,0 +1,8 @@
+Cifar100:
+    layers: 0, 1, 2, 4 (10)
+    avgpools: 3, 2, 1, 1
+    quantiles: 99, 99, 99, 99
+stl10:
+    layers: 0, 1, 2, 3(?)
+    maxpools: 1, 1, 1, 1
+    quantiles: 35, 15, 1, 99(?)

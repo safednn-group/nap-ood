@@ -113,26 +113,26 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         correct = 0.0
         total_count = 0
         with tqdm.tqdm(total=len(dataset)) as pbar:
-            for i, (image, label) in enumerate(dataset):
-                pbar.update()
+            with torch.no_grad():
+                for i, (image, label) in enumerate(dataset):
+                    pbar.update()
 
-                # Get and prepare data.
-                input, target = image.to(self.args.device), label.to(self.args.device)
+                    # Get and prepare data.
+                    input, target = image.to(self.args.device), label.to(self.args.device)
 
-                outputs, intermediate_values = self.base_model.forward_nap(input)
-                _, predicted = torch.max(outputs.data, 1)
-                for example_index in range(intermediate_values.shape[0]):
-                    lvl = self.monitor.get_comfort_level(intermediate_values.cpu().detach().numpy()[example_index, :],
-                                                         predicted.cpu().detach().numpy()[example_index], omit=True)
-                    if lvl <= self.threshold:
-                        classification = 0
-                    else:
-                        classification = 1
-                    correct += classification == label
-                total_count += len(input)
-
-                message = 'Accuracy %.4f' % (correct / total_count)
-                pbar.set_description(message)
+                    outputs, intermediate_values, _ = self.base_model.forward_nap(input, quantile=self.quantiles)
+                    _, predicted = torch.max(outputs.data, 1)
+                    for example_index in range(intermediate_values.shape[0]):
+                        lvl = self.monitor.get_comfort_level(intermediate_values.cpu().detach().numpy()[example_index, :],
+                                                             predicted.cpu().detach().numpy()[example_index], omit=self.omit)
+                        if lvl <= self.threshold:
+                            classification = 0
+                        else:
+                            classification = 1
+                        correct += classification == label[example_index]
+                    total_count += len(input)
+                    message = 'Accuracy %.4f' % (correct / total_count)
+                    pbar.set_description(message)
 
         test_average_acc = correct / total_count
         print("Final Test average accuracy %s" % (colored('%.4f%%' % (test_average_acc * 100), 'red')))
@@ -245,47 +245,49 @@ class NeuronActivationPatterns(AbstractMethodInterface):
     def _find_best_neurons_count(self):
         best_acc = 0
         results = []
+        self.omit = False
         with torch.no_grad():
-            for layer in range(5):
-                for maxpool in range(1, 4):
+            # for layer in range(3, 5):
+                # for maxpool in range(1, 2):
                     # for q0 in np.concatenate((np.linspace(0.3, 0.5, num=3), np.linspace(0.81, 0.99, num=7))):
-                    for q0 in np.linspace(0.01, 0.99, num=5):
-                        for q1 in np.linspace(0.97, 0.99, num=1):
-                            for q2 in np.linspace(0.97, 0.99, num=1):
-                                # quantiles = [layer, maxpool, q0, q1, q2]
-                                quantiles = [q0, q1, q2]
-                                self._get_last_layer_size(quantiles)
-                                self.monitor = Monitor(self.class_count, layers_shapes=self.monitored_layers_shapes)
-                                self._add_class_patterns_to_monitor(quantile=quantiles)
-                                for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]), 100, num=1)):
+                    for q0 in np.linspace(0.0, 0., num=1):
+                        for q1 in np.linspace(0., 0.17, num=1):
+                            for q2 in np.linspace(0.2, 0.3, num=3):
+                                for q3 in np.linspace(0.95, 0.97, num=1):
+                                    for q4 in np.linspace(0.85, 0.9, num=1):
+                                        # quantiles = [layer, maxpool, q0, q1, q2]
+                                        quantiles = [q0, q1, q2, q3, q4]
+                                        self._get_last_layer_size(quantiles)
+                                        self.monitor = Monitor(self.class_count, layers_shapes=self.monitored_layers_shapes)
+                                        self._add_class_patterns_to_monitor(quantile=quantiles)
+                                        for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]), self.monitored_layers_shapes[0] - self.monitored_layers_shapes[0]/4, num=1)):
 
-                                    print(
-                                        f" quantile0: {q0} quantile1: {q1} quantile2: {q2} lastlayer: {i}")
-                                    i = int(i)
-                                    # neurons_to_monitor = self._choose_neurons_to_monitor(i)
-                                    # self.monitor.set_neurons_to_monitor(neurons_to_monitor)
-                                    print("g" + str(i))
-                                    filename_a = "a" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
-                                    filename_b = "b" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
-                                    # self._process_dataset(filename_a, self.known_loader, quantile=j, monitored_class=k, omit=False)
-                                    # print("h" + str(i))
-                                    # self._process_dataset(filename_b, self.unknown_loader, quantile=j, monitored_class=k, omit=False)
-                                    self._process_dataset(filename_a, self.known_loader, quantile=quantiles, omit=False)
-                                    print("h" + str(i))
-                                    self._process_dataset(filename_b, self.unknown_loader, quantile=quantiles, omit=False)
-                                    print(f"n to monitor: {i}")
-                                    threshold, acc = self._find_threshold(filename_a, filename_b, integers=True)
-                                    quantiles.append(threshold)
-                                    quantiles.append(acc)
-                                    results.append(quantiles)
-                                    if acc >= best_acc:
-                                        self.threshold = threshold
-                                        best_acc = acc
-                                        self.best_monitored_count = i
-                                    os.remove(filename_a)
-                                    os.remove(filename_b)
-            for i in results:
-                print()
+                                            print(
+                                                f" quantile0: {q0} quantile1: {q1} quantile2: {q2} quantile3: {q3} quantile4: {q4} lastlayer: {i}")
+                                            i = int(i)
+                                            neurons_to_monitor = self._choose_neurons_to_monitor(i)
+                                            self.monitor.set_neurons_to_monitor(neurons_to_monitor)
+                                            print("g" + str(i))
+                                            filename_a = "a" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
+                                            filename_b = "b" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
+                                            # self._process_dataset(filename_a, self.known_loader, quantile=j, monitored_class=k, omit=False)
+                                            # print("h" + str(i))
+                                            # self._process_dataset(filename_b, self.unknown_loader, quantile=j, monitored_class=k, omit=False)
+                                            self._process_dataset(filename_a, self.known_loader, quantile=quantiles, omit=self.omit)
+                                            print("h" + str(i))
+                                            self._process_dataset(filename_b, self.unknown_loader, quantile=quantiles, omit=self.omit)
+                                            print(f"n to monitor: {i}")
+                                            threshold, acc = self._find_threshold(filename_a, filename_b, integers=True)
+                                            results.append([q0, q1, q2, q3, q4, i, threshold, acc])
+                                            if acc >= best_acc:
+                                                self.threshold = threshold
+                                                best_acc = acc
+                                                self.best_monitored_count = i
+                                                self.quantiles = quantiles
+                                            os.remove(filename_a)
+                                            os.remove(filename_b)
+                    for i in results:
+                        print(i)
 
     def _process_dataset(self, result_filename, testloader, omit=True, quantile=None):
         comfort_level_data = []
