@@ -42,10 +42,11 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['CIFAR10']
+    d1_tasks = ['MNIST']
     # d1_tasks = ['CIFAR100']
-    d2_tasks = ['CIFAR100', 'TinyImagenet']
-    d3_tasks = ['CIFAR100', 'TinyImagenet']
+    d2_tasks = ['STL10', 'CIFAR100']
+    d3_tasks = ['STL10', 'CIFAR100']
+
     # d2_tasks = ['TinyImagenet', 'STL10']
     # d3_tasks = ['TinyImagenet', 'STL10']
     method_tasks = [
@@ -150,6 +151,7 @@ if __name__ == '__main__':
                     d1_valid = ds1.get_D1_valid()
                     d2_valid = ds2.get_D2_valid(ds1)
 
+
                     # Adjust the sizes.
                     d1_valid_len = len(d1_valid)
                     d2_valid_len = len(d2_valid)
@@ -187,7 +189,6 @@ if __name__ == '__main__':
                     valid_mixture = d1_train + d1_valid + d2_valid
 
                     print("Final valid size: %d+%d=%d" % (len(d1_valid), len(d2_valid), len(valid_mixture)))
-
                 train_acc = BT.train_H(valid_mixture)
 
                 for d3 in d3_tasks:

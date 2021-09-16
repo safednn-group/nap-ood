@@ -35,14 +35,14 @@ def CIFAR100sparse2coarse(targets):
                               18, 1, 2, 15, 6, 0, 17, 8, 14, 13])
     return coarse_labels[targets]
 
-def write_csv(data, filename, write_header=False):
+def write_csv(data, filename, write_header=False, mode='a'):
     fieldnames = ['class', 'comfort_level', 'correct']
     # rows = [[klass, x[0], x[1]] for x in data]
     # print(f"rows: {data}")
     # for row in data:
     #     print(row)
     # print("write")
-    with open(filename, 'a', encoding='UTF8', newline='') as f:
+    with open(filename, mode, encoding='UTF8', newline='') as f:
         writer = csv.writer(f)
         if write_header:
             writer.writerow(fieldnames)
@@ -66,6 +66,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.add_identifier = ""
         self.known_loader = None
         self.unknown_loader = None
+        self.known_loader_parent = None
         self.train_loader = None
 
     def propose_H(self, dataset, mirror=True):
@@ -89,29 +90,56 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         # self.monitor = Monitor(self.class_count)
 
     def train_H(self, dataset):
-        # print(int(len(dataset) / 2))
-        # print(type(dataset))
-        # print(len(dataset[0]))
-        # print(len(dataset[1]))
-        # print(len(dataset.datasets[1]))
-        # exit(0)
-        print("c")
         self.known_loader = DataLoader(dataset.datasets[0], batch_size=self.args.batch_size, shuffle=True,
                                        num_workers=self.args.workers,
                                        pin_memory=True)
-        print("d")
-        self.unknown_loader = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
-                                         num_workers=self.args.workers,
-                                         pin_memory=True)
-        print("e")
-        self._find_best_neurons_count()
-        print("f")
+        # self.unknown_loader = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
+        #                                  num_workers=self.args.workers,
+        #                                  pin_memory=True)
+        # self.known_loader_parent = DataLoader(dataset.datasets[0].parent_dataset, batch_size=self.args.batch_size, shuffle=True,
+        #                                num_workers=self.args.workers,
+        #                                pin_memory=False)
+        # self._find_best_neurons_count()
+
 
     def test_H(self, dataset):
-        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True, num_workers=self.args.workers,
-                             pin_memory=True)
+
+        # self._add_class_patterns_to_monitor(self.known_loader_parent, self.quantiles)
+        # dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.workers,
+        #                      pin_memory=False)
+
+        # import torch.utils.data as data_utils
+        #
+        # indices = torch.arange(len(dataset)/2)
+        # dataset = data_utils.Subset(dataset, indices)
+        # dataset = DataLoader(dataset.datasets[0], batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.workers,
+        #                      pin_memory=True)
+
+        # self._process_dataset(filename_a, self.known_loader, quantile=j, monitored_class=k, omit=False)
+        # print("h" + str(i))
+        # self._process_dataset(filename_b, self.unknown_loader, quantile=j, monitored_class=k, omit=False)
+
+        # self._process_dataset(filename_a, self.known_loader, quantile=self.quantiles, omit=self.omit)
+        # self._process_dataset(filename_b, dataset, quantile=self.quantiles, omit=self.omit)
+        # exit(0)
+
+        dataset = DataLoader(dataset.datasets[0], batch_size=self.args.batch_size, shuffle=False,
+                             num_workers=self.args.workers, pin_memory=True)
+        self.plot_distributions(self.known_loader, dataset)
+        exit(0)
+        known_len = len(dataset.datasets[0])
+        filename_b = dataset.datasets[0].name + "test.csv"
+        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+                             num_workers=self.args.workers, pin_memory=True)
+
         correct = 0.0
         total_count = 0
+        print(f"quantiles {self.quantiles}")
+        print(f"threshold {self.threshold}")
+
+        print(f"filename test {filename_b}")
+
+        comfort_level_data = []
         with tqdm.tqdm(total=len(dataset)) as pbar:
             with torch.no_grad():
                 for i, (image, label) in enumerate(dataset):
@@ -129,8 +157,17 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                             classification = 0
                         else:
                             classification = 1
+                        # print(f"index {example_index} lvl {lvl} label {label[example_index]} class {classification}")
                         correct += classification == label[example_index]
+                        comfort_level_data.append(
+                            (label.cpu().numpy()[example_index], lvl,
+                             correct))
+
+
                     total_count += len(input)
+                    # if total_count <= known_len:
+                    #     # print(f" acc NA ZNANYM: {correct/total_count}")
+                    #     write_csv(comfort_level_data, filename_b, write_header=True, mode='w')
                     message = 'Accuracy %.4f' % (correct / total_count)
                     pbar.set_description(message)
 
@@ -158,10 +195,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         #                           num_workers=self.args.workers, pin_memory=True, drop_last=True)
         # self.valid_loader = DataLoader(valid_ds, batch_size=self.args.batch_size, num_workers=self.args.workers,
         #                           pin_memory=True)
-        print("a")
         self.train_loader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.workers,
                                        pin_memory=True)
-        print("b")
         # Set up the model
         model = Global.get_ref_classifier(self.args.D1)[self.default_model]().to(self.args.device)
 
@@ -200,8 +235,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
         return neurons_to_monitor
 
-    def _add_class_patterns_to_monitor(self, quantile=None):
-        dataiter = iter(self.train_loader)
+    def _add_class_patterns_to_monitor(self, loader, quantile=None):
+        dataiter = iter(loader)
         for img, label in tqdm.tqdm(dataiter):
             label = label.to(self.args.device)
             img = img.to(self.args.device)
@@ -247,19 +282,19 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         results = []
         self.omit = False
         with torch.no_grad():
-            # for layer in range(3, 5):
-                # for maxpool in range(1, 2):
+            for layer in range(0, 5):
+                for maxpool in range(1, 4):
                     # for q0 in np.concatenate((np.linspace(0.3, 0.5, num=3), np.linspace(0.81, 0.99, num=7))):
-                    for q0 in np.linspace(0.0, 0., num=1):
-                        for q1 in np.linspace(0., 0.17, num=1):
-                            for q2 in np.linspace(0.2, 0.3, num=3):
+                    for q0 in np.linspace(0.1, 0.9, num=4):
+                        for q1 in np.linspace(0.1, 0.1, num=1):
+                            for q2 in np.linspace(0.2, 0.3, num=1):
                                 for q3 in np.linspace(0.95, 0.97, num=1):
                                     for q4 in np.linspace(0.85, 0.9, num=1):
-                                        # quantiles = [layer, maxpool, q0, q1, q2]
-                                        quantiles = [q0, q1, q2, q3, q4]
+                                        quantiles = [layer, maxpool, q0, q1, q2]
+                                        # quantiles = [q0, q1, q2, q3, q4]
                                         self._get_last_layer_size(quantiles)
                                         self.monitor = Monitor(self.class_count, layers_shapes=self.monitored_layers_shapes)
-                                        self._add_class_patterns_to_monitor(quantile=quantiles)
+                                        self._add_class_patterns_to_monitor(self.train_loader, quantile=quantiles)
                                         for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]), self.monitored_layers_shapes[0] - self.monitored_layers_shapes[0]/4, num=1)):
 
                                             print(
@@ -268,8 +303,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                             neurons_to_monitor = self._choose_neurons_to_monitor(i)
                                             self.monitor.set_neurons_to_monitor(neurons_to_monitor)
                                             print("g" + str(i))
-                                            filename_a = "a" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
-                                            filename_b = "b" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
+                                            filename_a = "alayer" + str(layer) + "maxpool" + str(maxpool) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(
+                                                q2) + ".csv"
+                                            filename_b = "blayer" + str(layer) + "maxpool" + str(maxpool) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(
+                                                q2) + ".csv"
+                                            # filename_a = "a" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
+                                            # filename_b = "b" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
                                             # self._process_dataset(filename_a, self.known_loader, quantile=j, monitored_class=k, omit=False)
                                             # print("h" + str(i))
                                             # self._process_dataset(filename_b, self.unknown_loader, quantile=j, monitored_class=k, omit=False)
@@ -279,15 +318,17 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                             print(f"n to monitor: {i}")
                                             threshold, acc = self._find_threshold(filename_a, filename_b, integers=True)
                                             results.append([q0, q1, q2, q3, q4, i, threshold, acc])
-                                            if acc >= best_acc:
+                                            if acc > best_acc + 0.01:
                                                 self.threshold = threshold
                                                 best_acc = acc
                                                 self.best_monitored_count = i
                                                 self.quantiles = quantiles
-                                            os.remove(filename_a)
-                                            os.remove(filename_b)
+                                            # os.remove(filename_a)
+                                            # os.remove(filename_b)
                     for i in results:
                         print(i)
+
+
 
     def _process_dataset(self, result_filename, testloader, omit=True, quantile=None):
         comfort_level_data = []
@@ -316,5 +357,18 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
         write_csv(comfort_level_data, result_filename, write_header=True)
 
-
-
+    def plot_distributions(self, valid, test):
+        valid_loader = DataLoader(valid, batch_size=self.args.batch_size, num_workers=self.args.workers,
+                                       pin_memory=True)
+        test_loader = DataLoader(test, batch_size=self.args.batch_size, num_workers=self.args.workers,
+                                  pin_memory=True)
+        quantiles = [2, 3, 0.2, 0.95, 0.85]
+        print("plot")
+        self.omit = False
+        self._get_last_layer_size(quantiles)
+        self.monitor = Monitor(self.class_count, layers_shapes=self.monitored_layers_shapes)
+        self._add_class_patterns_to_monitor(self.train_loader, quantile=quantiles)
+        filename_a = "a" + str(quantiles) +  ".csv"
+        filename_b = "b" + str(quantiles) + ".csv"
+        self._process_dataset(filename_a, valid_loader, quantile=quantiles, omit=self.omit)
+        self._process_dataset(filename_b, test_loader, quantile=quantiles, omit=self.omit)
