@@ -9,6 +9,7 @@ import tqdm
 from termcolor import colored
 from torch import nn
 from torch.utils.data.dataloader import DataLoader
+from itertools import chain
 
 import global_vars as Global
 from datasets import MirroredDataset
@@ -246,22 +247,25 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.omit = False
         with torch.no_grad():
             # for layer in range(0, 5):
-            #     for maxpool in range(1, 4):
+            for layer in chain(range(0, 13, 3), [13, 14]):
+                for maxpool in range(1, 4):
                     # for q0 in np.concatenate((np.linspace(0.3, 0.5, num=3), np.linspace(0.81, 0.99, num=7))):
-                    for q0 in np.linspace(0.3, 0.3, num=1):
+                    for q0 in np.linspace(0.1, 0.9, num=5):
                         for q1 in np.linspace(0.2, 0.2, num=1):
                             for q2 in np.linspace(0.2, 0.3, num=1):
                                 for q3 in np.linspace(0.95, 0.97, num=1):
                                     for q4 in np.linspace(0.85, 0.9, num=1):
-                                        # quantiles = [layer, maxpool, q0, q1, q2]
-                                        quantiles = [q0, q1, q2, q3, q4]
+                                        quantiles = [layer, maxpool, q0, q1, q2]
+                                        # quantiles = [q0, q1, q2, q3, q4]
                                         self._get_last_layer_size(quantiles)
                                         self.monitor = Monitor(self.class_count, layers_shapes=self.monitored_layers_shapes)
                                         self._add_class_patterns_to_monitor(self.train_loader, quantile=quantiles)
                                         for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]), self.monitored_layers_shapes[0] - self.monitored_layers_shapes[0]/4, num=1)):
 
+                                            # print(
+                                            #     f" quantile0: {q0} quantile1: {q1} quantile2: {q2} quantile3: {q3} quantile4: {q4} lastlayer: {i}")
                                             print(
-                                                f" quantile0: {q0} quantile1: {q1} quantile2: {q2} quantile3: {q3} quantile4: {q4} lastlayer: {i}")
+                                                f" quantile0: {q0} layer: {layer} pool: {maxpool} lastlayer: {i}")
                                             i = int(i)
                                             neurons_to_monitor = self._choose_neurons_to_monitor(i)
                                             self.monitor.set_neurons_to_monitor(neurons_to_monitor)
@@ -288,8 +292,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                                 self.quantiles = quantiles
                                             os.remove(filename_a)
                                             os.remove(filename_b)
-                    for i in results:
-                        print(i)
+            for i in results:
+                print(i)
 
 
 

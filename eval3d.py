@@ -44,8 +44,8 @@ if args.exp == 'master':
 if args.exp == 'test-eval':
     d1_tasks = ['STL10']
     # d1_tasks = ['CIFAR100']
-    d2_tasks = ['CIFAR100', 'TinyImagenet']
-    d3_tasks = ['CIFAR100', 'TinyImagenet']
+    d2_tasks = ['MNIST', 'NormalNoise']
+    d3_tasks = ['MNIST', 'NormalNoise']
 
     # d2_tasks = ['TinyImagenet', 'STL10']
     # d3_tasks = ['TinyImagenet', 'STL10']
@@ -54,7 +54,7 @@ if args.exp == 'test-eval':
         # 'odin/0',
         # 'reconst_thresh/0', 'reconst_thresh/1',
         # 'prob_threshold/0', 'prob_threshold/1',
-        'nap/1',
+        'nap/0',
         # 'vaeaeknn/1',
         # 'mseaeknn/1',
     ]

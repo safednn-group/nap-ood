@@ -34,10 +34,10 @@ class MNIST_VGG(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 2, 1: 6, 2: 9, 3: 13, 4: 16, 5: 20, 6: 23, 7: 26, 8: 29}
         # Reduced VGG16.
         self.cfg = [64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M']
-        self.model = VGG.VGG(self.make_layers(self.cfg, batch_norm=True), num_classes=10)
+        self.model = VGG.VGG(self.make_layers(self.cfg, batch_norm=True), num_classes=10, relu_indices=self.relu_indices)
         # MNIST would have a different sized feature map.
         self.model.classifier = nn.Sequential(
             nn.Linear(512 * 1 * 1, 256), nn.ReLU(True), nn.Dropout(),
@@ -137,10 +137,10 @@ class CIFAR10_VGG(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 2, 1: 5, 2: 9, 3: 12, 4: 16, 5: 19, 6: 22, 7: 26, 8: 29, 9: 32, 10: 36, 11: 39, 12: 42, 13: 44, 14: 47}
         # VGG16 minus last maxpool.
         self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512]
-        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=10)
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=10, relu_indices=self.relu_indices)
         # Cifar 10 would have a different sized feature map.
         self.model.classifier = nn.Sequential(
             nn.Linear(512 * 2 * 2, 4096), nn.ReLU(True), nn.Dropout(),
@@ -240,10 +240,10 @@ class CIFAR100_VGG(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 2, 1: 5, 2: 9, 3: 12, 4: 16, 5: 19, 6: 22, 7: 26, 8: 29, 9: 32, 10: 36, 11: 39, 12: 42, 13: 44, 14: 47}
         # VGG16 minus last maxpool.
         self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512]
-        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=100)
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=100, relu_indices=self.relu_indices)
         # Cifar 10 would have a different sized feature map.
         self.model.classifier = nn.Sequential(
             nn.Linear(512 * 2 * 2, 4096), nn.ReLU(True), nn.Dropout(),
@@ -343,10 +343,10 @@ class STL10_VGG(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 2, 1: 5, 2: 9, 3: 12, 4: 16, 5: 19, 6: 22, 7: 26, 8: 29, 9: 32, 10: 36, 11: 39, 12: 42, 13: 45, 14: 48}
         # VGG16.
         self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M']
-        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=10)
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=10, relu_indices=self.relu_indices)
         # Cifar 10 would have a different sized feature map.
         self.model.classifier = nn.Sequential(
             nn.Linear(512 * 3 * 3, 4096), nn.ReLU(True), nn.Dropout(),
@@ -446,9 +446,9 @@ class TinyImagenet_VGG(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 2, 1: 5, 2: 9, 3: 12, 4: 16, 5: 19, 6: 22, 7: 26, 8: 29, 9: 32, 10: 36, 11: 39, 12: 42, 13: 45, 14: 48}
         self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M']
-        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=200)
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=200, relu_indices=self.relu_indices)
         # TinyImagenet would have a different sized feature map.
         self.model.classifier = nn.Sequential(
             nn.Linear(512 * 2 * 2, 4096), nn.ReLU(True), nn.Dropout(),

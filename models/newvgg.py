@@ -1,14 +1,13 @@
 import torch
 import torch.nn as nn
 import numpy as np
-#from .utils import load_state_dict_from_url
+# from .utils import load_state_dict_from_url
 from torch.utils.model_zoo import load_url as load_state_dict_from_url
 
 __all__ = [
     'VGG', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
     'vgg19_bn', 'vgg19',
 ]
-
 
 model_urls = {
     'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
@@ -24,12 +23,17 @@ model_urls = {
 
 class VGG(nn.Module):
 
-    def __init__(self, features, num_classes=1000, init_weights=True):
+    def __init__(self, features, num_classes=1000, init_weights=True, relu_indices=None):
         super(VGG, self).__init__()
         self.features = features
-        #self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
+        self.relu_indices = relu_indices
+        # self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.maxpool = nn.AdaptiveMaxPool2d((1,1))
+        self.maxpool = nn.AdaptiveMaxPool2d((1, 1))
+        self.maxpools = [nn.Identity(), nn.AdaptiveMaxPool2d(1), nn.AdaptiveMaxPool2d(2), nn.AdaptiveMaxPool2d(3),
+                         nn.AdaptiveMaxPool2d(4)]
+        self.avgpools = [nn.Identity(), nn.AdaptiveAvgPool2d(1), nn.AdaptiveAvgPool2d(2), nn.AdaptiveAvgPool2d(3),
+                         nn.AdaptiveAvgPool2d(4)]
         self.classifier = nn.Sequential(
             nn.Linear(512 * 7 * 7, 4096),
             nn.ReLU(True),
@@ -44,33 +48,52 @@ class VGG(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        #x = self.avgpool(x)
+        # x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
 
     def forward_nap(self, x, quantile=None):
         self.classifier.eval()
-        x = self.features(x)
-        # immediate1 = torch.flatten(self.avgpool(x), 1)
-        immediate1 = torch.flatten(self.maxpool(x), 1)
-        x = torch.flatten(x, 1)
+        # x = self.features(x)
         counter = 0
-        for layer in self.classifier:
-            immediate2 = x
+        for name, layer in self.features.named_children():
             x = layer.forward(x)
-            if counter == 1:
-                immediate3 = x
+            if counter == self.relu_indices[quantile[0]]:
+                immediate = torch.flatten(self.avgpools[quantile[1]](x), 1)
+                immediate = torch.tensor(np.where(immediate.cpu().numpy() > np.quantile(immediate.cpu().numpy(),
+                                                                                        quantile[2]), immediate.cpu(),
+                                                  0))
             counter += 1
-        immediate1 = torch.tensor(np.where(immediate1.cpu().numpy() > np.quantile(immediate1.cpu().numpy(), quantile[0]), immediate1.cpu(), 0))
-        immediate2 = torch.tensor(np.where(immediate2.cpu().numpy() > np.quantile(immediate2.cpu().numpy(), quantile[1]), immediate2.cpu(), 0))
-        immediate3 = torch.tensor(np.where(immediate3.cpu().numpy() > np.quantile(immediate3.cpu().numpy(), quantile[2]), immediate3.cpu(), 0))
-        immediate = torch.cat((immediate2, immediate1, immediate3), dim=1)
+
+        # immediate1 = torch.flatten(self.avgpool(x), 1)
+        # immediate1 = torch.flatten(self.maxpool(x), 1)
+        x = torch.flatten(x, 1)
+        for name, layer in self.classifier.named_children():
+            # print(name)
+            # immediate2 = x
+            x = layer.forward(x)
+            if counter == self.relu_indices[quantile[0]]:
+                immediate = torch.flatten(self.avgpools[quantile[1]](x), 1)
+                immediate = torch.tensor(np.where(immediate.cpu().numpy() > np.quantile(immediate.cpu().numpy(),
+                                                                                        quantile[2]), immediate.cpu(),
+                                                  0))
+            counter += 1
+        # immediate1 = torch.tensor(
+        #     np.where(immediate1.cpu().numpy() > np.quantile(immediate1.cpu().numpy(), quantile[0]), immediate1.cpu(),
+        #              0))
+        # immediate2 = torch.tensor(
+        #     np.where(immediate2.cpu().numpy() > np.quantile(immediate2.cpu().numpy(), quantile[1]), immediate2.cpu(),
+        #              0))
+        # immediate3 = torch.tensor(
+        #     np.where(immediate3.cpu().numpy() > np.quantile(immediate3.cpu().numpy(), quantile[2]), immediate3.cpu(),
+        #              0))
+        # immediate = torch.cat((immediate2, immediate1, immediate3), dim=1)
         # print(f" nonzeros {(immediate[0] > 0).sum()}")
         # print(f" q: {quantile}")
         # print(f" shape: {immediate.shape}")
-        return x, immediate, (immediate2.shape[-1], immediate1.shape[-1], immediate3.shape[-1])
-        # return x, immediate3, [immediate3.shape[-1]]
+        # return x, immediate, (immediate2.shape[-1], immediate1.shape[-1], immediate3.shape[-1])
+        return x, immediate, [immediate.shape[-1]]
 
     def _initialize_weights(self):
         for m in self.modules():
