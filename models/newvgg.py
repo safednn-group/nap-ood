@@ -74,7 +74,7 @@ class VGG(nn.Module):
             # immediate2 = x
             x = layer.forward(x)
             if counter == self.relu_indices[quantile[0]]:
-                immediate = torch.flatten(self.avgpools[quantile[1]](x), 1)
+                # immediate = torch.flatten(self.avgpools[quantile[1]](x), 1)
                 immediate = torch.tensor(np.where(immediate.cpu().numpy() > np.quantile(immediate.cpu().numpy(),
                                                                                         quantile[2]), immediate.cpu(),
                                                   0))
