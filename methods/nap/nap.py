@@ -88,6 +88,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.base_model = config.model
         self.base_model.eval()
         self.class_count = self.base_model.output_size()[1].item()
+        self.add_identifier = self.base_model.__class__.__name__
+        if hasattr(self.base_model, 'preferred_name'):
+            self.add_identifier = self.base_model.preferred_name()
         # self.monitor = Monitor(self.class_count)
 
     def train_H(self, dataset):
@@ -100,8 +103,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         # self.known_loader_parent = DataLoader(dataset.datasets[0].parent_dataset, batch_size=self.args.batch_size, shuffle=True,
         #                                num_workers=self.args.workers,
         #                                pin_memory=False)
-        self._find_best_neurons_count()
-
+        return self._find_best_neurons_count()
 
     def test_H(self, dataset):
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
@@ -321,7 +323,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                         os.remove(filename_b)
             for i in results:
                 print(i)
-
+        return best_acc
 
 
     def _process_dataset(self, result_filename, testloader, omit=True, quantile=None):
