@@ -6,7 +6,7 @@ import torch
 
 from utils.args import args
 import global_vars as Global
-from utils.plot import *
+from plot import save_results_as_csv
 
 #########################################################
 """
@@ -44,8 +44,8 @@ if args.exp == 'master':
 if args.exp == 'test-eval':
     d1_tasks = ['STL10']
     # d1_tasks = ['CIFAR100']
-    d2_tasks = ['MNIST', 'NormalNoise']
-    d3_tasks = ['MNIST', 'NormalNoise']
+    d2_tasks = ['UniformNoise', 'NormalNoise']
+    d3_tasks = ['UniformNoise', 'NormalNoise']
 
     # d2_tasks = ['TinyImagenet', 'STL10']
     # d3_tasks = ['TinyImagenet', 'STL10']
@@ -69,14 +69,14 @@ if args.exp == 'test-eval':
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = ['MNIST']
+    d1_tasks = ['STL10']
     # d2_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     # d3_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
-    method_tasks = ['nap/1']
+    method_tasks = ['nap/0']
 ########################################################
 """
     Default Evaluation
@@ -228,12 +228,6 @@ if __name__ == '__main__':
                     d2_test.trim_dataset(final_len)
                     test_mixture = d1_test + d2_test
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
-                    print(test_mixture.datasets)
-                    # print(test_mixture.__getitem__(1).)
-                    print(test_mixture.__getitem__(0)[1])
-                    print(test_mixture.__getitem__(1)[1])
-                    print(test_mixture.__getitem__(-2)[1])
-                    print(test_mixture.__getitem__(-1)[1])
                     # for it in test_mixture:
                     #     print(it)
                     test_acc = BT.test_H(test_mixture)

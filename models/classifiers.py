@@ -55,11 +55,11 @@ class MNIST_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=0.):
+    def forward_nap(self, x, softmax=True, nap_params=0.):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
@@ -106,11 +106,11 @@ class MNIST_Resnet(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=0.):
+    def forward_nap(self, x, softmax=True, nap_params=0.):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params=nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
@@ -158,11 +158,11 @@ class CIFAR10_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=0.):
+    def forward_nap(self, x, softmax=True, nap_params=0.):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
@@ -209,11 +209,11 @@ class CIFAR10_Resnet(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=0.):
+    def forward_nap(self, x, softmax=True, nap_params=0.):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params=nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
@@ -261,11 +261,11 @@ class CIFAR100_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=0.):
+    def forward_nap(self, x, softmax=True, nap_params=0.):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
@@ -312,11 +312,11 @@ class CIFAR100_Resnet(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=0.):
+    def forward_nap(self, x, softmax=True, nap_params=0.):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params=nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
@@ -364,11 +364,11 @@ class STL10_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=0.):
+    def forward_nap(self, x, softmax=True, nap_params=0.):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
@@ -415,11 +415,11 @@ class STL10_Resnet(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=None):
+    def forward_nap(self, x, softmax=True, nap_params=None):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params=nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
@@ -466,11 +466,11 @@ class TinyImagenet_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=0.):
+    def forward_nap(self, x, softmax=True, nap_params=0.):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
@@ -517,11 +517,11 @@ class TinyImagenet_Resnet(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
-    def forward_nap(self, x, softmax=True, quantile=0.):
+    def forward_nap(self, x, softmax=True, nap_params=0.):
         # Perform late normalization.
         x = (x-self.offset)*self.multiplier
 
-        output, intermediate, sizes = self.model.forward_nap(x, quantile=quantile)
+        output, intermediate, sizes = self.model.forward_nap(x, nap_params=nap_params)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes

@@ -33,4 +33,20 @@ l1 a0 q0.5
 mean = 81,854
 l2 a0 q0.5
 
-
+VGG:
+    cifar10:
+        9l, 2a, q0.9
+        14l 0a q0.9  .
+    cifar100:
+        10l, 2m, 0.9
+    fashion:
+        6l, a2, 0.9
+    mnist:
+        6l, 1a, 0.5
+        2l, 3a, 0.5  .
+    stl10:
+        l4, 1m, 0.3
+        l10, 2m, 0.9  .
+    tiny:
+        8l, 1m, 0.5
+        

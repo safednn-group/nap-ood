@@ -53,47 +53,26 @@ class VGG(nn.Module):
         x = self.classifier(x)
         return x
 
-    def forward_nap(self, x, quantile=None):
+    def forward_nap(self, x, nap_params=None):
         self.classifier.eval()
-        # x = self.features(x)
-        counter = 0
+        layer_counter = 0
         for name, layer in self.features.named_children():
             x = layer.forward(x)
-            if counter == self.relu_indices[quantile[0]]:
-                immediate = torch.flatten(self.avgpools[quantile[1]](x), 1)
-                immediate = torch.tensor(np.where(immediate.cpu().numpy() > np.quantile(immediate.cpu().numpy(),
-                                                                                        quantile[2]), immediate.cpu(),
-                                                  0))
-            counter += 1
+            if layer_counter == self.relu_indices[nap_params[0]]:
+                intermediate = torch.flatten(self.maxpools[nap_params[1]](x), 1)
+                intermediate = torch.tensor(np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(),
+                                                                                              nap_params[2]), intermediate.cpu(),
+                                                     0))
+            layer_counter += 1
 
-        # immediate1 = torch.flatten(self.avgpool(x), 1)
-        # immediate1 = torch.flatten(self.maxpool(x), 1)
         x = torch.flatten(x, 1)
         for name, layer in self.classifier.named_children():
-            # print(name)
-            # immediate2 = x
             x = layer.forward(x)
-            if counter == self.relu_indices[quantile[0]]:
-                # immediate = torch.flatten(self.avgpools[quantile[1]](x), 1)
-                immediate = torch.tensor(np.where(immediate.cpu().numpy() > np.quantile(immediate.cpu().numpy(),
-                                                                                        quantile[2]), immediate.cpu(),
-                                                  0))
-            counter += 1
-        # immediate1 = torch.tensor(
-        #     np.where(immediate1.cpu().numpy() > np.quantile(immediate1.cpu().numpy(), quantile[0]), immediate1.cpu(),
-        #              0))
-        # immediate2 = torch.tensor(
-        #     np.where(immediate2.cpu().numpy() > np.quantile(immediate2.cpu().numpy(), quantile[1]), immediate2.cpu(),
-        #              0))
-        # immediate3 = torch.tensor(
-        #     np.where(immediate3.cpu().numpy() > np.quantile(immediate3.cpu().numpy(), quantile[2]), immediate3.cpu(),
-        #              0))
-        # immediate = torch.cat((immediate2, immediate1, immediate3), dim=1)
-        # print(f" nonzeros {(immediate[0] > 0).sum()}")
-        # print(f" q: {quantile}")
-        # print(f" shape: {immediate.shape}")
-        # return x, immediate, (immediate2.shape[-1], immediate1.shape[-1], immediate3.shape[-1])
-        return x, immediate, [immediate.shape[-1]]
+            if layer_counter == self.relu_indices[nap_params[0]]:
+                intermediate = torch.tensor(np.where(x.cpu().numpy() > np.quantile(x.cpu().numpy(), nap_params[2]), x.cpu(),
+                                                     0))
+            layer_counter += 1
+        return x, intermediate, [intermediate.shape[-1]]
 
     def _initialize_weights(self):
         for m in self.modules():

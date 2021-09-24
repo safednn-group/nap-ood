@@ -1,55 +1,18 @@
-import csv
-import os
 from os import path
-
 import numpy as np
 import pandas as pd
 import torch
 import tqdm
 from termcolor import colored
-from torch import nn
 from torch.utils.data.dataloader import DataLoader
-from itertools import chain
 
 import global_vars as Global
 from datasets import MirroredDataset
-from methods import AbstractModelWrapper, AbstractMethodInterface
-from methods.nap.monitor import Monitor, RangeMonitor
+from methods import AbstractMethodInterface
+from methods.nap.monitor import Monitor, EuclideanMonitor
 from utils.iterative_trainer import IterativeTrainerConfig
 from utils.logger import Logger
-
-def CIFAR100sparse2coarse(targets):
-    """Convert Pytorch CIFAR100 sparse targets to coarse targets.
-    Usage:
-        trainset = torchvision.datasets.CIFAR100(path)
-        trainset.targets = sparse2coarse(trainset.targets)
-    """
-    coarse_labels = np.array([4, 1, 14, 8, 0, 6, 7, 7, 18, 3,
-                              3, 14, 9, 18, 7, 11, 3, 9, 7, 11,
-                              6, 11, 5, 10, 7, 6, 13, 15, 3, 15,
-                              0, 11, 1, 10, 12, 14, 16, 9, 11, 5,
-                              5, 19, 8, 8, 15, 13, 14, 17, 18, 10,
-                              16, 4, 17, 4, 2, 0, 17, 4, 18, 17,
-                              10, 3, 2, 12, 12, 16, 12, 1, 9, 19,
-                              2, 10, 0, 1, 16, 12, 9, 13, 15, 13,
-                              16, 19, 2, 4, 6, 19, 5, 5, 8, 19,
-                              18, 1, 2, 15, 6, 0, 17, 8, 14, 13])
-    return coarse_labels[targets]
-
-def write_csv(data, filename, write_header=False, mode='a'):
-    fieldnames = ['class', 'comfort_level', 'correct']
-    # rows = [[klass, x[0], x[1]] for x in data]
-    # print(f"rows: {data}")
-    # for row in data:
-    #     print(row)
-    # print("write")
-    with open(filename, mode, encoding='UTF8', newline='') as f:
-        writer = csv.writer(f)
-        if write_header:
-            writer.writerow(fieldnames)
-        writer.writerows(data)
-        f.flush()
-        os.fsync(f.fileno())
+from .utils import CIFAR100sparse2coarse
 
 
 class NeuronActivationPatterns(AbstractMethodInterface):
@@ -60,15 +23,14 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.args = args
         self.monitor = None
         self.class_count = 0
-        self.last_layer_size = 0
         self.default_model = 0
         self.threshold = 0
         self.best_monitored_count = 0
         self.add_identifier = ""
         self.known_loader = None
         self.unknown_loader = None
-        self.known_loader_parent = None
         self.train_loader = None
+        self.nap_params = None
 
     def propose_H(self, dataset, mirror=True):
         config = self.get_H_config(dataset, mirror)
@@ -91,7 +53,6 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.add_identifier = self.base_model.__class__.__name__
         if hasattr(self.base_model, 'preferred_name'):
             self.add_identifier = self.base_model.preferred_name()
-        # self.monitor = Monitor(self.class_count)
 
     def train_H(self, dataset):
         self.known_loader = DataLoader(dataset.datasets[0], batch_size=self.args.batch_size, shuffle=True,
@@ -100,10 +61,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.unknown_loader = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
                                          num_workers=self.args.workers,
                                          pin_memory=True)
-        # self.known_loader_parent = DataLoader(dataset.datasets[0].parent_dataset, batch_size=self.args.batch_size, shuffle=True,
-        #                                num_workers=self.args.workers,
-        #                                pin_memory=False)
-        return self._find_best_neurons_count()
+        self.nap_params = nap_params = [10, 2, 0.9]
+        return self._find_only_threshold(nap_params)
+        # return self._find_best_layer_to_monitor()
 
     def test_H(self, dataset):
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
@@ -111,7 +71,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
         correct = 0.0
         total_count = 0
-        print(f"quantiles {self.quantiles}")
+        print(f"quantiles {self.nap_params}")
         print(f"threshold {self.threshold}")
 
         with tqdm.tqdm(total=len(dataset)) as pbar:
@@ -122,11 +82,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     # Get and prepare data.
                     input, target = image.to(self.args.device), label.to(self.args.device)
 
-                    outputs, intermediate_values, _ = self.base_model.forward_nap(input, quantile=self.quantiles)
+                    outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
                     _, predicted = torch.max(outputs.data, 1)
                     for example_index in range(intermediate_values.shape[0]):
-                        lvl = self.monitor.get_comfort_level(intermediate_values.cpu().detach().numpy()[example_index, :],
-                                                             predicted.cpu().detach().numpy()[example_index], omit=self.omit)
+                        lvl = self.monitor.get_comfort_level(
+                            intermediate_values.cpu().detach().numpy()[example_index, :],
+                            predicted.cpu().detach().numpy()[example_index], omit=self.omit)
                         if lvl <= self.threshold:
                             classification = 0
                         else:
@@ -134,11 +95,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                         # print(f"index {example_index} lvl {lvl} label {label[example_index]} class {classification}")
                         correct += classification == label[example_index]
 
-
                     total_count += len(input)
-                    # if total_count <= known_len:
-                    #     # print(f" acc NA ZNANYM: {correct/total_count}")
-                    #     write_csv(comfort_level_data, filename_b, write_header=True, mode='w')
                     message = 'Accuracy %.4f' % (correct / total_count)
                     pbar.set_description(message)
 
@@ -153,8 +110,6 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         return output
 
     def get_H_config(self, dataset, mirror):
-
-        # train_ds, valid_ds = dataset.split_dataset(0.8)
 
         if self.args.D1 in Global.mirror_augment and mirror:
             print(colored("Mirror augmenting %s" % self.args.D1, 'green'))
@@ -180,163 +135,113 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         config.logger = Logger()
         return config
 
-    def _choose_neurons_to_monitor(self, neurons_to_monitor_count: int):
-        neurons_to_monitor = {}
-        # n = {}
-        for klass in range(self.class_count):
-            class_weights = None
-            for name, param in self.base_model.named_parameters():
-                if name == "model.classifier.6.weight" or name == "model.fc.weight":
-                    # print(name, param.data[klass])
-                    class_weights = param.data[klass].cpu().numpy()
-
-            abs_weights = np.absolute(class_weights)
-
-            neurons_to_monitor[klass] = abs_weights.argsort()[::-1][:neurons_to_monitor_count]
-            # n[klass] = absWeight.argsort()[::-1][:neurons_to_monitor_count]
-
-        # print("neurons omitted for monitoring: " + str(len(neuronIndicesToBeOmitted[0])))
-        # print(f"neurons omitted for monitoring: {neuronIndicesToBeOmitted[0]}")
-        # print(f"neurons for monitoring: {n[0]}")
-
-        return neurons_to_monitor
-
-    def _add_class_patterns_to_monitor(self, loader, quantile=None):
-        dataiter = iter(loader)
-        for img, label in tqdm.tqdm(dataiter):
-            label = label.to(self.args.device)
-            img = img.to(self.args.device)
-
-            _, intermediate_values, _ = self.base_model.forward_nap(img, quantile=quantile)
-
-            # self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), CIFAR100sparse2coarse(label.cpu().numpy()))
-            self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), label.cpu().numpy())
-            # self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), np.zeros(intermediate_values.cpu().numpy().shape[0]))
-
-    def _find_threshold(self, filename_test, filename_cifar, integers=True, steps=1000):
-        df_cifar = pd.read_csv(filename_cifar)
-        df_test = pd.read_csv(filename_test)
-        min = df_cifar["comfort_level"].min() if df_cifar["comfort_level"].min() > df_test["comfort_level"].min() else \
-            df_test["comfort_level"].min()
-        max = df_cifar["comfort_level"].max() if df_cifar["comfort_level"].max() > df_test["comfort_level"].max() else \
-            df_test["comfort_level"].max()
-        best_acc = 0
-        best = 0
-        for i in range(min - 1, max + 1) if integers else np.linspace(min, max, num=steps):
-            curr = 0
-            curr += (df_cifar["comfort_level"] > i).sum()
-            curr += (df_test["comfort_level"] <= i).sum()
-            if best_acc < curr:
-                best_acc = curr
-                best = i
-        print(f" best threshold: {best}")
-        print(f" accuracy: {best_acc / (len(df_cifar.index) + len(df_test.index))}")
-        return best, best_acc / (len(df_cifar.index) + len(df_test.index))
-
-    def _get_last_layer_size(self, quantiles):
-        trainiter = iter(self.train_loader)
+    def _find_only_threshold(self, nap_params):
+        self.omit = False
         with torch.no_grad():
-            self.last_layer_size = \
-            self.base_model.forward_nap(trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device),
-                                        quantile=quantiles)[1].shape[-1]
-            self.monitored_layers_shapes = \
-            self.base_model.forward_nap(trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device),
-                                        quantile=quantiles)[2]
+            self._get_layers_shapes(nap_params)
+            self.monitor = Monitor(self.class_count,
+                                   layers_shapes=self.monitored_layers_shapes)
+            self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
+            df_known = self._process_dataset(self.known_loader, nap_params=nap_params,
+                                             omit=self.omit)
+            df_unknown = self._process_dataset(self.unknown_loader, nap_params=nap_params,
+                                               omit=self.omit)
+            self.threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
+            print(f"threshold: {self.threshold}, accuracy: {acc}")
+            return acc
 
-    def _find_best_neurons_count(self):
+    def _find_best_layer_to_monitor(self):
         best_acc = 0
         results = []
         self.omit = False
         with torch.no_grad():
-            for layer in range(0, 13, 3):
-                for maxpool in range(1, 4):
+            for layer in range(0, 13, 2):
+                for pool in range(1, 4):
                     # for q0 in np.concatenate((np.linspace(0.3, 0.5, num=3), np.linspace(0.81, 0.99, num=7))):
                     for q0 in np.linspace(0.1, 0.9, num=5):
                         for q1 in np.linspace(0.2, 0.2, num=1):
                             for q2 in np.linspace(0.2, 0.3, num=1):
                                 for q3 in np.linspace(0.95, 0.97, num=1):
                                     for q4 in np.linspace(0.85, 0.9, num=1):
-                                        quantiles = [layer, maxpool, q0, q1, q2]
-                                        # quantiles = [q0, q1, q2, q3, q4]
-                                        self._get_last_layer_size(quantiles)
-                                        self.monitor = Monitor(self.class_count, layers_shapes=self.monitored_layers_shapes)
-                                        self._add_class_patterns_to_monitor(self.train_loader, quantile=quantiles)
-                                        for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]), self.monitored_layers_shapes[0] - self.monitored_layers_shapes[0]/4, num=1)):
+                                        # nap_params = [layer, pool, q0, q1, q2]
+                                        # resnet_nap_params = [q0, q1, q2, q3, q4]
+                                        nap_params = [layer, pool, q0]
+                                        self._get_layers_shapes(nap_params)
+                                        self.monitor = Monitor(self.class_count,
+                                                               layers_shapes=self.monitored_layers_shapes)
+                                        self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
+                                        for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]),
+                                                                       self.monitored_layers_shapes[0] -
+                                                                       self.monitored_layers_shapes[0] / 4, num=1)):
 
                                             # print(
                                             #     f" quantile0: {q0} quantile1: {q1} quantile2: {q2} quantile3: {q3} quantile4: {q4} lastlayer: {i}")
-                                            print(
-                                                f" quantile0: {q0} layer: {layer} pool: {maxpool} lastlayer: {i}")
+                                            print(f" quantile0: {q0} layer: {layer} pool: {pool} lastlayer: {i}")
                                             i = int(i)
-                                            neurons_to_monitor = self._choose_neurons_to_monitor(i)
-                                            self.monitor.set_neurons_to_monitor(neurons_to_monitor)
-                                            print("g" + str(i))
-                                            filename_a = "a" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
-                                            filename_b = "b" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
-                                            self._process_dataset(filename_a, self.known_loader, quantile=quantiles, omit=self.omit)
-                                            print("h" + str(i))
-                                            self._process_dataset(filename_b, self.unknown_loader, quantile=quantiles, omit=self.omit)
-                                            threshold, acc = self._find_threshold(filename_a, filename_b, integers=True)
+                                            if self.omit:
+                                                neurons_to_monitor = self._choose_neurons_to_monitor(i)
+                                                self.monitor.set_neurons_to_monitor(neurons_to_monitor)
+                                            df_known = self._process_dataset(self.known_loader, nap_params=nap_params,
+                                                                             omit=self.omit)
+                                            df_unknown = self._process_dataset(self.unknown_loader,
+                                                                               nap_params=nap_params,
+                                                                               omit=self.omit)
+                                            threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
                                             results.append([q0, q1, q2, q3, q4, i, threshold, acc])
                                             if acc > best_acc + 0.01:
                                                 self.threshold = threshold
                                                 best_acc = acc
                                                 self.best_monitored_count = i
-                                                self.quantiles = quantiles
-                                            os.remove(filename_a)
-                                            os.remove(filename_b)
+                                                self.nap_params = nap_params
             for layer in [13, 14]:
                 for q0 in np.linspace(0.1, 0.9, num=5):
                     for q1 in np.linspace(0.2, 0.2, num=1):
                         for q2 in np.linspace(0.2, 0.3, num=1):
                             for q3 in np.linspace(0.95, 0.97, num=1):
                                 for q4 in np.linspace(0.85, 0.9, num=1):
-                                    maxpool = 0
-                                    quantiles = [layer, maxpool, q0, q1, q2]
-                                    # quantiles = [q0, q1, q2, q3, q4]
-                                    self._get_last_layer_size(quantiles)
-                                    self.monitor = Monitor(self.class_count, layers_shapes=self.monitored_layers_shapes)
-                                    self._add_class_patterns_to_monitor(self.train_loader, quantile=quantiles)
-                                    for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]), self.monitored_layers_shapes[0] - self.monitored_layers_shapes[0]/4, num=1)):
+                                    pool = 0
+                                    nap_params = [layer, pool, q0, q1, q2]
+                                    # nap_params = [q0, q1, q2, q3, q4]
+                                    self._get_layers_shapes(nap_params)
+                                    self.monitor = Monitor(self.class_count,
+                                                           layers_shapes=self.monitored_layers_shapes)
+                                    self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
+                                    for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]),
+                                                                   self.monitored_layers_shapes[0] -
+                                                                   self.monitored_layers_shapes[0] / 4, num=1)):
 
                                         # print(
                                         #     f" quantile0: {q0} quantile1: {q1} quantile2: {q2} quantile3: {q3} quantile4: {q4} lastlayer: {i}")
-                                        print(
-                                            f" quantile0: {q0} layer: {layer} pool: {maxpool} lastlayer: {i}")
+                                        print(f" quantile0: {q0} layer: {layer} pool: {pool} lastlayer: {i}")
                                         i = int(i)
-                                        neurons_to_monitor = self._choose_neurons_to_monitor(i)
-                                        self.monitor.set_neurons_to_monitor(neurons_to_monitor)
-                                        print("g" + str(i))
-                                        filename_a = "a" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
-                                        filename_b = "b" + str(i) + "q0" + str(q0) + "q1" + str(q1) + "q2" + str(q2) + ".csv"
-                                        self._process_dataset(filename_a, self.known_loader, quantile=quantiles, omit=self.omit)
-                                        print("h" + str(i))
-                                        self._process_dataset(filename_b, self.unknown_loader, quantile=quantiles, omit=self.omit)
-                                        threshold, acc = self._find_threshold(filename_a, filename_b, integers=True)
+                                        if self.omit:
+                                            neurons_to_monitor = self._choose_neurons_to_monitor(i)
+                                            self.monitor.set_neurons_to_monitor(neurons_to_monitor)
+                                        df_known = self._process_dataset(self.known_loader, nap_params=nap_params,
+                                                                         omit=self.omit)
+                                        df_unknown = self._process_dataset(self.unknown_loader, nap_params=nap_params,
+                                                                           omit=self.omit)
+                                        threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
                                         results.append([q0, q1, q2, q3, q4, i, threshold, acc])
                                         if acc > best_acc + 0.01:
                                             self.threshold = threshold
                                             best_acc = acc
                                             self.best_monitored_count = i
-                                            self.quantiles = quantiles
-                                        os.remove(filename_a)
-                                        os.remove(filename_b)
+                                            self.nap_params = nap_params
             for i in results:
                 print(i)
         return best_acc
 
-
-    def _process_dataset(self, result_filename, testloader, omit=True, quantile=None):
+    def _process_dataset(self, testloader, omit=True, nap_params=None):
         comfort_level_data = []
         testiter = iter(testloader)
 
         for imgs, label in testiter:
             label = label.to(self.args.device)
             imgs = imgs.to(self.args.device)
-            outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, quantile=quantile)
+            outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=nap_params)
             _, predicted = torch.max(outputs.data, 1)
             correct_bitmap = (predicted == label)
-
             for example_index in range(intermediate_values.shape[0]):
                 # lvl = self.monitor.get_comfort_level(intermediate_values.cpu().numpy()[example_index, :],
                 #                                      CIFAR100sparse2coarse(predicted.cpu().numpy()[example_index]), omit=omit,
@@ -351,20 +256,54 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     (label.cpu().numpy()[example_index], lvl,
                      correct_bitmap.cpu().numpy()[example_index]))
 
-        write_csv(comfort_level_data, result_filename, write_header=True)
+        return pd.DataFrame(comfort_level_data, columns=['class', 'comfort_level', 'correct'])
 
-    def generate_valid_test_uncertainties(self, valid, test):
-        # valid_loader = DataLoader(valid, batch_size=self.args.batch_size, num_workers=self.args.workers,
-        #                                pin_memory=True)
-        # test_loader = DataLoader(test, batch_size=self.args.batch_size, num_workers=self.args.workers,
-        #                           pin_memory=True)
-        quantiles = [2, 3, 0.2, 0.95, 0.85]
-        print("plot")
-        self.omit = False
-        self._get_last_layer_size(quantiles)
-        self.monitor = Monitor(self.class_count, layers_shapes=self.monitored_layers_shapes)
-        self._add_class_patterns_to_monitor(self.train_loader, quantile=quantiles)
-        filename_a = "a" + str(quantiles) +  ".csv"
-        filename_b = "b" + str(quantiles) + ".csv"
-        self._process_dataset(filename_a, valid, quantile=quantiles, omit=self.omit)
-        self._process_dataset(filename_b, test, quantile=quantiles, omit=self.omit)
+    def _find_threshold(self, df_known, df_unknown, integers=True, steps=1000):
+        min = df_unknown["comfort_level"].min() if df_unknown["comfort_level"].min() > df_known[
+            "comfort_level"].min() else \
+            df_known["comfort_level"].min()
+        max = df_unknown["comfort_level"].max() if df_unknown["comfort_level"].max() > df_known[
+            "comfort_level"].max() else \
+            df_known["comfort_level"].max()
+        best_correct_count = 0
+        best_threshold = 0
+        for i in range(min - 1, max + 1) if integers else np.linspace(min, max, num=steps):
+            correct_count = 0
+            correct_count += (df_unknown["comfort_level"] > i).sum()
+            correct_count += (df_known["comfort_level"] <= i).sum()
+            if best_correct_count < correct_count:
+                best_correct_count = correct_count
+                best_threshold = i
+        print(f" best threshold: {best_threshold}")
+        print(f" accuracy: {best_correct_count / (len(df_unknown.index) + len(df_known.index))}")
+        return best_threshold, best_correct_count / (len(df_unknown.index) + len(df_known.index))
+
+    def _get_layers_shapes(self, nap_params):
+        trainiter = iter(self.train_loader)
+        with torch.no_grad():
+            self.monitored_layers_shapes = \
+                self.base_model.forward_nap(trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device),
+                                            nap_params=nap_params)[2]
+
+    def _add_class_patterns_to_monitor(self, loader, nap_params=None):
+        dataiter = iter(loader)
+        for img, label in tqdm.tqdm(dataiter):
+            label = label.to(self.args.device)
+            img = img.to(self.args.device)
+            _, intermediate_values, _ = self.base_model.forward_nap(img, nap_params=nap_params)
+            # self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), CIFAR100sparse2coarse(label.cpu().numpy()))
+            self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), label.cpu().numpy())
+            # self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), np.zeros(intermediate_values.cpu().numpy().shape[0]))
+
+    def _choose_neurons_to_monitor(self, neurons_to_monitor_count: int):
+        neurons_to_monitor = {}
+        for klass in range(self.class_count):
+            class_weights = None
+            for name, param in self.base_model.named_parameters():
+                if name == "model.classifier.6.weight" or name == "model.fc.weight":
+                    class_weights = param.data[klass].cpu().numpy()
+
+            abs_weights = np.absolute(class_weights)
+            neurons_to_monitor[klass] = abs_weights.argsort()[::-1][:neurons_to_monitor_count]
+
+        return neurons_to_monitor
