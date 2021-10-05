@@ -2,6 +2,7 @@ import numpy as np
 import csv
 import os
 
+
 def CIFAR100sparse2coarse(targets):
     """Convert Pytorch CIFAR100 sparse targets to coarse targets.
     Usage:
@@ -30,3 +31,9 @@ def write_csv(data, filename, write_header=False, mode='a'):
         writer.writerows(data)
         f.flush()
         os.fsync(f.fileno())
+
+
+def get_nap_params(cfg, model_name, dataset_name):
+    layers_to_monitor = []
+    for l in cfg[model_name][dataset_name]["layers_to_monitor"]:
+        layers_to_monitor.append(tuple(l.values()))

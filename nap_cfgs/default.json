@@ -1,0 +1,108 @@
+{
+  "VGG": {
+    "MNIST": {
+      "2":
+        {
+          "pool_type": "avg",
+          "pool_size": 3,
+          "quantile": 0.5
+        }
+    },
+    "FashionMNIST": {
+      "6":
+        {
+          "pool_type": "avg",
+          "pool_size": 2,
+          "quantile": 0.9
+        }
+    },
+    "CIFAR10": {
+      "14":
+        {
+          "pool_type": "avg",
+          "pool_size": 0,
+          "quantile": 0.9
+        }
+    },
+    "CIFAR100": {
+      "10":
+        {
+          "pool_type": "max",
+          "pool_size": 2,
+          "quantile": 0.9
+        }
+
+    },
+    "STL10": {
+      "10":
+        {
+          "pool_type": "max",
+          "pool_size": 2,
+          "quantile": 0.9
+        }
+    },
+    "TinyImagenet": {
+      "8":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        }
+    }
+  },
+  "Resnet": {
+    "MNIST": {
+      "2":
+        {
+          "pool_type": "max",
+          "pool_size": 3,
+          "quantile": 0.2
+        }
+    },
+    "FashionMNIST": {
+      "2":
+        {
+          "pool_type": "avg",
+          "pool_size": 2,
+          "quantile": 0.25
+        }
+    },
+    "CIFAR10": {
+      "3": {
+          "pool_type": "avg",
+          "pool_size": 1,
+          "quantile": 0.95
+        },
+      "4": {
+          "pool_type": "avg",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "last_layer_fraction": 0.75
+    },
+    "CIFAR100": {
+      "2":
+      {
+          "pool_type": "avg",
+          "pool_size": 2,
+          "quantile": 0.3
+      }
+    },
+    "STL10": {
+      "4":
+        {
+          "pool_type": "avg",
+          "pool_size": 3,
+          "quantile": 0.5
+        }
+    },
+    "TinyImagenet": {
+      "2":
+        {
+          "pool_type": "avg",
+          "pool_size": 1,
+          "quantile": 0.5
+        }
+    }
+  }
+}

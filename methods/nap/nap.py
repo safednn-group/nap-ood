@@ -1,3 +1,4 @@
+import json
 from os import path
 import numpy as np
 import pandas as pd
@@ -12,7 +13,7 @@ from methods import AbstractMethodInterface
 from methods.nap.monitor import Monitor, EuclideanMonitor
 from utils.iterative_trainer import IterativeTrainerConfig
 from utils.logger import Logger
-from .utils import CIFAR100sparse2coarse
+from .utils import CIFAR100sparse2coarse, get_nap_params
 
 
 class NeuronActivationPatterns(AbstractMethodInterface):
@@ -31,6 +32,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.unknown_loader = None
         self.train_loader = None
         self.nap_params = None
+        self.train_dataset_name = ""
+        self.model_name = ""
+        self.nap_cfg = None
+        self.nap_cfg_path = "nap_cfgs/default.json"
 
     def propose_H(self, dataset, mirror=True):
         config = self.get_H_config(dataset, mirror)
@@ -51,6 +56,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.base_model.eval()
         self.class_count = self.base_model.output_size()[1].item()
         self.add_identifier = self.base_model.__class__.__name__
+        self.train_dataset_name = dataset.name
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else "Resnet"
+        with open(self.nap_cfg_path) as cf:
+            self.nap_cfg = json.load(cf)
         if hasattr(self.base_model, 'preferred_name'):
             self.add_identifier = self.base_model.preferred_name()
 
@@ -61,8 +70,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.unknown_loader = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
                                          num_workers=self.args.workers,
                                          pin_memory=True)
-        self.nap_params = nap_params = [10, 2, 0.9]
-        return self._find_only_threshold(nap_params)
+        # self.nap_params = get_nap_params(self.nap_cfg, self.model_name, self.train_dataset_name)
+        self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
+        return self._find_only_threshold()
         # return self._find_best_layer_to_monitor()
 
     def test_H(self, dataset):
@@ -135,16 +145,24 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         config.logger = Logger()
         return config
 
-    def _find_only_threshold(self, nap_params):
-        self.omit = False
+    def _find_only_threshold(self):
         with torch.no_grad():
-            self._get_layers_shapes(nap_params)
+            last_layer_fraction = self.nap_params.pop("last_layer_fraction", None)
+            self._get_layers_shapes(self.nap_params)
             self.monitor = Monitor(self.class_count,
                                    layers_shapes=self.monitored_layers_shapes)
-            self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
-            df_known = self._process_dataset(self.known_loader, nap_params=nap_params,
+            if not last_layer_fraction:
+                self.omit = False
+            else:
+                self.omit = True
+                neurons_to_monitor = self._choose_neurons_to_monitor(
+                    int(self.monitored_layers_shapes[0] * last_layer_fraction))
+                self.monitor.set_neurons_to_monitor(neurons_to_monitor)
+
+            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+            df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params,
                                              omit=self.omit)
-            df_unknown = self._process_dataset(self.unknown_loader, nap_params=nap_params,
+            df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params,
                                                omit=self.omit)
             self.threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
             print(f"threshold: {self.threshold}, accuracy: {acc}")

@@ -147,6 +147,7 @@ class ResNet(nn.Module):
                          nn.AdaptiveMaxPool2d(4)]
         self.avgpools = [nn.Identity(), nn.AdaptiveAvgPool2d(1), nn.AdaptiveAvgPool2d(2), nn.AdaptiveAvgPool2d(3),
                          nn.AdaptiveAvgPool2d(4)]
+        self.pools = {"avg": self.avgpools, "max": self.maxpools}
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
                                        dilate=replace_stride_with_dilation[0])
@@ -154,6 +155,7 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
+        # self.layers = nn.Sequential(self.layer1, self.layer2, self.layer3, self.layer4)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -204,73 +206,107 @@ class ResNet(nn.Module):
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        if type(nap_params[1]) != int:
-            intermediate1 = torch.flatten(self.maxpools[2](x), 1)
-            # print(f"shape: {intermediate1.shape[-1]} nonzero {(intermediate1 > 0 ).sum()}")
-            x = self.layer1(x)
-            intermediate2 = torch.flatten(self.maxpools[1](x), 1)
-            x = self.layer2(x)
-            intermediate3 = torch.flatten(self.avgpools[3](x), 1)
-            x = self.layer3(x)
-            intermediate4 = torch.flatten(self.avgpools[1](x), 1)
-            x = self.layer4(x)
-            intermediate5 = torch.flatten(self.avgpools[1](x), 1)
+        shapes = []
+        intermediate1 = intermediate2 = intermediate3 = intermediate4 = intermediate5 = None
+        # prev = None
+        # for i, layer in enumerate(self.layers):
+        #     i = i + 1
+        #     if str(i) in nap_params:
+        #         intermediate = torch.flatten(
+        #             self.pools[nap_params[str(i)]["pool_type"]][nap_params[str(i)]["pool_size"]](x), 1)
+        #         intermediate = torch.tensor(
+        #             np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(),
+        #                                                               nap_params[str(i)]["quantile"]),
+        #                      intermediate.cpu(), 0))
+        #         shapes.append(intermediate.shape)
+        #         if prev:
+        #             intermediate = torch.cat((intermediate, prev), dim=1)
+        #         prev = intermediate
+        #     x = layer(x)
 
+        if str(1) in nap_params:
+            intermediate1 = torch.flatten(self.pools[nap_params[str(1)]["pool_type"]][nap_params[str(1)]["pool_size"]](x), 1)
             intermediate1 = torch.tensor(
-                np.where(intermediate1.cpu().numpy() > np.quantile(intermediate1.cpu().numpy(), nap_params[0]),
+                np.where(intermediate1.cpu().numpy() > np.quantile(intermediate1.cpu().numpy(), nap_params[str(1)]["quantile"]),
                          intermediate1.cpu(), 0))
+            shapes.append(intermediate1.shape[-1])
+        x = self.layer1(x)
+        if str(2) in nap_params:
+            intermediate2 = torch.flatten(self.pools[nap_params[str(2)]["pool_type"]][nap_params[str(2)]["pool_size"]](x), 1)
             intermediate2 = torch.tensor(
-                np.where(intermediate2.cpu().numpy() > np.quantile(intermediate2.cpu().numpy(), nap_params[1]),
+                np.where(intermediate2.cpu().numpy() > np.quantile(intermediate2.cpu().numpy(),
+                                                                   nap_params[str(2)]["quantile"]),
                          intermediate2.cpu(), 0))
+            shapes.append(intermediate2.shape[-1])
+        x = self.layer2(x)
+        if str(3) in nap_params:
+            intermediate3 = torch.flatten(
+                self.pools[nap_params[str(3)]["pool_type"]][nap_params[str(3)]["pool_size"]](x), 1)
             intermediate3 = torch.tensor(
-                np.where(intermediate3.cpu().numpy() > np.quantile(intermediate3.cpu().numpy(), nap_params[2]),
+                np.where(intermediate3.cpu().numpy() > np.quantile(intermediate3.cpu().numpy(),
+                                                                   nap_params[str(3)]["quantile"]),
                          intermediate3.cpu(), 0))
+            shapes.append(intermediate3.shape[-1])
+        x = self.layer3(x)
+        if str(4) in nap_params:
+            intermediate4 = torch.flatten(
+                self.pools[nap_params[str(4)]["pool_type"]][nap_params[str(4)]["pool_size"]](x), 1)
             intermediate4 = torch.tensor(
-                np.where(intermediate4.cpu().numpy() > np.quantile(intermediate4.cpu().numpy(), nap_params[3]),
+                np.where(intermediate4.cpu().numpy() > np.quantile(intermediate4.cpu().numpy(),
+                                                                   nap_params[str(4)]["quantile"]),
                          intermediate4.cpu(), 0))
+            shapes.append(intermediate4.shape[-1])
+        x = self.layer4(x)
+        if str(5) in nap_params:
+            intermediate5 = torch.flatten(
+                self.pools[nap_params[str(5)]["pool_type"]][nap_params[str(5)]["pool_size"]](x), 1)
             intermediate5 = torch.tensor(
-                np.where(intermediate5.cpu().numpy() > np.quantile(intermediate5.cpu().numpy(), nap_params[4]),
+                np.where(intermediate5.cpu().numpy() > np.quantile(intermediate5.cpu().numpy(),
+                                                                   nap_params[str(5)]["quantile"]),
                          intermediate5.cpu(), 0))
-            intermediate = torch.cat((intermediate1, intermediate2), dim=1)
-            x = self.avgpool(x)
-            x = torch.flatten(x, 1)
-            x = self.fc(x)
-            return x, intermediate, [intermediate1.shape[-1], intermediate2.shape[-1]]
-        else:
-            intermediate1 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
-            # print(f"shape: {intermediate1.shape[-1]} nonzero {(intermediate1 > 0 ).sum()}")
-            x = self.layer1(x)
-            intermediate2 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
-            x = self.layer2(x)
-            intermediate3 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
-            x = self.layer3(x)
-            intermediate4 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
-            x = self.layer4(x)
-            intermediate5 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
-            if nap_params[0] == 0:
-                intermediate = torch.tensor(
-                    np.where(intermediate1.cpu().numpy() > np.quantile(intermediate1.cpu().numpy(), nap_params[2]),
-                             intermediate1.cpu(), 0))
-            elif nap_params[0] == 1:
-                intermediate = torch.tensor(
-                    np.where(intermediate2.cpu().numpy() > np.quantile(intermediate2.cpu().numpy(), nap_params[2]),
-                             intermediate2.cpu(), 0))
-            elif nap_params[0] == 2:
-                intermediate = torch.tensor(
-                    np.where(intermediate3.cpu().numpy() > np.quantile(intermediate3.cpu().numpy(), nap_params[2]),
-                             intermediate3.cpu(), 0))
-            elif nap_params[0] == 3:
-                intermediate = torch.tensor(
-                    np.where(intermediate4.cpu().numpy() > np.quantile(intermediate4.cpu().numpy(), nap_params[2]),
-                             intermediate4.cpu(), 0))
-            elif nap_params[0] == 4:
-                intermediate = torch.tensor(
-                    np.where(intermediate5.cpu().numpy() > np.quantile(intermediate5.cpu().numpy(), nap_params[2]),
-                             intermediate5.cpu(), 0))
-            x = self.avgpool(x)
-            x = torch.flatten(x, 1)
-            x = self.fc(x)
-            return x, intermediate, [intermediate.shape[-1]]
+            shapes.append(intermediate5.shape[-1])
+        intermediates = tuple({intermediate5, intermediate4, intermediate3, intermediate2, intermediate1} - {None})
+        shapes.reverse()
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+
+        return x, torch.cat(intermediates, dim=1), shapes
+        # else:
+        #     intermediate1 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
+        #     # print(f"shape: {intermediate1.shape[-1]} nonzero {(intermediate1 > 0 ).sum()}")
+        #     x = self.layer1(x)
+        #     intermediate2 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
+        #     x = self.layer2(x)
+        #     intermediate3 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
+        #     x = self.layer3(x)
+        #     intermediate4 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
+        #     x = self.layer4(x)
+        #     intermediate5 = torch.flatten(self.avgpools[nap_params[1]](x), 1)
+        #     if nap_params[0] == 0:
+        #         intermediate = torch.tensor(
+        #             np.where(intermediate1.cpu().numpy() > np.quantile(intermediate1.cpu().numpy(), nap_params[2]),
+        #                      intermediate1.cpu(), 0))
+        #     elif nap_params[0] == 1:
+        #         intermediate = torch.tensor(
+        #             np.where(intermediate2.cpu().numpy() > np.quantile(intermediate2.cpu().numpy(), nap_params[2]),
+        #                      intermediate2.cpu(), 0))
+        #     elif nap_params[0] == 2:
+        #         intermediate = torch.tensor(
+        #             np.where(intermediate3.cpu().numpy() > np.quantile(intermediate3.cpu().numpy(), nap_params[2]),
+        #                      intermediate3.cpu(), 0))
+        #     elif nap_params[0] == 3:
+        #         intermediate = torch.tensor(
+        #             np.where(intermediate4.cpu().numpy() > np.quantile(intermediate4.cpu().numpy(), nap_params[2]),
+        #                      intermediate4.cpu(), 0))
+        #     elif nap_params[0] == 4:
+        #         intermediate = torch.tensor(
+        #             np.where(intermediate5.cpu().numpy() > np.quantile(intermediate5.cpu().numpy(), nap_params[2]),
+        #                      intermediate5.cpu(), 0))
+        #     x = self.avgpool(x)
+        #     x = torch.flatten(x, 1)
+        #     x = self.fc(x)
+        #     return x, intermediate, [intermediate.shape[-1]]
 
     def forward(self, x):
         return self._forward_impl(x)[0]
