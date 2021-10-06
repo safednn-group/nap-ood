@@ -42,7 +42,7 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['STL10']
+    d1_tasks = ['FashionMNIST']
     # d1_tasks = ['CIFAR100']
     d2_tasks = ['UniformNoise', 'NormalNoise']
     d3_tasks = ['UniformNoise', 'NormalNoise']
@@ -54,7 +54,7 @@ if args.exp == 'test-eval':
         # 'odin/0',
         # 'reconst_thresh/0', 'reconst_thresh/1',
         # 'prob_threshold/0', 'prob_threshold/1',
-        'nap/1',
+        'nap/0',
         # 'vaeaeknn/1',
         # 'mseaeknn/1',
     ]
@@ -189,8 +189,12 @@ if __name__ == '__main__':
                     valid_mixture = d1_train + d1_valid + d2_valid
 
                     print("Final valid size: %d+%d=%d" % (len(d1_valid), len(d2_valid), len(valid_mixture)))
-                train_acc = BT.train_H(valid_mixture)
+                import time
 
+                start_time = time.time()
+
+                train_acc = BT.train_H(valid_mixture)
+                print("--- %s seconds ---" % (time.time() - start_time))
                 for d3 in d3_tasks:
                     args.D3 = d3
 
@@ -230,7 +234,9 @@ if __name__ == '__main__':
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
                     # for it in test_mixture:
                     #     print(it)
+                    start_time = time.time()
                     test_acc = BT.test_H(test_mixture)
+                    print("--- %s seconds ---" % (time.time() - start_time))
                     results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc))
                     # for name, param in BT.base_model.named_parameters():
                     #     print(name)

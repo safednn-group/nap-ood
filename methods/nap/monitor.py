@@ -8,13 +8,17 @@ class BaseMonitor(object):
     def __init__(self, class_count, layers_shapes, neurons_to_monitor):
         self.neurons_to_monitor = neurons_to_monitor
         self.layers_shapes = layers_shapes
-        self.known_patterns = dict()
+        self.known_patterns_set = dict()
+        self.known_patterns_numpy = dict()
         self.neurons_count = 0
         for layer in layers_shapes:
             self.neurons_count += layer
 
         for i in range(class_count):
-            self.known_patterns[i] = set()
+            self.known_patterns_set[i] = set()
+
+        for i in range(class_count):
+            self.known_patterns_numpy[i] = np.array([])
 
     def set_neurons_to_monitor(self, neurons_to_monitor):
         self.neurons_to_monitor = neurons_to_monitor
@@ -31,28 +35,19 @@ class Monitor(BaseMonitor):
     def get_comfort_level(self, neuron_values, class_id, omit, ignore_minor_values=True, monitored_class=None):
         zero = np.zeros(neuron_values.shape)
         neuron_on_off_pattern = np.greater(neuron_values, zero).astype("uint8")
-        comfort_level = len(neuron_on_off_pattern)
         monitored_class = monitored_class if monitored_class else class_id
-        for known_pattern in self.known_patterns[class_id]:
-            if omit:
-                if ignore_minor_values:
-                    # print(f"onoff {sum(neuron_on_off_pattern)}")
-                    # print(f" known{np.frombuffer(known_pattern, dtype=neuron_on_off_pattern.dtype).sum()}")
-                    level = (((neuron_on_off_pattern ^ np.frombuffer(known_pattern,
-                                                                     dtype=neuron_on_off_pattern.dtype)) & neuron_on_off_pattern)[
-                        self.neurons_to_monitor[monitored_class]]).sum()
-                else:
-                    level = ((neuron_on_off_pattern ^ np.frombuffer(known_pattern, dtype=neuron_on_off_pattern.dtype))[
-                        self.neurons_to_monitor[monitored_class]]).sum()
+        if omit:
+            if ignore_minor_values:
+                comfort_level = (((self.known_patterns_numpy[class_id] ^ neuron_on_off_pattern) & neuron_on_off_pattern)[
+                    self.neurons_to_monitor[monitored_class]]).sum(axis=1).min()
             else:
-                if ignore_minor_values:
-                    level = ((neuron_on_off_pattern ^ np.frombuffer(known_pattern,
-                                                                    dtype=neuron_on_off_pattern.dtype)) & neuron_on_off_pattern).sum()
-                else:
-                    level = (neuron_on_off_pattern ^ np.frombuffer(known_pattern,
-                                                                   dtype=neuron_on_off_pattern.dtype)).sum()
-            if level < comfort_level:
-                comfort_level = level
+                comfort_level = ((self.known_patterns_numpy[class_id] ^ neuron_on_off_pattern)[
+                    self.neurons_to_monitor[monitored_class]]).sum(axis=1).min()
+        else:
+            if ignore_minor_values:
+                comfort_level = ((self.known_patterns_numpy[class_id] ^ neuron_on_off_pattern) & neuron_on_off_pattern).sum(axis=1).min()
+            else:
+                comfort_level = (self.known_patterns_numpy[class_id] ^ neuron_on_off_pattern).sum(axis=1).min()
         return comfort_level
 
     def add_neuron_pattern(self, neuron_values, label):
@@ -63,7 +58,12 @@ class Monitor(BaseMonitor):
         mat = np.zeros(neuron_values.shape)
         abs = np.greater(neuron_values, mat).astype("uint8")
         for example_id in range(neuron_values.shape[0]):
-            self.known_patterns[label[example_id]].add(abs[example_id].tobytes())
+            if abs[example_id].tobytes() not in self.known_patterns_set[label[example_id]]:
+                self.known_patterns_set[label[example_id]].add(abs[example_id].tobytes())
+                if self.known_patterns_numpy[label[example_id]].size:
+                    self.known_patterns_numpy[label[example_id]] = np.vstack([self.known_patterns_numpy[label[example_id]], abs[example_id]])
+                else:
+                    self.known_patterns_numpy[label[example_id]] = abs[example_id]
 
 
 class EuclideanMonitor(BaseMonitor):
@@ -74,7 +74,7 @@ class EuclideanMonitor(BaseMonitor):
     def get_comfort_level(self, neuron_values, class_id, omit, ignore_minor_values=True, monitored_class=None):
         comfort_level = sys.maxsize
         monitored_class = monitored_class if monitored_class else class_id
-        for known_pattern in self.known_patterns[class_id]:
+        for known_pattern in self.known_patterns_set[class_id]:
             if omit:
                 if ignore_minor_values:
                     abs_values = np.abs(
@@ -103,4 +103,4 @@ class EuclideanMonitor(BaseMonitor):
 
         for example_id in range(neuron_values.shape[0]):
             # print(f"add {neuron_values[example_id].shape}, bytes: {len(neuron_values[example_id].tobytes())}")
-            self.known_patterns[label[example_id]].add(neuron_values[example_id].tobytes())
+            self.known_patterns_set[label[example_id]].add(neuron_values[example_id].tobytes())
