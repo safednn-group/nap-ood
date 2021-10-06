@@ -42,7 +42,7 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['FashionMNIST']
+    d1_tasks = ['CIFAR10']
     # d1_tasks = ['CIFAR100']
     d2_tasks = ['UniformNoise', 'NormalNoise']
     d3_tasks = ['UniformNoise', 'NormalNoise']
@@ -54,7 +54,7 @@ if args.exp == 'test-eval':
         # 'odin/0',
         # 'reconst_thresh/0', 'reconst_thresh/1',
         # 'prob_threshold/0', 'prob_threshold/1',
-        'nap/0',
+        'nap/1',
         # 'vaeaeknn/1',
         # 'mseaeknn/1',
     ]
