@@ -115,7 +115,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         output = "NeuronActivationPatterns"
         if len(self.add_identifier) > 0:
             output = output + "/" + self.add_identifier
-        return outputit
+        return output
 
     def get_H_config(self, dataset, mirror):
         if self.args.D1 in Global.mirror_augment and mirror:
