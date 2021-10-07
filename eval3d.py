@@ -42,10 +42,10 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['TinyImagenet']
+    d1_tasks = ['STL10']
     # d1_tasks = ['CIFAR100']
-    d2_tasks = ['CIFAR100', 'STL10']
-    d3_tasks = ['CIFAR100', 'STL10']
+    d2_tasks = ['CIFAR100', 'MNIST']
+    d3_tasks = ['CIFAR100', 'MNIST']
 
     # d2_tasks = ['TinyImagenet', 'STL10']
     # d3_tasks = ['TinyImagenet', 'STL10']

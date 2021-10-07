@@ -70,12 +70,12 @@ class Monitor(BaseMonitor):
                     self.neurons_to_monitor[monitored_class]]).sum(dim=2).min(dim=0)
         else:
             if ignore_minor_values:
-                # comfort_level = ((self.known_patterns_tensor[class_id].reshape(
-                #     reshape) ^ neuron_on_off_pattern) & neuron_on_off_pattern).sum(dim=2).min(dim=0)
-                comfort_level = []
-                for i in range(neuron_on_off_pattern.shape[0]):
-                    lvl = ((self.known_patterns_tensor[class_id[i], :, :] ^ neuron_on_off_pattern[i]) & neuron_on_off_pattern[i]).sum(dim=1).min()
-                    comfort_level.append(lvl)
+                neuron_on_off_pattern.unsqueeze_(1)
+                comfort_level = ((self.known_patterns_tensor[class_id] ^ neuron_on_off_pattern) & neuron_on_off_pattern).sum(dim=2).min(dim=1)
+                # comfort_level = []
+                # for i in range(neuron_on_off_pattern.shape[0]):
+                #     lvl = ((self.known_patterns_tensor[class_id[i], :, :] ^ neuron_on_off_pattern[i]) & neuron_on_off_pattern[i]).sum(dim=1).min()
+                #     comfort_level.append(lvl)
             else:
                 comfort_level = (self.known_patterns_tensor[class_id].reshape(reshape) ^ neuron_on_off_pattern).sum(
                     dim=2).min(dim=0)
