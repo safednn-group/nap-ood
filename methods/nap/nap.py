@@ -33,6 +33,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.train_loader = None
         self.nap_params = None
         self.train_dataset_name = ""
+        self.train_dataset_length = 0
         self.model_name = ""
         self.nap_cfg = None
         self.nap_cfg_path = "nap_cfgs/default.json"
@@ -94,16 +95,22 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
                     outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
                     _, predicted = torch.max(outputs.data, 1)
-                    for example_index in range(intermediate_values.shape[0]):
-                        lvl = self.monitor.get_comfort_level(
-                            intermediate_values.cpu().detach().numpy()[example_index, :],
-                            predicted.cpu().detach().numpy()[example_index], omit=self.omit)
-                        if lvl <= self.threshold:
-                            classification = 0
-                        else:
-                            classification = 1
-                        # print(f"index {example_index} lvl {lvl} label {label[example_index]} class {classification}")
-                        correct += classification == label[example_index]
+                    lvl = self.monitor.get_comfort_level(intermediate_values.cpu(),
+                                                         predicted, omit=self.omit)
+
+                    classification = np.where(lvl <= self.threshold, 0, 1)
+
+                    correct += (classification == label.numpy()).sum()
+                    # for example_index in range(intermediate_values.shape[0]):
+                    #     lvl = self.monitor.get_comfort_level(
+                    #         intermediate_values.cpu().detach().numpy()[example_index, :],
+                    #         predicted.cpu().detach().numpy()[example_index], omit=self.omit)
+                    #     if lvl <= self.threshold:
+                    #         classification = 0
+                    #     else:
+                    #         classification = 1
+                    #     # print(f"index {example_index} lvl {lvl} label {label[example_index]} class {classification}")
+                    #     correct += classification == label[example_index]
 
                     total_count += len(input)
                     message = 'Accuracy %.4f' % (correct / total_count)
@@ -128,6 +135,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
         self.train_loader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.workers,
                                        pin_memory=True)
+        self.train_dataset_length = len(dataset)
         # Set up the model
         model = Global.get_ref_classifier(self.args.D1)[self.default_model]().to(self.args.device)
 
@@ -149,7 +157,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         with torch.no_grad():
             last_layer_fraction = self.nap_params.pop("last_layer_fraction", None)
             self._get_layers_shapes(self.nap_params)
-            self.monitor = Monitor(self.class_count,
+            self.monitor = Monitor(self.class_count, self.train_dataset_length,
                                    layers_shapes=self.monitored_layers_shapes)
             if not last_layer_fraction:
                 self.omit = False
@@ -185,7 +193,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                         # resnet_nap_params = [q0, q1, q2, q3, q4]
                                         nap_params = [layer, pool, q0]
                                         self._get_layers_shapes(nap_params)
-                                        self.monitor = Monitor(self.class_count,
+                                        self.monitor = Monitor(self.class_count, self.train_dataset_length,
                                                                layers_shapes=self.monitored_layers_shapes)
                                         self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
                                         for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]),
@@ -221,7 +229,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                     nap_params = [layer, pool, q0, q1, q2]
                                     # nap_params = [q0, q1, q2, q3, q4]
                                     self._get_layers_shapes(nap_params)
-                                    self.monitor = Monitor(self.class_count,
+                                    self.monitor = Monitor(self.class_count, self.train_dataset_length,
                                                            layers_shapes=self.monitored_layers_shapes)
                                     self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
                                     for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]),
@@ -251,7 +259,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         return best_acc
 
     def _process_dataset(self, testloader, omit=True, nap_params=None):
-        comfort_level_data = []
+        comfort_level_data = np.array([])
         testiter = iter(testloader)
 
         for imgs, label in testiter:
@@ -260,21 +268,27 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=nap_params)
             _, predicted = torch.max(outputs.data, 1)
             correct_bitmap = (predicted == label)
-            for example_index in range(intermediate_values.shape[0]):
-                # lvl = self.monitor.get_comfort_level(intermediate_values.cpu().numpy()[example_index, :],
-                #                                      CIFAR100sparse2coarse(predicted.cpu().numpy()[example_index]), omit=omit,
-                #                                      ignore_minor_values=True)
-                lvl = self.monitor.get_comfort_level(intermediate_values.cpu().numpy()[example_index, :],
-                                                     predicted.cpu().numpy()[example_index],
-                                                     omit=omit,
-                                                     ignore_minor_values=True)
-                # lvl = self.monitor.get_comfort_level(intermediate_values.cpu().numpy()[example_index, :],
-                #                                      0, omit=omit, monitored_class=predicted.cpu().numpy()[example_index])
-                comfort_level_data.append(
-                    (label.cpu().numpy()[example_index], lvl,
-                     correct_bitmap.cpu().numpy()[example_index]))
+            lvl = self.monitor.get_comfort_level(intermediate_values.cpu(),
+                                                 predicted.cpu().detach().numpy(), omit=self.omit)
+            stacked = np.stack((label.cpu().numpy(), lvl, correct_bitmap.cpu().numpy()), axis=1)
+            if comfort_level_data.size:
+                comfort_level_data = np.concatenate((comfort_level_data, stacked))
+            else:
+                comfort_level_data = stacked
+            # for example_index in range(intermediate_values.shape[0]):
+            #     # lvl = self.monitor.get_comfort_level(intermediate_values.cpu().numpy()[example_index, :],
+            #     #                                      CIFAR100sparse2coarse(predicted.cpu().numpy()[example_index]), omit=omit,
+            #     #                                      ignore_minor_values=True)
+            #     lvl = self.monitor.get_comfort_level(intermediate_values.cpu().numpy()[example_index, :],
+            #                                          predicted.cpu().numpy()[example_index],
+            #                                          omit=omit)
+            #     # lvl = self.monitor.get_comfort_level(intermediate_values.cpu().numpy()[example_index, :],
+            #     #                                      0, omit=omit, monitored_class=predicted.cpu().numpy()[example_index])
+            #     comfort_level_data.append(
+            #         (label.cpu().numpy()[example_index], lvl,
+            #          correct_bitmap.cpu().numpy()[example_index]))
 
-        return pd.DataFrame(comfort_level_data, columns=['class', 'comfort_level', 'correct'])
+        return pd.DataFrame(comfort_level_data, columns=['class', 'comfort_level', 'correct'], dtype=np.int32)
 
     def _find_threshold(self, df_known, df_unknown, integers=True, steps=1000):
         min = df_unknown["comfort_level"].min() if df_unknown["comfort_level"].min() > df_known[
@@ -310,7 +324,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             img = img.to(self.args.device)
             _, intermediate_values, _ = self.base_model.forward_nap(img, nap_params=nap_params)
             # self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), CIFAR100sparse2coarse(label.cpu().numpy()))
-            self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), label.cpu().numpy())
+            self.monitor.add_neuron_pattern(intermediate_values.cpu(), label.cpu().numpy())
             # self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), np.zeros(intermediate_values.cpu().numpy().shape[0]))
 
     def _choose_neurons_to_monitor(self, neurons_to_monitor_count: int):
