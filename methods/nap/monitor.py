@@ -10,6 +10,7 @@ class BaseMonitor(object):
         self.layers_shapes = layers_shapes
         self.known_patterns_set = dict()
 
+
         self.class_count = class_count
         self.neurons_count = 0
         self.class_patterns_count = 0
@@ -23,6 +24,14 @@ class BaseMonitor(object):
         self.known_patterns_tensor = dict()
         for i in range(class_count):
             self.known_patterns_tensor[i] = torch.Tensor()
+
+        self.known_patterns_tensor_cd = dict()
+        for i in range(class_count):
+            self.known_patterns_tensor_cd[i] = torch.Tensor()
+        self.known_patterns_dict_cd = dict()
+        for i in range(class_count):
+            self.known_patterns_dict_cd[i] = 0
+
 
     def set_neurons_to_monitor(self, neurons_to_monitor):
         self.neurons_to_monitor = neurons_to_monitor
@@ -39,38 +48,38 @@ class Monitor(BaseMonitor):
     def __init__(self, class_count, device, layers_shapes, neurons_to_monitor=None):
         super().__init__(class_count, device, layers_shapes, neurons_to_monitor)
 
-    def get_comfort_level(self, neuron_values, class_id, omit, ignore_minor_values=True, monitored_class=None):
+    def compute_hamming_distance(self, neuron_values, class_id, omit=False, ignore_minor_values=True, monitored_class=None):
 
         monitored_class = monitored_class if monitored_class else class_id
         mat_torch = torch.zeros(neuron_values.shape, device=neuron_values.device)
         neuron_on_off_pattern = neuron_values.gt(mat_torch).type(torch.uint8).to(torch.device(self.device))
-        comfort_level = []
+        distance = []
         if omit:
             if ignore_minor_values:
                 for i in range(neuron_on_off_pattern.shape[0]):
                     lvl = ((self.known_patterns_tensor[class_id[i]] ^ neuron_on_off_pattern[i]) & neuron_on_off_pattern[
                         i])[:, self.neurons_to_monitor[monitored_class[i]]].sum(dim=1).min()
-                    comfort_level.append(lvl)
+                    distance.append(lvl)
             else:
                 for i in range(neuron_on_off_pattern.shape[0]):
                     lvl = (self.known_patterns_tensor[class_id[i]] ^ neuron_on_off_pattern[i])[:,
                           self.neurons_to_monitor[monitored_class[i]]].sum(dim=1).min()
-                    comfort_level.append(lvl)
+                    distance.append(lvl)
         else:
             if ignore_minor_values:
                 for i in range(neuron_on_off_pattern.shape[0]):
                     lvl = ((self.known_patterns_tensor[class_id[i]] ^ neuron_on_off_pattern[i]) & neuron_on_off_pattern[
                         i]).sum(dim=1).min()
-                    comfort_level.append(lvl)
+                    distance.append(lvl)
             else:
                 for i in range(neuron_on_off_pattern.shape[0]):
                     lvl = (self.known_patterns_tensor[class_id[i]] ^ neuron_on_off_pattern[i]).sum(dim=1).min()
-                    comfort_level.append(lvl)
-        if type(comfort_level) == list:
-            comfort_level = np.array(comfort_level)
+                    distance.append(lvl)
+        if type(distance) == list:
+            distance = np.array(distance)
         else:
-            comfort_level = comfort_level.values.cpu().numpy()
-        return comfort_level
+            distance = distance.values.cpu().numpy()
+        return distance
 
     def add_neuron_pattern(self, neuron_values, label):
         neuron_values_np = neuron_values.cpu().numpy()
@@ -87,7 +96,7 @@ class Monitor(BaseMonitor):
                         abs[
                             example_id]
                 else:
-                    self.known_patterns_tensor[label[example_id]] = torch.zeros(
+                    self.known_patterns_tensor[label[example_id]] = torch.ones(
                         (self.class_patterns_count[label[example_id]],) + abs[example_id].shape,
                         dtype=torch.uint8, device=abs.device)
 
@@ -96,13 +105,30 @@ class Monitor(BaseMonitor):
                             example_id]
                 self.known_patterns_set[label[example_id]].add(abs_np[example_id].tobytes())
 
+            if self.known_patterns_tensor_cd[label[example_id]].numel():
+                self.known_patterns_tensor_cd[label[example_id]][self.known_patterns_dict_cd[label[example_id]]] = \
+                    abs[
+                        example_id]
+            else:
+                self.known_patterns_tensor_cd[label[example_id]] = torch.ones(
+                    (self.class_patterns_count[label[example_id]],) + abs[example_id].shape,
+                    dtype=torch.uint8, device=abs.device)
+
+                self.known_patterns_tensor_cd[label[example_id]][self.known_patterns_dict_cd[label[example_id]]] = \
+                    abs[
+                        example_id]
+                self.known_patterns_dict_cd[label[example_id]] += 1
+
+    def cut_duplicates(self):
+        for i in self.known_patterns_tensor:
+            self.known_patterns_tensor[i] = self.known_patterns_tensor[i][:len(self.known_patterns_set[i]), :]
 
 class EuclideanMonitor(BaseMonitor):
 
     def __init__(self, class_count, device, layers_shapes, neurons_to_monitor=None):
         super().__init__(class_count, device, layers_shapes, neurons_to_monitor)
 
-    def get_comfort_level(self, neuron_values, class_id, omit, ignore_minor_values=True, monitored_class=None):
+    def compute_hamming_distance(self, neuron_values, class_id, omit, ignore_minor_values=True, monitored_class=None):
         comfort_level = sys.maxsize
         monitored_class = monitored_class if monitored_class else class_id
         for known_pattern in self.known_patterns_set[class_id]:
@@ -111,20 +137,20 @@ class EuclideanMonitor(BaseMonitor):
                     abs_values = np.abs(
                         np.array(neuron_values) - np.frombuffer(known_pattern, dtype=neuron_values.dtype))
                     abs_values = np.where(neuron_values > 0, abs_values, 0)
-                    level = abs_values[self.neurons_to_monitor[monitored_class]].sum()
+                    distance = abs_values[self.neurons_to_monitor[monitored_class]].sum()
                 else:
-                    level = (np.abs(np.array(neuron_values) - np.frombuffer(known_pattern, dtype=neuron_values.dtype))[
+                    distance = (np.abs(np.array(neuron_values) - np.frombuffer(known_pattern, dtype=neuron_values.dtype))[
                         self.neurons_to_monitor[monitored_class]]).sum()
             else:
                 if ignore_minor_values:
                     abs_values = np.abs(
                         np.array(neuron_values) - np.frombuffer(known_pattern, dtype=neuron_values.dtype))
-                    level = np.where(neuron_values > 0, abs_values, 0).sum()
+                    distance = np.where(neuron_values > 0, abs_values, 0).sum()
                 else:
-                    level = np.abs(
+                    distance = np.abs(
                         np.array(neuron_values) - np.frombuffer(known_pattern, dtype=neuron_values.dtype)).sum()
-            if level < comfort_level:
-                comfort_level = level
+            if distance < comfort_level:
+                comfort_level = distance
         return comfort_level
 
     def add_neuron_pattern(self, neuron_values, label):

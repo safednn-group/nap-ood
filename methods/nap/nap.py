@@ -96,10 +96,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
                     outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
                     _, predicted = torch.max(outputs.data, 1)
-                    lvl = self.monitor.get_comfort_level(intermediate_values,
-                                                         predicted.cpu().detach().numpy(), omit=self.omit)
+                    distance = self.monitor.compute_hamming_distance(intermediate_values,
+                                                                predicted.cpu().detach().numpy(), omit=self.omit)
 
-                    classification = np.where(lvl <= self.threshold, 0, 1)
+                    classification = np.where(distance <= self.threshold, 0, 1)
 
                     correct += (classification == label.numpy()).sum()
 
@@ -158,6 +158,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 self.monitor.set_neurons_to_monitor(neurons_to_monitor)
 
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+            self._check_duplicates_count()
+            return 0
             df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
             df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params)
             self.threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
@@ -243,7 +245,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         return best_acc
 
     def _process_dataset(self, testloader, nap_params=None):
-        comfort_level_data = np.array([])
+        hamming_distance = np.array([])
         testiter = iter(testloader)
 
         for imgs, label in testiter:
@@ -252,29 +254,29 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=nap_params)
             _, predicted = torch.max(outputs.data, 1)
             correct_bitmap = (predicted == label)
-            lvl = self.monitor.get_comfort_level(intermediate_values,
-                                                 predicted.cpu().detach().numpy(), omit=self.omit)
-            stacked = np.stack((label.cpu().numpy(), lvl, correct_bitmap.cpu().numpy()), axis=1)
-            if comfort_level_data.size:
-                comfort_level_data = np.concatenate((comfort_level_data, stacked))
+            distance = self.monitor.compute_hamming_distance(intermediate_values,
+                                                        predicted.cpu().detach().numpy(), omit=self.omit)
+            stacked = np.stack((label.cpu().numpy(), distance, correct_bitmap.cpu().numpy()), axis=1)
+            if hamming_distance.size:
+                hamming_distance = np.concatenate((hamming_distance, stacked))
             else:
-                comfort_level_data = stacked
+                hamming_distance = stacked
 
-        return pd.DataFrame(comfort_level_data, columns=['class', 'comfort_level', 'correct'], dtype=np.int32)
+        return pd.DataFrame(hamming_distance, columns=['class', 'hamming_distance', 'correct'], dtype=np.int32)
 
     def _find_threshold(self, df_known, df_unknown, integers=True, steps=1000):
-        min = df_unknown["comfort_level"].min() if df_unknown["comfort_level"].min() > df_known[
-            "comfort_level"].min() else \
-            df_known["comfort_level"].min()
-        max = df_unknown["comfort_level"].max() if df_unknown["comfort_level"].max() > df_known[
-            "comfort_level"].max() else \
-            df_known["comfort_level"].max()
+        min = df_unknown["hamming_distance"].min() if df_unknown["hamming_distance"].min() > df_known[
+            "hamming_distance"].min() else \
+            df_known["hamming_distance"].min()
+        max = df_unknown["hamming_distance"].max() if df_unknown["hamming_distance"].max() > df_known[
+            "hamming_distance"].max() else \
+            df_known["hamming_distance"].max()
         best_correct_count = 0
         best_threshold = 0
         for i in range(min - 1, max + 1) if integers else np.linspace(min, max, num=steps):
             correct_count = 0
-            correct_count += (df_unknown["comfort_level"] > i).sum()
-            correct_count += (df_known["comfort_level"] <= i).sum()
+            correct_count += (df_unknown["hamming_distance"] > i).sum()
+            correct_count += (df_known["hamming_distance"] <= i).sum()
             if best_correct_count < correct_count:
                 best_correct_count = correct_count
                 best_threshold = i
@@ -292,7 +294,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
     def _add_class_patterns_to_monitor(self, loader, nap_params=None):
         dataiter = iter(loader)
         count_class = dict()
-        for _, label in dataiter:
+        for _, label in tqdm.tqdm(dataiter):
             for i in range(label.shape[0]):
                 if count_class.get(label[i].item()):
                     count_class[label[i].item()] += 1
@@ -309,6 +311,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self.monitor.add_neuron_pattern(intermediate_values, label.cpu().numpy())
             # self.monitor.add_neuron_pattern(intermediate_values.cpu().numpy(), np.zeros(intermediate_values.cpu().numpy().shape[0]))
 
+        self.monitor.cut_duplicates()
+
     def _choose_neurons_to_monitor(self, neurons_to_monitor_count: int):
         neurons_to_monitor = {}
         for klass in range(self.class_count):
@@ -321,3 +325,34 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             neurons_to_monitor[klass] = abs_weights.argsort()[::-1][:neurons_to_monitor_count]
 
         return neurons_to_monitor
+
+    def _check_duplicates_count(self):
+        concat = torch.Tensor([])
+        for i in self.monitor.known_patterns_set:
+            print(f"i: {i} classcount: {self.monitor.class_patterns_count[i]} len:{len(self.monitor.known_patterns_set[i])}")
+            if concat.numel():
+                concat = torch.cat((concat, self.monitor.known_patterns_tensor[i]))
+            else:
+                concat = self.monitor.known_patterns_tensor[i]
+            unique = concat.unique(return_counts=True, dim=0)
+            print(f" unique concat max {unique[1].max()} nunique {(unique[1] == 1).sum()}")
+            # for j in unique[0]:
+            #     print(j)
+        print(unique)
+
+        for i in self.monitor.known_patterns_set:
+            class_distances = np.ndarray([])
+            for j in self.monitor.known_patterns_tensor[i]:
+                s = (self.monitor.known_patterns_tensor[i] ^ j).sum(dim=1)
+                distance = s[s > 0].min().cpu().numpy().reshape((1,))
+                if class_distances.shape:
+                    class_distances = np.concatenate((class_distances, distance))
+                else:
+                    class_distances = distance
+            fname = "distances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_class_" + str(i) + ".csv"
+            df = pd.DataFrame(class_distances, columns=['hamming_distance'])
+            df.to_csv(fname)
+            g = df.groupby("hamming_distance")
+            print(f" fname {fname}, group: {g.size()} ")
+        # shape = self.monitor.known_patterns_tensor.cpu().numpy().shape
+        # print(f" unique all {self.monitor.known_patterns_tensor.reshape((shape)).unique(return_counts=True, dim=0)}")
