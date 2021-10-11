@@ -69,7 +69,7 @@ if args.exp == 'test-eval':
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = [ 'FashionMNIST', 'CIFAR10']
+    d1_tasks = [ 'MNIST']
     # d2_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     # d3_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     d2_tasks = ['UniformNoise']

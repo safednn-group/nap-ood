@@ -4,7 +4,7 @@
       "2":
         {
           "pool_type": "avg",
-          "pool_size": 3,
+          "pool_size": 1,
           "quantile": 0.5
         }
     },

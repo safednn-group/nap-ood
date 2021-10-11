@@ -78,7 +78,7 @@ def draw_hamming_distances():
     import glob
 
     # path = r'C:\DRO\DCL_rawdata_files'  # use your path
-    all_files = glob.glob(os.path.join("results/distances", "*VGG*_TinyImagenet_*.csv"))
+    all_files = glob.glob(os.path.join("results/distances", "*VGG*_MNIST_*.csv"))
 
     li = []
     model = None
@@ -86,15 +86,15 @@ def draw_hamming_distances():
     for filename in all_files:
         df = pd.read_csv(filename, index_col=0)
         print(df)
-        # df.plot.hist(bins=df["hamming_distance"].max())
+        df.plot.hist(bins=df["hamming_distance"].max())
         split = filename.split(".")[0].split("_")[1:]
         title = "".join(split)
         model = split[0]
         dataset = split[2]
-        # plt.title(title)
+        plt.title(title)
         # # plt.show()
-        # plt.savefig(os.path.join("results/distances/plots", title))
-        # plt.close()
+        plt.savefig(os.path.join("results/distances/plots", title))
+        plt.close()
         li.append(df)
 
     print(len(li))
