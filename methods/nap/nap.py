@@ -117,10 +117,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         data = []
         self.omit = False
         with torch.no_grad():
-            for pool_type in ["avg", "max"]:
-                for layer in range(0, 13, 2):
+            for pool_type in ["max"]:
+                for layer in range(0, 13, 3):
                     for pool in range(1, 4):
-                        for q in np.linspace(0.1, 0.9, num=5):
+                        for q in np.linspace(0.1, 0.9, num=4):
                             nap_params = {
                                 str(layer): {
                                     "pool_type": pool_type,
@@ -170,11 +170,11 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                 test_average_acc = correct / total_count
                                 print("Final Test average accuracy %s" % (
                                     colored('%.4f%%' % (test_average_acc * 100), 'red')))
-                                data.append((self.train_dataset_name, self.valid_dataset_name, dataset.datasets[1].name,
+                                data.append((self.model_name, dataset.datasets[1].name, self.valid_dataset_name, dataset.datasets[1].name,
                                              layer, pool, pool_type, q, threshold, acc, test_average_acc))
             for pool_type in ["avg"]:
                 for layer in [13, 14]:
-                    for q in np.linspace(0.1, 0.9, num=5):
+                    for q in np.linspace(0.1, 0.9, num=4):
                         nap_params = {
                             str(layer): {
                                 "pool_type": pool_type,
@@ -225,13 +225,13 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                             test_average_acc = correct / total_count
                             print("Final Test average accuracy %s" % (
                                 colored('%.4f%%' % (test_average_acc * 100), 'red')))
-                            data.append((self.model_name, self.train_dataset_name, self.valid_dataset_name,
+                            data.append((self.model_name, dataset.datasets[1].name, self.valid_dataset_name,
                                          dataset.datasets[1].name, layer,
                                          0, pool_type, q, threshold, acc, test_average_acc))
         df = pd.DataFrame(data,
                           columns=['model', 'ds', 'dv', 'dt', 'layer', 'pool', 'pool_type', 'quantile', 'threshold',
                                    'valid_acc', 'test_acc'])
-        fname = self.model_name + self.train_dataset_name + self.valid_dataset_name + dataset.datasets[1].name
+        fname = self.model_name + dataset.datasets[1].name + self.valid_dataset_name + dataset.datasets[1].name
         fpath = os.path.join("results/article_plots", fname)
         df.to_csv(fpath)
         return test_average_acc.item()
