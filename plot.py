@@ -1,3 +1,5 @@
+import os.path
+
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -72,11 +74,43 @@ def draw_boxplots():
     plt.show()
 
 
+def draw_hamming_distances():
+    import glob
+
+    # path = r'C:\DRO\DCL_rawdata_files'  # use your path
+    all_files = glob.glob(os.path.join("results/distances", "*VGG*_TinyImagenet_*.csv"))
+
+    li = []
+    model = None
+    dataset = None
+    for filename in all_files:
+        df = pd.read_csv(filename, index_col=0)
+        print(df)
+        # df.plot.hist(bins=df["hamming_distance"].max())
+        split = filename.split(".")[0].split("_")[1:]
+        title = "".join(split)
+        model = split[0]
+        dataset = split[2]
+        # plt.title(title)
+        # # plt.show()
+        # plt.savefig(os.path.join("results/distances/plots", title))
+        # plt.close()
+        li.append(df)
+
+    print(len(li))
+    frame = pd.concat(li, axis=0, ignore_index=True)
+    frame.plot.hist(bins=df["hamming_distance"].max())
+    title = "merged" + model + dataset
+    plt.savefig(os.path.join("results/distances/plots", title))
+    # plt.show()
+    # print(frame)
+
 if __name__ == "__main__":
     # draw_boxplots()
-    results = pd.read_csv("results/results_working_methods.csv", index_col=0)
-    results2 = pd.read_csv("results/results_fixed_methods.csv", index_col=0)
-    results3 = pd.read_csv("results/results_resnet_all_datasets.csv", index_col=0)
-    results4 = pd.read_csv("results/results_vgg_all_datasets.csv", index_col=0)
-    save_results_as_csv(pd.concat([results, results2, results3, results4]), "results/results_all.csv")
-    draw("results/results_all.csv")
+    # results = pd.read_csv("results/results_working_methods.csv", index_col=0)
+    # results2 = pd.read_csv("results/results_fixed_methods.csv", index_col=0)
+    # results3 = pd.read_csv("results/results_resnet_all_datasets.csv", index_col=0)
+    # results4 = pd.read_csv("results/results_vgg_all_datasets.csv", index_col=0)
+    # save_results_as_csv(pd.concat([results, results2, results3, results4]), "results/results_all.csv")
+    # draw("results/results_all.csv")
+    draw_hamming_distances()
