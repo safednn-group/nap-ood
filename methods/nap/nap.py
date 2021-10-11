@@ -1,4 +1,5 @@
 import json
+import os.path
 from os import path
 import numpy as np
 import pandas as pd
@@ -33,6 +34,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.train_loader = None
         self.nap_params = None
         self.train_dataset_name = ""
+        self.valid_dataset_name = ""
         self.train_dataset_length = 0
         self.model_name = ""
         self.nap_cfg = None
@@ -72,43 +74,166 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.unknown_loader = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
                                          num_workers=self.args.workers,
                                          pin_memory=True)
-        # self.nap_params = get_nap_params(self.nap_cfg, self.model_name, self.train_dataset_name)
-        self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
-        return self._find_only_threshold()
-        # return self._find_best_layer_to_monitor()
+        self.train_dataset_name = dataset.datasets[1].name
+        return 0
+        # # self.nap_params = get_nap_params(self.nap_cfg, self.model_name, self.train_dataset_name)
+        # self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
+        # return self._find_only_threshold()
+        # # return self._find_best_layer_to_monitor()
 
     def test_H(self, dataset):
-        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-                             num_workers=self.args.workers, pin_memory=True)
+        # dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+        #                      num_workers=self.args.workers, pin_memory=True)
+        #
+        # correct = 0.0
+        # total_count = 0
+        # print(f"quantiles {self.nap_params}")
+        # print(f"threshold {self.threshold}")
+        #
+        # with tqdm.tqdm(total=len(dataset)) as pbar:
+        #     with torch.no_grad():
+        #         for i, (image, label) in enumerate(dataset):
+        #             pbar.update()
+        #
+        #             # Get and prepare data.
+        #             input, target = image.to(self.args.device), label.to(self.args.device)
+        #
+        #             outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
+        #             _, predicted = torch.max(outputs.data, 1)
+        #             distance = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                         predicted.cpu().detach().numpy(), omit=self.omit)
+        #
+        #             classification = np.where(distance <= self.threshold, 0, 1)
+        #
+        #             correct += (classification == label.numpy()).sum()
+        #
+        #             total_count += len(input)
+        #             message = 'Accuracy %.4f' % (correct / total_count)
+        #             pbar.set_description(message)
+        #
+        # test_average_acc = correct / total_count
+        # print("Final Test average accuracy %s" % (colored('%.4f%%' % (test_average_acc * 100), 'red')))
+        # return test_average_acc.item()
+        data = []
+        self.omit = False
+        with torch.no_grad():
+            for pool_type in ["avg", "max"]:
+                for layer in range(0, 13, 2):
+                    for pool in range(1, 4):
+                        for q in np.linspace(0.1, 0.9, num=5):
+                            nap_params = {
+                                str(layer): {
+                                    "pool_type": pool_type,
+                                    "pool_size": pool,
+                                    "quantile": q
+                                }
+                            }
+                            self._get_layers_shapes(nap_params)
+                            self.monitor = Monitor(self.class_count, self.nap_device,
+                                                   layers_shapes=self.monitored_layers_shapes)
+                            self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
+                            df_known = self._process_dataset(self.known_loader, nap_params=nap_params)
+                            df_unknown = self._process_dataset(self.unknown_loader,
+                                                               nap_params=nap_params)
+                            threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
 
-        correct = 0.0
-        total_count = 0
-        print(f"quantiles {self.nap_params}")
-        print(f"threshold {self.threshold}")
+                            loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+                                                 num_workers=self.args.workers, pin_memory=True)
 
-        with tqdm.tqdm(total=len(dataset)) as pbar:
-            with torch.no_grad():
-                for i, (image, label) in enumerate(dataset):
-                    pbar.update()
+                            correct = 0.0
+                            total_count = 0
+                            print(f"quantiles {nap_params}")
+                            print(f"threshold {threshold}")
 
-                    # Get and prepare data.
-                    input, target = image.to(self.args.device), label.to(self.args.device)
+                            with tqdm.tqdm(total=len(loader)) as pbar:
 
-                    outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
-                    _, predicted = torch.max(outputs.data, 1)
-                    distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                                predicted.cpu().detach().numpy(), omit=self.omit)
+                                for i, (image, label) in enumerate(loader):
+                                    pbar.update()
 
-                    classification = np.where(distance <= self.threshold, 0, 1)
+                                    # Get and prepare data.
+                                    input, target = image.to(self.args.device), label.to(self.args.device)
 
-                    correct += (classification == label.numpy()).sum()
+                                    outputs, intermediate_values, _ = self.base_model.forward_nap(input,
+                                                                                                  nap_params=nap_params)
+                                    _, predicted = torch.max(outputs.data, 1)
+                                    distance = self.monitor.compute_hamming_distance(intermediate_values,
+                                                                                     predicted.cpu().detach().numpy(),
+                                                                                     omit=self.omit)
 
-                    total_count += len(input)
-                    message = 'Accuracy %.4f' % (correct / total_count)
-                    pbar.set_description(message)
+                                    classification = np.where(distance <= threshold, 0, 1)
 
-        test_average_acc = correct / total_count
-        print("Final Test average accuracy %s" % (colored('%.4f%%' % (test_average_acc * 100), 'red')))
+                                    correct += (classification == label.numpy()).sum()
+
+                                    total_count += len(input)
+                                    message = 'Accuracy %.4f' % (correct / total_count)
+                                    pbar.set_description(message)
+                                test_average_acc = correct / total_count
+                                print("Final Test average accuracy %s" % (
+                                    colored('%.4f%%' % (test_average_acc * 100), 'red')))
+                                data.append((self.train_dataset_name, self.valid_dataset_name, dataset.datasets[1].name,
+                                             layer, pool, pool_type, q, threshold, acc, test_average_acc))
+            for pool_type in ["avg"]:
+                for layer in [13, 14]:
+                    for q in np.linspace(0.1, 0.9, num=5):
+                        nap_params = {
+                            str(layer): {
+                                "pool_type": pool_type,
+                                "pool_size": 0,
+                                "quantile": q
+                            }
+                        }
+                        self._get_layers_shapes(nap_params)
+                        self.monitor = Monitor(self.class_count, self.nap_device,
+                                               layers_shapes=self.monitored_layers_shapes)
+                        self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
+                        df_known = self._process_dataset(self.known_loader, nap_params=nap_params)
+                        df_unknown = self._process_dataset(self.unknown_loader,
+                                                           nap_params=nap_params)
+                        threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
+
+                        loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+                                             num_workers=self.args.workers, pin_memory=True)
+
+                        correct = 0.0
+                        total_count = 0
+                        print(f"quantiles {nap_params}")
+                        print(f"threshold {threshold}")
+
+                        with tqdm.tqdm(total=len(loader)) as pbar:
+
+                            for i, (image, label) in enumerate(loader):
+                                pbar.update()
+
+                                # Get and prepare data.
+                                input, target = image.to(self.args.device), label.to(self.args.device)
+
+                                outputs, intermediate_values, _ = self.base_model.forward_nap(input,
+                                                                                              nap_params=nap_params)
+                                _, predicted = torch.max(outputs.data, 1)
+                                distance = self.monitor.compute_hamming_distance(intermediate_values,
+                                                                                 predicted.cpu().detach().numpy(),
+                                                                                 omit=self.omit)
+
+                                classification = np.where(distance <= threshold, 0, 1)
+
+                                correct += (classification == label.numpy()).sum()
+
+                                total_count += len(input)
+                                message = 'Accuracy %.4f' % (correct / total_count)
+                                pbar.set_description(message)
+
+                            test_average_acc = correct / total_count
+                            print("Final Test average accuracy %s" % (
+                                colored('%.4f%%' % (test_average_acc * 100), 'red')))
+                            data.append((self.model_name, self.train_dataset_name, self.valid_dataset_name,
+                                         dataset.datasets[1].name, layer,
+                                         0, pool_type, q, threshold, acc, test_average_acc))
+        df = pd.DataFrame(data,
+                          columns=['model', 'ds', 'dv', 'dt', 'layer', 'pool', 'pool_type', 'quantile', 'threshold',
+                                   'valid_acc', 'test_acc'])
+        fname = self.model_name + self.train_dataset_name + self.valid_dataset_name + dataset.datasets[1].name
+        fpath = os.path.join("results/article_plots", fname)
+        df.to_csv(fpath)
         return test_average_acc.item()
 
     def method_identifier(self):
@@ -158,8 +283,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 self.monitor.set_neurons_to_monitor(neurons_to_monitor)
 
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
-            self._check_duplicates_count()
-            return 0
+            # self._check_duplicates_count()
+            # return 0
             df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
             df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params)
             self.threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
@@ -183,7 +308,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                         # resnet_nap_params = [q0, q1, q2, q3, q4]
                                         nap_params = [layer, pool, q0]
                                         self._get_layers_shapes(nap_params)
-                                        self.monitor = Monitor(self.class_count,  self.nap_device,
+                                        self.monitor = Monitor(self.class_count, self.nap_device,
                                                                layers_shapes=self.monitored_layers_shapes)
                                         self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
                                         for i in tqdm.tqdm(np.linspace(int(self.monitored_layers_shapes[0]),
@@ -255,7 +380,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             _, predicted = torch.max(outputs.data, 1)
             correct_bitmap = (predicted == label)
             distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                        predicted.cpu().detach().numpy(), omit=self.omit)
+                                                             predicted.cpu().detach().numpy(), omit=self.omit)
             stacked = np.stack((label.cpu().numpy(), distance, correct_bitmap.cpu().numpy()), axis=1)
             if hamming_distance.size:
                 hamming_distance = np.concatenate((hamming_distance, stacked))
@@ -329,7 +454,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
     def _check_duplicates_count(self):
         concat = torch.Tensor([])
         for i in self.monitor.known_patterns_set:
-            print(f"i: {i} classcount: {self.monitor.class_patterns_count[i]} len:{len(self.monitor.known_patterns_set[i])}")
+            print(
+                f"i: {i} classcount: {self.monitor.class_patterns_count[i]} len:{len(self.monitor.known_patterns_set[i])}")
             if concat.numel():
                 concat = torch.cat((concat, self.monitor.known_patterns_tensor[i]))
             else:
@@ -349,7 +475,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     class_distances = np.concatenate((class_distances, distance))
                 else:
                     class_distances = distance
-            fname = "distances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_class_" + str(i) + ".csv"
+            fname = "distances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_class_" + str(
+                i) + ".csv"
             df = pd.DataFrame(class_distances, columns=['hamming_distance'])
             df.to_csv(fname)
             g = df.groupby("hamming_distance")

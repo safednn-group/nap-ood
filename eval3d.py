@@ -42,10 +42,10 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['FashionMNIST']
+    d1_tasks = ['STL10']
     # d1_tasks = ['CIFAR100']
-    d2_tasks = ['UniformNoise', 'MNIST']
-    d3_tasks = ['UniformNoise', 'MNIST']
+    d2_tasks = ['UniformNoise']
+    d3_tasks = ['MNIST']
 
     # d2_tasks = ['TinyImagenet', 'STL10']
     # d3_tasks = ['TinyImagenet', 'STL10']
@@ -54,7 +54,7 @@ if args.exp == 'test-eval':
         # 'odin/0',
         # 'reconst_thresh/0', 'reconst_thresh/1',
         # 'prob_threshold/0', 'prob_threshold/1',
-        'nap/1',
+        'nap/0',
         # 'vaeaeknn/1',
         # 'mseaeknn/1',
     ]
@@ -195,55 +195,55 @@ if __name__ == '__main__':
                 train_acc = BT.train_H(valid_mixture)
                 print("--- %s seconds ---" % (time.time() - start_time))
 
-                # for d3 in d3_tasks:
-                #     args.D3 = d3
-                #
-                #     if d2 == d3:
-                #         print(colored("Skipping, d2==d3", 'yellow'))
-                #         continue
-                #
-                #     print("Performing %s on %s vs. %s-%s" % (
-                #     colored(method, 'green'), colored(d1, 'blue'), colored(d2, 'red'), colored(d3, 'red')))
-                #
-                #     if has_done_before(method, d1, d2, d3):
-                #         print(colored("Skipped, has been done before.", 'yellow'))
-                #         continue
-                #
-                #     ds3 = ds_cache[args.D3]
-                #
-                #     if not ds3.is_compatible(ds1):
-                #         print('%s is not compatible with %s, skipping.'
-                #               % (colored(ds3.name, 'red'),
-                #                  colored(ds1.name, 'red')))
-                #         continue
-                #
-                #     # Stage 3: Eval h on test data of d3
-                #     d1_test = ds1.get_D1_test()
-                #     d2_test = ds3.get_D2_test(ds1)
-                #
-                #     # Adjust the sizes.
-                #     d1_test_len = len(d1_test)
-                #     d2_test_len = len(d2_test)
-                #     final_len = min(d1_test_len, d2_test_len)
-                #     print("Adjusting %s and %s to %s" % (colored('D1=%d' % d1_test_len, 'red'),
-                #                                          colored('D2=%d' % d2_test_len, 'red'),
-                #                                          colored('Min=%d' % final_len, 'green')))
-                #     d1_test.trim_dataset(final_len)
-                #     d2_test.trim_dataset(final_len)
-                #     test_mixture = d1_test + d2_test
-                #     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
-                #     # for it in test_mixture:
-                #     #     print(it)
-                #     start_time = time.time()
-                #     test_acc = BT.test_H(test_mixture)
-                #     print("--- %s seconds ---" % (time.time() - start_time))
-                #     results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc))
-                #     # for name, param in BT.base_model.named_parameters():
-                #     #     print(name)
-                #     #     print(param.shape)
-                #         # print(param)
-                #     # Take a snapshot after each experiment.
-                #     torch.save(results, results_path)
+                for d3 in d3_tasks:
+                    args.D3 = d3
+
+                    if d2 == d3:
+                        print(colored("Skipping, d2==d3", 'yellow'))
+                        continue
+
+                    print("Performing %s on %s vs. %s-%s" % (
+                    colored(method, 'green'), colored(d1, 'blue'), colored(d2, 'red'), colored(d3, 'red')))
+
+                    if has_done_before(method, d1, d2, d3):
+                        print(colored("Skipped, has been done before.", 'yellow'))
+                        continue
+
+                    ds3 = ds_cache[args.D3]
+
+                    if not ds3.is_compatible(ds1):
+                        print('%s is not compatible with %s, skipping.'
+                              % (colored(ds3.name, 'red'),
+                                 colored(ds1.name, 'red')))
+                        continue
+
+                    # Stage 3: Eval h on test data of d3
+                    d1_test = ds1.get_D1_test()
+                    d2_test = ds3.get_D2_test(ds1)
+
+                    # Adjust the sizes.
+                    d1_test_len = len(d1_test)
+                    d2_test_len = len(d2_test)
+                    final_len = min(d1_test_len, d2_test_len)
+                    print("Adjusting %s and %s to %s" % (colored('D1=%d' % d1_test_len, 'red'),
+                                                         colored('D2=%d' % d2_test_len, 'red'),
+                                                         colored('Min=%d' % final_len, 'green')))
+                    d1_test.trim_dataset(final_len)
+                    d2_test.trim_dataset(final_len)
+                    test_mixture = d1_test + d2_test
+                    print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
+                    # for it in test_mixture:
+                    #     print(it)
+                    start_time = time.time()
+                    test_acc = BT.test_H(test_mixture)
+                    print("--- %s seconds ---" % (time.time() - start_time))
+                    results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc))
+                    # for name, param in BT.base_model.named_parameters():
+                    #     print(name)
+                    #     print(param.shape)
+                        # print(param)
+                    # Take a snapshot after each experiment.
+                    torch.save(results, results_path)
 
     for i, (m, ds, dm, dt, mi, a_train, a_test) in enumerate(results):
         print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%% %s' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100, mi))
