@@ -83,11 +83,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         # # return self._find_best_layer_to_monitor()
 
     def test_H(self, dataset):
-        self.test_dataset_name = dataset.name
-        loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-                            num_workers=self.args.workers, pin_memory=True)
-        self._generate_test_distances(loader)
-        return 0
+        # self.test_dataset_name = dataset.name
+        # loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+        #                     num_workers=self.args.workers, pin_memory=True)
+        # self._generate_test_distances(loader)
+        # return 0
+
         # dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
         #                      num_workers=self.args.workers, pin_memory=True)
         #

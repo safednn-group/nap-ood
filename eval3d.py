@@ -69,7 +69,7 @@ if args.exp == 'test-eval':
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = [ 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    d1_tasks = ['TinyImagenet', 'STL10']
     # d2_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     # d3_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
@@ -234,8 +234,8 @@ if __name__ == '__main__':
                     test_mixture = d1_test + d2_test
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
                     start_time = time.time()
-                    # test_acc = BT.test_H(test_mixture)
-                    test_acc = BT.test_H(d2_test)
+                    test_acc = BT.test_H(test_mixture)
+                    # test_acc = BT.test_H(d2_test)
                     print("--- %s seconds ---" % (time.time() - start_time))
                     results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc))
 
