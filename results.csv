@@ -1,0 +1,7 @@
+,ds,dv,dt,method,acc
+0,MNIST,NormalNoise,UniformNoise,NeuronActivationPatterns/VGG,0
+1,FashionMNIST,NormalNoise,UniformNoise,NeuronActivationPatterns/VGG,0
+2,CIFAR10,NormalNoise,UniformNoise,NeuronActivationPatterns/VGG,0
+3,CIFAR100,NormalNoise,UniformNoise,NeuronActivationPatterns/VGG,0
+4,STL10,NormalNoise,UniformNoise,NeuronActivationPatterns/VGG,0
+5,TinyImagenet,NormalNoise,UniformNoise,NeuronActivationPatterns/VGG,0

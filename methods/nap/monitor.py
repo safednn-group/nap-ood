@@ -59,22 +59,22 @@ class Monitor(BaseMonitor):
                 for i in range(neuron_on_off_pattern.shape[0]):
                     lvl = ((self.known_patterns_tensor[class_id[i]] ^ neuron_on_off_pattern[i]) & neuron_on_off_pattern[
                         i])[:, self.neurons_to_monitor[monitored_class[i]]].sum(dim=1).min()
-                    distance.append(lvl)
+                    distance.append(lvl.item())
             else:
                 for i in range(neuron_on_off_pattern.shape[0]):
                     lvl = (self.known_patterns_tensor[class_id[i]] ^ neuron_on_off_pattern[i])[:,
                           self.neurons_to_monitor[monitored_class[i]]].sum(dim=1).min()
-                    distance.append(lvl)
+                    distance.append(lvl.item())
         else:
             if ignore_minor_values:
                 for i in range(neuron_on_off_pattern.shape[0]):
                     lvl = ((self.known_patterns_tensor[class_id[i]] ^ neuron_on_off_pattern[i]) & neuron_on_off_pattern[
                         i]).sum(dim=1).min()
-                    distance.append(lvl)
+                    distance.append(lvl.item())
             else:
                 for i in range(neuron_on_off_pattern.shape[0]):
                     lvl = (self.known_patterns_tensor[class_id[i]] ^ neuron_on_off_pattern[i]).sum(dim=1).min()
-                    distance.append(lvl)
+                    distance.append(lvl.item())
         if type(distance) == list:
             distance = np.array(distance)
         else:

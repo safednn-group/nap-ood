@@ -42,10 +42,10 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['STL10']
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     # d1_tasks = ['CIFAR100']
-    d2_tasks = ['UniformNoise']
-    d3_tasks = ['MNIST']
+    d2_tasks = ['NormalNoise']
+    d3_tasks = ['UniformNoise']
 
     # d2_tasks = ['TinyImagenet', 'STL10']
     # d3_tasks = ['TinyImagenet', 'STL10']
@@ -54,7 +54,7 @@ if args.exp == 'test-eval':
         # 'odin/0',
         # 'reconst_thresh/0', 'reconst_thresh/1',
         # 'prob_threshold/0', 'prob_threshold/1',
-        'nap/0',
+        'nap/1',
         # 'vaeaeknn/1',
         # 'mseaeknn/1',
     ]
@@ -233,16 +233,12 @@ if __name__ == '__main__':
                     d2_test.trim_dataset(final_len)
                     test_mixture = d1_test + d2_test
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
-                    # for it in test_mixture:
-                    #     print(it)
                     start_time = time.time()
-                    test_acc = BT.test_H(test_mixture)
+                    # test_acc = BT.test_H(test_mixture)
+                    test_acc = BT.test_H(d2_test)
                     print("--- %s seconds ---" % (time.time() - start_time))
                     results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc))
-                    # for name, param in BT.base_model.named_parameters():
-                    #     print(name)
-                    #     print(param.shape)
-                        # print(param)
+
                     # Take a snapshot after each experiment.
                     torch.save(results, results_path)
 
