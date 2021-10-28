@@ -57,7 +57,7 @@ class VGG(nn.Module):
     def forward_nap(self, x, nap_params=None):
         self.classifier.eval()
         layer_counter = 0
-        prev = None
+        prev = torch.Tensor([])
         shapes = []
         new_nap_params = dict()
         for k in nap_params.copy():
@@ -66,16 +66,12 @@ class VGG(nn.Module):
         for _, layer in self.features.named_children():
             x = layer.forward(x)
             if layer_counter in new_nap_params:
-                # if new_nap_params[layer_counter]["pool_type"] == "max":
-                #     intermediate = torch.flatten(self.maxpools[new_nap_params[layer_counter]["pool_size"]](x), 1)
-                # else:
-                #     intermediate = torch.flatten(self.avgpools[new_nap_params[layer_counter]["pool_size"]](x), 1)
                 intermediate = torch.flatten(self.pools[new_nap_params[layer_counter]["pool_type"]][new_nap_params[layer_counter]["pool_size"]](x), 1)
                 intermediate = torch.tensor(np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(),
                                                                                               new_nap_params[layer_counter]["quantile"]), intermediate.cpu(),
                                                      0))
                 shapes.append(intermediate.shape[-1])
-                if prev:
+                if prev.numel():
                     intermediate = torch.cat((intermediate, prev), dim=1)
                 prev = intermediate
             layer_counter += 1
@@ -87,12 +83,12 @@ class VGG(nn.Module):
                 intermediate = torch.tensor(np.where(x.cpu().numpy() > np.quantile(x.cpu().numpy(), new_nap_params[layer_counter]["quantile"]), x.cpu(),
                                                      0))
                 shapes.append(intermediate.shape[-1])
-                if prev:
+                if prev.numel():
                     intermediate = torch.cat((intermediate, prev), dim=1)
                 prev = intermediate
             layer_counter += 1
         shapes.reverse()
-        return x, intermediate, shapes
+        return x, prev, shapes
 
     def _initialize_weights(self):
         for m in self.modules():

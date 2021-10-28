@@ -10,7 +10,6 @@ class BaseMonitor(object):
         self.layers_shapes = layers_shapes
         self.known_patterns_set = dict()
 
-
         self.class_count = class_count
         self.neurons_count = 0
         self.class_patterns_count = 0
@@ -24,14 +23,13 @@ class BaseMonitor(object):
         self.known_patterns_tensor = dict()
         for i in range(class_count):
             self.known_patterns_tensor[i] = torch.Tensor()
-
-        self.known_patterns_tensor_cd = dict()
-        for i in range(class_count):
-            self.known_patterns_tensor_cd[i] = torch.Tensor()
-        self.known_patterns_dict_cd = dict()
-        for i in range(class_count):
-            self.known_patterns_dict_cd[i] = 0
-
+        #
+        # self.known_patterns_tensor_cd = dict()
+        # for i in range(class_count):
+        #     self.known_patterns_tensor_cd[i] = torch.Tensor()
+        # self.known_patterns_dict_cd = dict()
+        # for i in range(class_count):
+        #     self.known_patterns_dict_cd[i] = 0
 
     def set_neurons_to_monitor(self, neurons_to_monitor):
         self.neurons_to_monitor = neurons_to_monitor
@@ -48,7 +46,8 @@ class Monitor(BaseMonitor):
     def __init__(self, class_count, device, layers_shapes, neurons_to_monitor=None):
         super().__init__(class_count, device, layers_shapes, neurons_to_monitor)
 
-    def compute_hamming_distance(self, neuron_values, class_id, omit=False, ignore_minor_values=True, monitored_class=None):
+    def compute_hamming_distance(self, neuron_values, class_id, omit=False, ignore_minor_values=True,
+                                 monitored_class=None):
 
         monitored_class = monitored_class if monitored_class else class_id
         mat_torch = torch.zeros(neuron_values.shape, device=neuron_values.device)
@@ -105,23 +104,24 @@ class Monitor(BaseMonitor):
                             example_id]
                 self.known_patterns_set[label[example_id]].add(abs_np[example_id].tobytes())
 
-            if self.known_patterns_tensor_cd[label[example_id]].numel():
-                self.known_patterns_tensor_cd[label[example_id]][self.known_patterns_dict_cd[label[example_id]]] = \
-                    abs[
-                        example_id]
-            else:
-                self.known_patterns_tensor_cd[label[example_id]] = torch.ones(
-                    (self.class_patterns_count[label[example_id]],) + abs[example_id].shape,
-                    dtype=torch.uint8, device=abs.device)
-
-                self.known_patterns_tensor_cd[label[example_id]][self.known_patterns_dict_cd[label[example_id]]] = \
-                    abs[
-                        example_id]
-                self.known_patterns_dict_cd[label[example_id]] += 1
+            # if self.known_patterns_tensor_cd[label[example_id]].numel():
+            #     self.known_patterns_tensor_cd[label[example_id]][self.known_patterns_dict_cd[label[example_id]]] = \
+            #         abs[
+            #             example_id]
+            # else:
+            #     self.known_patterns_tensor_cd[label[example_id]] = torch.ones(
+            #         (self.class_patterns_count[label[example_id]],) + abs[example_id].shape,
+            #         dtype=torch.uint8, device=abs.device)
+            #
+            #     self.known_patterns_tensor_cd[label[example_id]][self.known_patterns_dict_cd[label[example_id]]] = \
+            #         abs[
+            #             example_id]
+            #     self.known_patterns_dict_cd[label[example_id]] += 1
 
     def cut_duplicates(self):
         for i in self.known_patterns_tensor:
             self.known_patterns_tensor[i] = self.known_patterns_tensor[i][:len(self.known_patterns_set[i]), :]
+
 
 class EuclideanMonitor(BaseMonitor):
 
@@ -139,7 +139,8 @@ class EuclideanMonitor(BaseMonitor):
                     abs_values = np.where(neuron_values > 0, abs_values, 0)
                     distance = abs_values[self.neurons_to_monitor[monitored_class]].sum()
                 else:
-                    distance = (np.abs(np.array(neuron_values) - np.frombuffer(known_pattern, dtype=neuron_values.dtype))[
+                    distance = (
+                    np.abs(np.array(neuron_values) - np.frombuffer(known_pattern, dtype=neuron_values.dtype))[
                         self.neurons_to_monitor[monitored_class]]).sum()
             else:
                 if ignore_minor_values:

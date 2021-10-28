@@ -11,7 +11,7 @@
     "FashionMNIST": {
       "6":
         {
-          "pool_type": "avg",
+          "pool_type": "max",
           "pool_size": 2,
           "quantile": 0.9
         }
@@ -34,11 +34,11 @@
 
     },
     "STL10": {
-      "10":
+      "3":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         }
     },
     "TinyImagenet": {
@@ -84,7 +84,7 @@
       "2":
       {
           "pool_type": "avg",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.3
       }
     },

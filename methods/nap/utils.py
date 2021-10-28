@@ -37,3 +37,4 @@ def get_nap_params(cfg, model_name, dataset_name):
     layers_to_monitor = []
     for l in cfg[model_name][dataset_name]["layers_to_monitor"]:
         layers_to_monitor.append(tuple(l.values()))
+

@@ -1,0 +1,1059 @@
+\documentclass{article}%
+\usepackage[T1]{fontenc}%
+\usepackage[utf8]{inputenc}%
+\usepackage{lmodern}%
+\usepackage{textcomp}%
+\usepackage{lastpage}%
+\usepackage{geometry}%
+\geometry{right=2cm,left=2cm}%
+\usepackage{graphicx}%
+%
+%
+%
+\begin{document}%
+\normalsize%
+\section{Opis}%
+\label{sec:Opis}%
+Na wykresach w sekcji nr. 2 widać, że występuje zależność pomiędzy skutecznością danej konfiguracji na zbiorze walidacyjnym i testowym. \newline%
+%
+Można na tej informacji oprzeć metodę adaptacyjną, bo zbiorem walidacyjnym dysponujemy w trakcie trenowania metody. I w większości przypadków byłoby to skuteczne podejście.\newline%
+%
+Niestety na wykresach w sekcji nr. 3, w szczególności na wykresie VGG\_CIFAR100vsMNIST pokazana jest pułapka tego podejścia. \newline%
+%
+Czasami słabe w ogólności konfiguracje pozwalają znaleźć najlepszy próg oddzielający zbiór treningowy od zupełnie różnego zbioru walidacyjnego takiego jak NormalNoise. \newline%
+%
+Pomysły mam dwa \newline%
+%
+1. Algorytm treningu i działania metody byłby następujący:  \newline%
+%
+	 {-}  Dla każdej konfiguracji z hipersiatki możliwych konfiguracji wyznacz threshold i skuteczność vs dataset walidacyjny\newline%
+%
+	  {-} Dla n najlepszych warstw wybierz najlepszą konfigurację dla danej warstwy i zapamiętaj n zbiorów patternów treningowych (jeden dla każdej konfiguracji) i threshold dla niej wyznaczony\newline%
+%
+Faza testowa: \newline%
+%
+	  {-} Wyznacz n patternów dla próbki testowej (jeden dla każdej konfiguracji; wszystkie n podczas jedenego forward passu przez sieć rzecz jasna)\newline%
+%
+	  {-} Wyznacz dystans n patternów z odpowiadającymi zbiorami patternów znanych i porównaj z thresholdami\newline%
+%
+	  {-} Głosowanie warstw {-} jeśli i{-}ty pattern porównany z i{-}tym zbiorem znanych patternów jest poniżej thresholdu to warstwa głosuje, że pattern jest znany\newline%
+%
+\newpage%
+Liczba n {-} branych pod uwagę warstw powinna być nieparzysta, albo trzeba by zastosować ważenie głosów (lepsza skuteczność na zbiorze walidacyjnym {-}> większa waga) \newline%
+%
+Moim zdaniem ma to potencjał dać dobre wyniki {-} dla takich przypadków jak CIFAR100vsNoise/MNIST da na pewno gorszy wynik, niż najlepsza ogólnie pojedyncza warstwa, lecz nie mamy dostępu do wyroczni.\newline%
+%
+A dla pozostałych przypadków niewykluczone, że otrzymamy nawet lepsze wyniki dzięki fazie głosowania\newline%
+%
+\newline%
+ 2. By zniwelować niekorzystny efekt opisany wyżej przy uczeniu metody przeciw takim datasetom jak NormalNoise można spróbować podczas treningu wykorzystać substytut podobnego datasetu w postaci próbek należących do części klas znanego datasetu.\newline%
+%
+ Wyglądałoby to mniej więcej tak: \newline%
+%
+ {-} wybieramy n klas zbioru treningowego np. 30\%\newline%
+%
+ {-} szukamy najlepszej konfiguracji podobnie jak wcześniej, tylko wybór opieramy jeszcze na informacji, która warstwa najlepiej separowała znany zbiór od sztucznie wygenerowanego podobnego nieznanego zbioru \newline%
+%
+ {-} załóżmy, że zbiorem treningowym jest CIFAR100 \newline%
+%
+ {-} wybieramy klasy 80{-}100 jako nieznane i tworzymy z nich zbiór walidacyjny; zapamiętujemy patterny pozostałych 80 klas\newline%
+%
+ {-} gdy sieć sklasyfikuje jakąś próbkę jako jedną z klas 80{-}100, losowo wybieramy, od której klasy zapamiętanych patternów (0{-}79) liczymy odległość Hamminga\newline%
+%
+Nie jestem w stanie przewidzieć, czy ten sposób by coś nam dał, ale może udałoby się dzięki temu wybierać lepsze konfiguracje.%
+\newpage
+
+%
+\section{Wykresy konfiguracji zagregowane po wszystkich datasetach walidacyjnych (20 najlepszych wyników)}%
+\label{sec:Wykresykonfiguracjizagregowanepowszystkichdatasetachwalidacyjnych(20najlepszychwynikw)}%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/2d119ef4-45ce-4c7d-8af4-37db48b67d89.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/37a6d5db-6409-4673-8578-23a1b357d937.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/68f39528-4426-4d7c-aede-f2fb096580fd.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/ee454512-738b-4a8d-acda-81fbf7be3be0.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/8f9a5201-b709-4293-83cd-0fdd11f10905.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/fdd62f08-1117-4f1d-9a84-38d0ea71b912.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage
+
+%
+\section{Wykresy konfiguracji (20 najlepszych wyników)}%
+\label{sec:Wykresykonfiguracji(20najlepszychwynikw)}%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/0cd651f6-8f36-4935-8fc3-12ec408bbcc1.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/2bfe32c8-3d23-4927-a8f4-64d592abfed3.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/6821a219-b838-42f7-ba29-d9579f69bfbb.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/b8658b90-a6ef-4bfe-beab-dc2afbc80ce3.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/d97ffe8d-88dd-4e35-9730-966bf4c88d97.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/3586d052-40c7-4931-942c-b7c70d2127a8.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/f3c0d908-93c2-48a4-9a12-81098fb2bb1f.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/d9dcdd4e-d63e-47a4-b6da-cf653b93eb3e.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/313c7436-72ca-4a07-8e22-5f1969dbcc0a.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/b7c0f35b-92f0-4a58-b58b-cdffa0f053ba.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/4570334e-faa4-4020-88fe-b8e03b3797c9.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/5c4030d1-2159-4831-810c-3b6871e0571e.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/1fd83216-50b7-4e2f-9752-b7e466cf9c8f.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/5ee51a96-0cce-4358-b740-3cfb63921ee4.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/aab367b3-9648-4286-bca4-7df3fa82c95a.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/b534b898-cb7b-456e-b542-96162c7cb8be.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/8cadbfd1-c656-4b71-9e5a-47fbcf3ce2ea.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/03e8c5da-f67e-497a-a177-4f4991378d78.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/9c78bf15-37e5-414c-930d-904992f50e78.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/b52b39fe-5db5-4c73-98fa-9bcb5e31de49.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/d2bdd358-0474-4429-87d8-e7248a490d09.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/2ad0d416-3cb0-4835-a321-748311cf2770.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/577c0e1a-645f-4718-b0ae-52c597c477a6.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/abc0bdca-bc52-46fb-9426-e273a715d380.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/ffb08f8c-cd5e-4207-9b9e-6b78fe379f09.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/faaea60a-a0ba-4841-8cb9-2521d76ca2fe.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/897c50c7-e877-4f3e-a70e-d9aa79ac01f0.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/60dd16d5-4d92-4967-9c9b-7289f3c2dd43.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/75c8e194-6663-439e-80b5-0e9f866e3ada.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/75ee9e72-c7ae-4eac-8b56-ec1dab4381e3.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/e0e4b134-c4ab-4035-96c4-dbb1efd37c10.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/95adcab0-f4d0-402f-a0ae-183ec514dccf.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/91862710-6872-4915-b691-57ee3e2f4dc5.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/f2b8aae1-cdf0-4060-833a-7ceba962ce23.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/277a41ba-8f77-475d-8337-802fa7e00a48.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/f54b187c-b7f5-4a22-b85f-ff49e7a83dd4.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/605cc108-e511-451a-892e-0f5525c30669.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/eabfd2c3-f078-4436-8aa6-52a6c51ba231.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/45a76546-06cd-45c2-99b9-435735ed60d1.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/1f29f2a3-ef69-48e0-889c-c9cb4e316622.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/cb041500-983e-4d7e-aecb-ccdff33f4ab1.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/8aee32ee-3f20-4645-8c1a-3d2d9f785d91.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/8b0fac38-dc3e-4bf4-9d8e-6c857ab5c453.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/55811490-a49b-4c8f-a355-c34c9870152a.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/1ef8bfca-1d7d-408b-a7c3-27fe7d895982.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/39422f70-fc67-4b49-ad89-7a3eb92a82ec.pdf}%
+\caption{X {-} konfiguracje; Y {-} valid\_accuracy (niebieski), test\_accuracy (pomaranczowy).}%
+\end{figure}
+
+%
+\newpage
+
+%
+\section{Wykresy dystansów wzorcow aktywacji}%
+\label{sec:Wykresydystanswwzorcowaktywacji}%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/3482bc03-2fbf-4f12-8024-efba7c0a1671.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/e15b0068-d905-4782-9560-9c34ba3bb77b.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/438faa6f-c1e0-4f23-8908-3b5b8b78a89e.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/420dd5e0-4c7e-4ac2-8653-bb73eb13ebcd.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/99246c02-b2e8-4c19-baf2-5908f33d381a.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/8f698723-e912-4846-a02b-ee7c217ad0ee.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/63f9ab9d-eb53-41db-9bc9-619b93809e95.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/8c7b3aba-a4f8-443c-bcd5-3903504ef415.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/7c22140a-000e-4b30-8bb8-fc14b035286f.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/e65e919a-cab8-4d0a-b63f-16472a470aab.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/13c00302-3971-4ed2-b159-34b3ca7ae322.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/eac23cce-caf7-4b35-9d1e-ee935d02cd4d.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/8158408b-2e3d-4d69-b413-862ee593a02d.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/6a9d52f9-bcea-44d0-83d0-edfacbeae5d7.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/8b7e8692-d66c-4e89-a615-dd76dba06c39.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/9f8321e3-3973-468d-9473-d6cc7d7b77a7.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/f3f1b6e9-ec38-4968-bbad-122843a79262.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/b623c399-ba23-48ca-b744-a1443929dabb.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/256a95ea-c4db-4587-9db6-7d4cb90650de.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/33ee2088-3c32-4567-bbd6-7bda111a27e3.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/c3a3fcb2-a802-4063-9df9-828df20701ed.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/5826dc33-d015-4726-88f2-f6ce12005d2b.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/033dab21-0541-499a-a392-eceb0f08d153.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/73685bf1-d1d1-4bc4-babe-8a0fdaf865e1.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/d2040812-be71-4e60-a426-13131012d6da.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/5f602e35-c5e3-45a3-8e1d-09059cac5e33.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/2bd6681d-1532-4954-86f0-559dcb309e23.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/14094018-eccd-42c9-8a1f-8e3ff7a46c7f.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/9dac35da-0300-4b12-81eb-f25191342826.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/03357c4e-9f4c-43c4-92c0-9ce826e5347a.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/1120f7f2-25ef-4770-97e7-e89251461779.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/d90d17a4-9da5-49f2-8944-2c38653f9a94.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/3b0bd7b7-f179-4a77-ac21-65620947711d.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/4062266d-4932-4270-98a8-4eb21bb8f409.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/3461aa89-04d7-41d3-a6dc-7814372b7fc5.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/94c5ed6b-da7b-4253-aeb0-c342ea98eb8a.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/03a07f95-a8a8-4be2-9a33-5f468e1541f9.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/33e99db5-4310-4440-a3d8-28bdee6e3645.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/2cf38aa3-34ea-49f7-8d93-0ef3faa8d4ea.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/01cb4bbe-5239-45cb-bffe-f65fdc309934.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/bc62cbd8-a97b-4f34-ae52-d9bbb0945f76.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/7389b626-19c2-472c-8cc7-e6f8acfc8063.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/e87d7544-5eae-4781-9cdf-3542109dd22c.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/f323f3c5-9e67-4282-82b6-1c06b492176e.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/65d71012-06c4-4c9f-86c2-2b7dc9909725.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage%
+
+
+\begin{figure}[h]%
+\centering%
+\includegraphics[width=1\textwidth]{/tmp/pylatex-tmp.p4k99gqb/b43295b0-27be-402d-b048-5761728efbdf.pdf}%
+\caption{X {-} dystans; Y {-} liczba powtorzen.}%
+\end{figure}
+
+%
+\newpage
+
+%
+\end{document}
