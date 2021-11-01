@@ -106,6 +106,6 @@ venv.bak/
 workspace/
 
 .idea
-data
 datasets.tar
+matplotlib*
 results/article_plots

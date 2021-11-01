@@ -205,7 +205,7 @@ def find_threshold(df_known, df_unknown):
 
 def draw_article_plots(ds, dv=None):
     plt.close()
-    all_files = glob.glob(os.path.join("results/article_plots", ("VGG" + ds + "*")))
+    all_files = glob.glob(os.path.join("results/article_plots", ("Resnet" + ds + "*otherlayers.csv")))
     li = []
     for filename in all_files:
         if ds == "CIFAR10":
@@ -225,7 +225,7 @@ def draw_article_plots(ds, dv=None):
     else:
         grouped = frame.groupby(["quantile", "layer", "pool"])[
             "valid_acc", "test_acc", "threshold"].mean().sort_values("valid_acc").tail(20)
-        title = "VGG_" + ds
+        title = "Resnet_" + ds
     figure, axes = plt.subplots()
     x = np.arange(len(grouped.index))
     v = axes.bar(x - 0.2, grouped["valid_acc"].values, 0.4)
@@ -256,11 +256,10 @@ def load_distance(filename):
     plt.title(title)
 
 def generate_latex(fname, width, *args, **kwargs):
-    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    d1_tasks = ['STL10']
 
     # d1_tasks = ['MNIST', 'CIFAR100', 'STL10']
-    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-                'TinyImagenet']
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST']
     geometry_options = {"right": "2cm", "left": "2cm"}
     doc = Document(fname, geometry_options=geometry_options)
     with doc.create(Section("Opis")):
@@ -378,5 +377,5 @@ if __name__ == "__main__":
     # draw("results/results_all.csv")
     # draw_hamming_distances()
     # draw_article_plots()
-    generate_latex('matplotlib_ex-dpi', r'1\textwidth', dpi=100)
+    generate_latex('matplotlib_ex-dpir', r'1\textwidth', dpi=100)
     # fix_vgg_results()
