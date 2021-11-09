@@ -117,4 +117,4 @@ if __name__ == "__main__":
                         lvls.append(lvl.item())
 
                 df = pd.DataFrame(lvls, columns=["hamming_distance"])
-                df.to_csv(os.path.join("results", "2attacks" + str(layer) + "_" + str(quantile)))
+                df.to_csv(os.path.join("results", "attacks" + str(layer) + "_" + str(quantile)))

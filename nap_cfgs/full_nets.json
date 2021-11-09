@@ -113,10 +113,94 @@
         }
     },
     "CIFAR10": {
+      "0":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "1":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "2":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "3":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "4":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "5":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "6":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "7":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "8":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "9":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "10":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "11":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "12":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
+      "13":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.9
+        },
       "14":
         {
-          "pool_type": "avg",
-          "pool_size": 0,
+          "pool_type": "max",
+          "pool_size": 1,
           "quantile": 0.9
         }
     },
@@ -124,91 +208,91 @@
       "0":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "1":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "2":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "3":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "4":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "5":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "6":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "7":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "8":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "9":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "10":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "11":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "12":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "13":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         },
       "14":
         {
           "pool_type": "max",
-          "pool_size": 2,
+          "pool_size": 1,
           "quantile": 0.9
         }
 
@@ -217,97 +301,181 @@
       "0":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "1":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "2":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "3":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "4":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "5":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "6":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "7":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "8":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "9":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "10":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "11":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "12":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "13":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         },
       "14":
         {
           "pool_type": "max",
-          "pool_size": 2,
-          "quantile": 0.9
+          "pool_size": 1,
+          "quantile": 0.37
         }
 
     },
     "TinyImagenet": {
+            "0":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "1":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "2":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "3":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "4":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "5":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "6":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "7":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
       "8":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "9":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "10":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "11":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "12":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "13":
+        {
+          "pool_type": "max",
+          "pool_size": 1,
+          "quantile": 0.5
+        },
+      "14":
         {
           "pool_type": "max",
           "pool_size": 1,

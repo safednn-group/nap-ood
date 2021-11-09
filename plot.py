@@ -6,19 +6,32 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 import math
-from pylatex import Document, Section, Figure, NoEscape, Subsection, NewPage
+from pylatex import Document, Section, Figure, NoEscape, Subsection, NewPage, SubFigure, PageStyle
 from PIL import Image
 
 d2_compatiblity = {
     # This can be used as d2 for            # this
-    'MNIST': ["UniformNoise", "NormalNoise", 'FashionMNIST', 'NotMNIST',  'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet'],
-    'FashionMNIST': ["UniformNoise", "NormalNoise", 'MNIST', 'NotMNIST',  'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet'],
+    'MNIST': ["UniformNoise", "NormalNoise", 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+              'TinyImagenet'],
+    'FashionMNIST': ["UniformNoise", "NormalNoise", 'MNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                     'TinyImagenet'],
     'CIFAR10': ["UniformNoise", "NormalNoise", 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR100', 'TinyImagenet'],
-    'CIFAR100': ["UniformNoise", "NormalNoise", 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'TinyImagenet'],
+    'CIFAR100': ["UniformNoise", "NormalNoise", 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10',
+                 'TinyImagenet'],
     'STL10': ["UniformNoise", "NormalNoise", 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR100', 'TinyImagenet'],
-    'TinyImagenet': ["UniformNoise", "NormalNoise", 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10'],
+    'TinyImagenet': ["UniformNoise", "NormalNoise", 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100',
+                     'STL10'],
     # STL10 is not compatible with CIFAR10 because of the 9-overlapping classes.
     # Erring on the side of caution.
+}
+
+layers_shapes = {
+    'MNIST': [256, 256, 512, 512, 256, 256, 128, 128, 64],
+    'FashionMNIST': [256, 256, 512, 512, 256, 256, 128, 128, 64],
+    'CIFAR10': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
+    'CIFAR100': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
+    'STL10': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
+    'TinyImagenet': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
 }
 
 
@@ -205,7 +218,7 @@ def find_threshold(df_known, df_unknown):
 
 def draw_article_plots(ds, dv=None):
     plt.close()
-    all_files = glob.glob(os.path.join("results/article_plots", ("Resnet" + ds + "*otherlayers.csv")))
+    all_files = glob.glob(os.path.join("results/article_plots", ("VGG" + ds + "*")))
     li = []
     for filename in all_files:
         if ds == "CIFAR10":
@@ -225,7 +238,7 @@ def draw_article_plots(ds, dv=None):
     else:
         grouped = frame.groupby(["quantile", "layer", "pool"])[
             "valid_acc", "test_acc", "threshold"].mean().sort_values("valid_acc").tail(20)
-        title = "Resnet_" + ds
+        title = "VGG_" + ds
     figure, axes = plt.subplots()
     x = np.arange(len(grouped.index))
     v = axes.bar(x - 0.2, grouped["valid_acc"].values, 0.4)
@@ -243,6 +256,7 @@ def draw_article_plots(ds, dv=None):
     # plt.show()
     # plt.savefig(os.path.join("results/article_plots/plots", title))
 
+
 def load_distance(filename):
     plt.close()
     img = Image.open(filename)
@@ -250,46 +264,64 @@ def load_distance(filename):
     plt.imshow(img)
     split = filename.split(".")[0].split("model")[1].split("dataset")
     title = "".join(split)
-    model = split[0]
-    dataset = split[1].split("vs")[0]
-    valid_dataset = split[1].split("vs")[1]
     plt.title(title)
 
+
 def generate_latex(fname, width, *args, **kwargs):
-    d1_tasks = ['STL10']
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', 'CIFAR100', 'TinyImagenet']
 
     # d1_tasks = ['MNIST', 'CIFAR100', 'STL10']
-    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST']
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
+                'TinyImagenet']
     geometry_options = {"right": "2cm", "left": "2cm"}
     doc = Document(fname, geometry_options=geometry_options)
     with doc.create(Section("Opis")):
-        doc.append("Na wykresach w sekcji nr. 2 widać, że występuje zależność pomiędzy skutecznością danej konfiguracji na zbiorze walidacyjnym i testowym. \n")
-        doc.append("Można na tej informacji oprzeć metodę adaptacyjną, bo zbiorem walidacyjnym dysponujemy w trakcie trenowania metody. I w większości przypadków byłoby to skuteczne podejście.\n")
-        doc.append("Niestety na wykresach w sekcji nr. 3, w szczególności na wykresie VGG_CIFAR100vsMNIST pokazana jest pułapka tego podejścia. \n")
-        doc.append("Czasami słabe w ogólności konfiguracje pozwalają znaleźć najlepszy próg oddzielający zbiór treningowy od zupełnie różnego zbioru walidacyjnego takiego jak NormalNoise. \n")
+        doc.append(
+            "Na wykresach w sekcji nr. 2 widać, że występuje zależność pomiędzy skutecznością danej konfiguracji na zbiorze walidacyjnym i testowym. \n")
+        doc.append(
+            "Można na tej informacji oprzeć metodę adaptacyjną, bo zbiorem walidacyjnym dysponujemy w trakcie trenowania metody. I w większości przypadków byłoby to skuteczne podejście.\n")
+        doc.append(
+            "Niestety na wykresach w sekcji nr. 3, w szczególności na wykresie VGG_CIFAR100vsMNIST pokazana jest pułapka tego podejścia. \n")
+        doc.append(
+            "Czasami słabe w ogólności konfiguracje pozwalają znaleźć najlepszy próg oddzielający zbiór treningowy od zupełnie różnego zbioru walidacyjnego takiego jak NormalNoise. \n")
         doc.append("Pomysły mam dwa \n")
         doc.append("1. Algorytm treningu i działania metody byłby następujący:  \n")
-        doc.append("\t -  Dla każdej konfiguracji z hipersiatki możliwych konfiguracji wyznacz threshold i skuteczność vs dataset walidacyjny\n")
-        doc.append("\t  - Dla n najlepszych warstw wybierz najlepszą konfigurację dla danej warstwy i zapamiętaj n zbiorów patternów treningowych (jeden dla każdej konfiguracji) i threshold dla niej wyznaczony\n")
+        doc.append(
+            "\t -  Dla każdej konfiguracji z hipersiatki możliwych konfiguracji wyznacz threshold i skuteczność vs dataset walidacyjny\n")
+        doc.append(
+            "\t  - Dla n najlepszych warstw wybierz najlepszą konfigurację dla danej warstwy i zapamiętaj n zbiorów patternów treningowych (jeden dla każdej konfiguracji) i threshold dla niej wyznaczony\n")
         doc.append("Faza testowa: \n")
-        doc.append("\t  - Wyznacz n patternów dla próbki testowej (jeden dla każdej konfiguracji; wszystkie n podczas jedenego forward passu przez sieć rzecz jasna)\n")
-        doc.append("\t  - Wyznacz dystans n patternów z odpowiadającymi zbiorami patternów znanych i porównaj z thresholdami\n")
-        doc.append("\t  - Głosowanie warstw - jeśli i-ty pattern porównany z i-tym zbiorem znanych patternów jest poniżej thresholdu to warstwa głosuje, że pattern jest znany\n")
+        doc.append(
+            "\t  - Wyznacz n patternów dla próbki testowej (jeden dla każdej konfiguracji; wszystkie n podczas jedenego forward passu przez sieć rzecz jasna)\n")
+        doc.append(
+            "\t  - Wyznacz dystans n patternów z odpowiadającymi zbiorami patternów znanych i porównaj z thresholdami\n")
+        doc.append(
+            "\t  - Głosowanie warstw - jeśli i-ty pattern porównany z i-tym zbiorem znanych patternów jest poniżej thresholdu to warstwa głosuje, że pattern jest znany\n")
         doc.append(NewPage())
-        doc.append("Liczba n - branych pod uwagę warstw powinna być nieparzysta, albo trzeba by zastosować ważenie głosów (lepsza skuteczność na zbiorze walidacyjnym -> większa waga) \n")
-        doc.append("Moim zdaniem ma to potencjał dać dobre wyniki - dla takich przypadków jak CIFAR100vsNoise/MNIST da na pewno gorszy wynik, niż najlepsza ogólnie pojedyncza warstwa, lecz nie mamy dostępu do wyroczni.\n")
-        doc.append("A dla pozostałych przypadków niewykluczone, że otrzymamy nawet lepsze wyniki dzięki fazie głosowania\n")
-        doc.append("\n 2. By zniwelować niekorzystny efekt opisany wyżej przy uczeniu metody przeciw takim datasetom jak NormalNoise można spróbować podczas treningu wykorzystać substytut podobnego datasetu w postaci próbek należących do części klas znanego datasetu.\n")
+        doc.append(
+            "Liczba n - branych pod uwagę warstw powinna być nieparzysta, albo trzeba by zastosować ważenie głosów (lepsza skuteczność na zbiorze walidacyjnym -> większa waga) \n")
+        doc.append(
+            "Moim zdaniem ma to potencjał dać dobre wyniki - dla takich przypadków jak CIFAR100vsNoise/MNIST da na pewno gorszy wynik, niż najlepsza ogólnie pojedyncza warstwa, lecz nie mamy dostępu do wyroczni.\n")
+        doc.append(
+            "A dla pozostałych przypadków niewykluczone, że otrzymamy nawet lepsze wyniki dzięki fazie głosowania\n")
+        doc.append(
+            "\n 2. By zniwelować niekorzystny efekt opisany wyżej przy uczeniu metody przeciw takim datasetom jak NormalNoise można spróbować podczas treningu wykorzystać substytut podobnego datasetu w postaci próbek należących do części klas znanego datasetu.\n")
         doc.append(" Wyglądałoby to mniej więcej tak: \n")
         doc.append(" - wybieramy n klas zbioru treningowego np. 30%\n")
-        doc.append(" - szukamy najlepszej konfiguracji podobnie jak wcześniej, tylko wybór opieramy jeszcze na informacji, która warstwa najlepiej separowała znany zbiór od sztucznie wygenerowanego podobnego nieznanego zbioru \n")
+        doc.append(
+            " - szukamy najlepszej konfiguracji podobnie jak wcześniej, tylko wybór opieramy jeszcze na informacji, która warstwa najlepiej separowała znany zbiór od sztucznie wygenerowanego podobnego nieznanego zbioru \n")
         doc.append(" - załóżmy, że zbiorem treningowym jest CIFAR100 \n")
-        doc.append(" - wybieramy klasy 80-100 jako nieznane i tworzymy z nich zbiór walidacyjny; zapamiętujemy patterny pozostałych 80 klas\n")
-        doc.append(" - gdy sieć sklasyfikuje jakąś próbkę jako jedną z klas 80-100, losowo wybieramy, od której klasy zapamiętanych patternów (0-79) liczymy odległość Hamminga\n")
-        doc.append("Nie jestem w stanie przewidzieć, czy ten sposób by coś nam dał, ale może udałoby się dzięki temu wybierać lepsze konfiguracje.")
+        doc.append(
+            " - wybieramy klasy 80-100 jako nieznane i tworzymy z nich zbiór walidacyjny; zapamiętujemy patterny pozostałych 80 klas\n")
+        doc.append(
+            " - gdy sieć sklasyfikuje jakąś próbkę jako jedną z klas 80-100, losowo wybieramy, od której klasy zapamiętanych patternów (0-79) liczymy odległość Hamminga\n")
+        doc.append(
+            "Nie jestem w stanie przewidzieć, czy ten sposób by coś nam dał, ale może udałoby się dzięki temu wybierać lepsze konfiguracje.")
         doc.append(NewPage())
 
-    with doc.create(Section('Wykresy konfiguracji zagregowane po wszystkich datasetach walidacyjnych (20 najlepszych wyników)')):
+    with doc.create(
+            Section(
+                'Wykresy konfiguracji zagregowane po wszystkich datasetach walidacyjnych (20 najlepszych wyników)')):
         for d1 in d1_tasks:
             plot = Figure(position='h')
             draw_article_plots(d1)
@@ -322,6 +354,79 @@ def generate_latex(fname, width, *args, **kwargs):
     doc.generate_pdf(clean_tex=False)
 
 
+def generate_latex_heatmaps(fname, width, *args, **kwargs):
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', 'CIFAR100', 'TinyImagenet']
+
+    d2_tasks = ['UniformNoise', 'NotMNIST', 'CIFAR10', 'TinyImagenet']
+    geometry_options = {"head": "30pt",
+                        "margin": "0.3in",
+                        "top": "0.2in",
+                        "bottom": "0.4in",
+                        "includeheadfoot": True}
+
+    doc = Document(fname, geometry_options=geometry_options)
+    first_page = PageStyle("firstpage")
+    doc.preamble.append(first_page)
+    doc.change_document_style("firstpage")
+    with doc.create(Section("Opis")):
+        doc.append("Poniżej 3 rodzaje heatmap: \n")
+        doc.append("\t 1. Zwykla heatmapa dla wszystkich patternów treningowych przykładowej klasy (0)  \n")
+        doc.append("\t 2. Suma różnic pomiędzy heatmapą przykładowej klasy a każdą inną klasą \n")
+        doc.append("\t 3. Różnica pomiędzy heatmapą dataset vs dataset \n")
+        doc.append(
+            "Ostatnie dwie warstwy VGG to \"classifier\", w przeciwieństwie do reszty warstw, są to warstwy Linear - nie są one poolowane - stąd widoczne różnice względem poprzednich warstw (więcej pól czarnych).\n")
+        doc.append(
+            "Dla większych VGG (nieMNIST'owych) wszystkie dwanaście warstw \"features\"  zajmuje jedynie 1/3 szerokości heatmapy. \n")
+        doc.append(
+            "Dla zobrazowania problemu: pierwsza warstwa \"features\" ma długość 64, a warstwy \"classifier\" mają po 4096.\n")
+        doc.append("Liczność patternów składających się na heatmapę jest różna w zależności od datasetu \n")
+        doc.append(
+            "Brane pod uwagę są wartości od nastepujących centyli: MNIST, TinyImagenet - 50; FashionMNIST, CIFAR10, CIFAR100 - 90; STL10 - 37 \n")
+        doc.append(
+            "Generalnie widać, że heatmapy rodzaju 1. i 2. są do siebie podobne; właściwie dla każdego datasetu i każdej klasy istnieją takie neurony, które mają większe wartości aktywacji tylko dla jednej klasy (lub mniejsze, choć dla innych klas często przyjmują wartości większe). \n")
+        doc.append(
+            "Ta informacja potwierdza jedynie intuicję, że klasyfikacja jest pochodną konkretnych wzorców aktywacji.\n")
+        doc.append(
+            "Przy porównywaniu datasetów widać zależność - im większa amplituda różnicy heatmap tym łatwiej rozróżnialne są datasety widać to np. dla CIFAR100vsNoise i CIFAR100vsTinyImagenet\n")
+        doc.append(
+            "Ogólnie pozytywną wiadomością jest, że heatmapy są bardzo zróżnicowane pomiędzy klasami wewnątrz datasetu (bo klasyfikatory mają dużą dokładność),"
+            " także pomiędzy większością datasetów wzajemnie, ale znowu pojawia się problem, że heatmapy różnic pomiędzy danym datasetem treningowym a dwoma istotnie różniącymi się datasetami walidacyjnymi także się między sobą różnią - np. MNISTvsNoise i MNISTvsNotMNIST \n")
+        doc.append(NewPage())
+
+    with doc.create(Section('Heatmapy')):
+        for d1 in d1_tasks:
+            plot = Figure(position='h')
+            subsection = Subsection(d1 + " one class heatmap; same class minus the rest of classes")
+            filename_class = "VGG_" + d1 + "_class0.png"
+            filename_diffsum = "VGG_" + d1 + "_class0_diffsum.png"
+            subfigure_class = SubFigure(position='c', width=NoEscape(r'0.45\linewidth'))
+            subfigure_class.add_image(os.path.join("results/article_plots/heatmaps", filename_class),
+                                      width=NoEscape(r'\linewidth'))
+            subfigure_class.add_caption("VGG " + d1 + " class 0")
+            subfigure_diffsum = SubFigure(position='c', width=NoEscape(r'0.45\linewidth'))
+            subfigure_diffsum.add_image(os.path.join("results/article_plots/heatmaps", filename_diffsum),
+                                        width=NoEscape(r'\linewidth'))
+            subfigure_diffsum.add_caption("VGG " + d1 + " class 0 minus other classes")
+            plot.append(subfigure_class)
+            plot.append(subfigure_diffsum)
+            doc.append(subsection)
+            doc.append(plot)
+            doc.append(NewPage())
+            subsection = Subsection(d1 + " vs other datasets")
+            doc.append(subsection)
+            for d2 in d2_tasks:
+                if d2 in d2_compatiblity[d1]:
+                    subfigure_vs = Figure(position='h')
+                    filename_vs = "VGG_" + d1 + "_vs_" + d2 + ".png"
+                    subfigure_vs.add_image(os.path.join("results/article_plots/heatmaps", filename_vs),
+                                           width=NoEscape(r'\linewidth'))
+                    subfigure_vs.add_caption("VGG " + d1 + " vs " + d2)
+                    doc.append(subfigure_vs)
+                    doc.append(NewPage())
+
+    doc.generate_pdf(clean_tex=False)
+
+
 def draw_activations(patterns, shapes):
     ppc_h, ppc_w = 20, 60
     rows = np.min(shapes)
@@ -329,7 +434,7 @@ def draw_activations(patterns, shapes):
     layers_dict = {}
     shapes.reverse()
     for i, shape in enumerate(shapes):
-        layer_label_len = int(math.ceil(shape/rows))
+        layer_label_len = int(math.ceil(shape / rows))
         layer_cols = []
         for j in range(layer_label_len):
             label = str(i) + "." + str(j)
@@ -367,6 +472,116 @@ def draw_activations(patterns, shapes):
         plt.yticks(np.arange(rows) * ppc_h, np.arange(rows))
         plt.show()
 
+
+def choose_layer(frames, thresholds, rownum):
+    distances = []
+    layernums = []
+    for layernum in frames:
+        df = frames[layernum]
+        distance = df["distance"][rownum]
+        # distances.append(distance)
+        distances.append(abs(distance - thresholds["threshold"][int(layernum)]))
+        # distances.append(thresholds["valid_acc"][int(layernum)])
+        layernums.append(layernum)
+
+        # if distance > max_distance or (distance == max_distance and thresholds["threshold"][int(layernum)] < thresholds["threshold"][int(max_id)]):
+        #     max_distance = distance
+        #     max_id = layernum
+    distances = np.array(distances)
+    # return layernums[distances.argsort()[int(len(distances) * 0.5)]]
+    return layernums[distances.argmax()]
+
+
+def choose_layers(frames, thresholds, rownum):
+    distances = []
+    distances_ = []
+    layernums = []
+    for layernum in frames:
+        df = frames[layernum]
+        distance = df["distance"][rownum]
+        # distances.append(distance)
+        distances_.append(abs(distance - thresholds["threshold"][int(layernum)]))
+        distances.append(thresholds["valid_acc"][int(layernum)])
+        layernums.append(layernum)
+
+    distances = np.array(distances)
+    distances_ = np.array(distances_)
+    layernums = np.array(layernums)
+    ids = np.append(distances.argsort()[::-1][:4], distances_.argsort()[::-1][:1])
+    if np.unique(ids.size) != 5:
+        ids = np.append(ids, distances_.argsort()[::-1][1])
+    if np.unique(ids.size) != 5:
+        ids = np.append(ids, distances.argsort()[::-1][4])
+    assert ids.size == 5
+    return layernums[ids]
+
+
+def linearize(frames, thresholds, dt):
+    shapes = np.array(layers_shapes[dt])
+    shape_factors = shapes / shapes.min()
+    max_factor = shape_factors.max()
+    thresholds_ = thresholds.copy()
+    for layernum in frames:
+        frames[layernum]["distance"] = frames[layernum]["distance"] + shape_factors[int(layernum)]
+        frames[layernum]["distance"] = frames[layernum]["distance"] * (
+                max_factor / shape_factors[int(layernum)])
+        thresholds_["threshold"][int(layernum)] = thresholds_["threshold"][int(layernum)] + shape_factors[int(layernum)]
+        thresholds_["threshold"][int(layernum)] = thresholds_["threshold"][int(layernum)] * (
+                max_factor / shape_factors[int(layernum)])
+    return thresholds_
+
+
+def full_net_plot():
+    d1_tasks = ['MNIST', 'FashionMNIST', 'STL10', "CIFAR100"]
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
+                'TinyImagenet']
+    agg_acc = 0
+    counter = 0
+    for d1 in d1_tasks:
+        for d2 in d2_tasks:
+            if d2 in d2_compatiblity[d1]:
+                df_thresholds = pd.read_csv("results/article_plots/full_nets/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                                            index_col=0)
+
+                for d3 in d2_tasks:
+                    if d2 != d3 and d3 in d2_compatiblity[d1]:
+                        file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "*"
+                        files = glob.glob(os.path.join("results/article_plots/full_nets", file_pattern))
+                        frames = dict()
+                        rows = 0
+                        for file in files:
+                            df = pd.read_csv(file, index_col=0)
+                            rows = len(df.index)
+                            layernum = file.split("_")[-1].split(".")[0]
+                            if df_thresholds["threshold"][int(layernum)] != -1:
+                                frames[layernum] = df
+                        correct_count = 0
+                        thresholds_lin = linearize(frames, df_thresholds, d1)
+                        # print(df_thresholds)
+                        # print(thresholds_lin)
+                        # chosen_ids = dict()
+                        for i in range(rows):
+                            # chosen_id = choose_layer(frames, thresholds_lin, i)
+                            chosen_ids = choose_layers(frames, thresholds_lin, i)
+                            correct_votes = 0
+                            for chosen in chosen_ids:
+                                correct_votes += frames[chosen]["correct"][i]
+                            correct_count += (correct_votes > (len(chosen_ids) /2))
+                            # if chosen_ids.get(chosen_id) is None:
+                            #     chosen_ids[chosen_id] = 0
+                            # else:
+                            #     chosen_ids[chosen_id] += 1
+                            # correct_count += frames[chosen_id]["correct"][i]
+                        acc = correct_count / rows
+                        print("VGG_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
+                        agg_acc += acc
+                        counter += 1
+                        # for id in chosen_ids:
+                        #     print(f"id {id} count {chosen_ids[id]}")
+                        # return
+        print(f"Aggregated accuracy: {agg_acc / counter}")
+
+
 if __name__ == "__main__":
     # draw_boxplots()
     # results = pd.read_csv("results/results_working_methods.csv", index_col=0)
@@ -377,5 +592,7 @@ if __name__ == "__main__":
     # draw("results/results_all.csv")
     # draw_hamming_distances()
     # draw_article_plots()
-    generate_latex('matplotlib_ex-dpir', r'1\textwidth', dpi=100)
+    # generate_latex('matplotlib_ex-dpir', r'1\textwidth', dpi=100)
+    # generate_latex_heatmaps('matplotlib_ex-heatmaps', r'1\textwidth', dpi=100)
     # fix_vgg_results()
+    full_net_plot()

@@ -1,4 +1,5 @@
 import json
+import math
 import os.path
 from os import path
 
@@ -13,7 +14,7 @@ from torch.utils.data.dataloader import DataLoader
 import global_vars as Global
 from datasets import MirroredDataset
 from methods import AbstractMethodInterface
-from methods.nap.monitor import Monitor, EuclideanMonitor
+from methods.nap.monitor import Monitor, FullNetMonitor
 from utils.iterative_trainer import IterativeTrainerConfig
 from utils.logger import Logger
 from .utils import CIFAR100sparse2coarse, get_nap_params
@@ -31,6 +32,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.default_model = 0
         self.threshold = 0
         self.best_monitored_count = 0
+        self.accuracies = None
         self.add_identifier = ""
         self.known_loader = None
         self.unknown_loader = None
@@ -79,172 +81,185 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                          num_workers=self.args.workers,
                                          pin_memory=True)
         self.valid_dataset_name = dataset.datasets[1].name
-        return 0
         self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
+        # self._draw_train_vs_valid_heatmaps(self.known_loader, self.unknown_loader, self.nap_params)
+        # return 0
         return self._find_only_threshold()
         # # return self._find_best_layer_to_monitor()
 
     def test_H(self, dataset):
-        self.test_dataset_name = dataset.datasets[1].name
-        # loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-        #                     num_workers=self.args.workers, pin_memory=True)
-        # self._generate_test_distances(loader)
-        # return 0
 
-        # dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-        #                      num_workers=self.args.workers, pin_memory=True)
-        #
-        # correct = 0.0
-        # total_count = 0
+        self.test_dataset_name = dataset.datasets[1].name
+        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+                             num_workers=self.args.workers, pin_memory=True)
+
+        correct = 0.0
+        total_count = 0
         # print(f"quantiles {self.nap_params}")
         # print(f"threshold {self.threshold}")
+        concat_distances = np.array([])
+        concat_classification = np.array([])
+        with tqdm.tqdm(total=len(dataset)) as pbar:
+            with torch.no_grad():
+                for i, (image, label) in enumerate(dataset):
+                    pbar.update()
+
+                    # Get and prepare data.
+                    input, target = image.to(self.args.device), label.to(self.args.device)
+
+                    outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
+                    _, predicted = torch.max(outputs.data, 1)
+                    distance = self.monitor.compute_hamming_distance(intermediate_values,
+                                                                     predicted.cpu().detach().numpy(), omit=self.omit)
+
+                    classification = np.where(distance <= self.threshold, 0, 1)
+                    compared = classification == label.unsqueeze(1).numpy()
+                    if concat_distances.size:
+                        concat_distances = np.concatenate((concat_distances, distance))
+                        concat_classification = np.concatenate((concat_classification, compared))
+                    else:
+                        concat_distances = distance
+                        concat_classification = compared
+
+                    correct += compared.sum(axis=0)
+
+                    total_count += len(input)
+                    # message = 'Accuracy %.4f' % (correct / total_count)
+                    message = 'Accuracy: ' + str(correct / total_count)[0]
+                    pbar.set_description(message)
+
+        test_average_acc = correct / total_count
+        print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
+        pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv("results/article_plots/full_nets/" + self.model_name + "_" + self.train_dataset_name  + "_" + self.valid_dataset_name  + "th-acc.csv")
+        for i in range(len(self.accuracies)):
+            fname = self.model_name + "_" + self.train_dataset_name  + "_" + self.valid_dataset_name  + "_" + self.test_dataset_name  + "_" + str(i) + ".csv"
+            path = os.path.join("results/article_plots/full_nets", fname)
+            pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(path)
+
+        return test_average_acc[0].item()
+        # data = []
+        # self.omit = False
+        # with torch.no_grad():
+        #     for pool_type in ["avg"]:
+        #         for layer in range(7, 48, 8):
+        #             for pool in range(1, 3):
+        #                 for q in np.linspace(0.1, 0.9, num=4):
+        #                     nap_params = {
+        #                         str(layer): {
+        #                             "pool_type": pool_type,
+        #                             "pool_size": pool,
+        #                             "quantile": q
+        #                         }
+        #                     }
+        #                     self._get_layers_shapes(nap_params)
+        #                     self.monitor = Monitor(self.class_count, self.nap_device,
+        #                                            layers_shapes=self.monitored_layers_shapes)
+        #                     self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
+        #                     df_known = self._process_dataset(self.known_loader, nap_params=nap_params)
+        #                     df_unknown = self._process_dataset(self.unknown_loader,
+        #                                                        nap_params=nap_params)
+        #                     threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
         #
-        # with tqdm.tqdm(total=len(dataset)) as pbar:
-        #     with torch.no_grad():
-        #         for i, (image, label) in enumerate(dataset):
-        #             pbar.update()
+        #                     loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+        #                                         num_workers=self.args.workers, pin_memory=True)
         #
-        #             # Get and prepare data.
-        #             input, target = image.to(self.args.device), label.to(self.args.device)
+        #                     correct = 0.0
+        #                     total_count = 0
+        #                     print(f"quantiles {nap_params}")
+        #                     print(f"threshold {threshold}")
         #
-        #             outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
-        #             _, predicted = torch.max(outputs.data, 1)
-        #             distance = self.monitor.compute_hamming_distance(intermediate_values,
-        #                                                         predicted.cpu().detach().numpy(), omit=self.omit)
+        #                     with tqdm.tqdm(total=len(loader)) as pbar:
         #
-        #             classification = np.where(distance <= self.threshold, 0, 1)
+        #                         for i, (image, label) in enumerate(loader):
+        #                             pbar.update()
         #
-        #             correct += (classification == label.numpy()).sum()
+        #                             # Get and prepare data.
+        #                             input, target = image.to(self.args.device), label.to(self.args.device)
         #
-        #             total_count += len(input)
-        #             message = 'Accuracy %.4f' % (correct / total_count)
-        #             pbar.set_description(message)
+        #                             outputs, intermediate_values, _ = self.base_model.forward_nap(input,
+        #                                                                                           nap_params=nap_params)
+        #                             _, predicted = torch.max(outputs.data, 1)
+        #                             distance = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                                              predicted.cpu().detach().numpy(),
+        #                                                                              omit=self.omit)
         #
-        # test_average_acc = correct / total_count
-        # print("Final Test average accuracy %s" % (colored('%.4f%%' % (test_average_acc * 100), 'red')))
+        #                             classification = np.where(distance <= threshold, 0, 1)
+        #
+        #                             correct += (classification == label.numpy()).sum()
+        #
+        #                             total_count += len(input)
+        #                             message = 'Accuracy %.4f' % (correct / total_count)
+        #                             pbar.set_description(message)
+        #                         test_average_acc = correct / total_count
+        #                         print("Final Test average accuracy %s" % (
+        #                             colored('%.4f%%' % (test_average_acc * 100), 'red')))
+        #                         data.append((self.model_name, dataset.datasets[0].name, self.valid_dataset_name,
+        #                                      dataset.datasets[1].name,
+        #                                      layer, pool, pool_type, q, threshold, acc, test_average_acc))
+        # for pool_type in ["avg"]:
+        #     for layer in [13, 14]:
+        #         for q in np.linspace(0.1, 0.9, num=4):
+        #             nap_params = {
+        #                 str(layer): {
+        #                     "pool_type": pool_type,
+        #                     "pool_size": 0,
+        #                     "quantile": q
+        #                 }
+        #             }
+        #             self._get_layers_shapes(nap_params)
+        #             self.monitor = Monitor(self.class_count, self.nap_device,
+        #                                    layers_shapes=self.monitored_layers_shapes)
+        #             self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
+        #             df_known = self._process_dataset(self.known_loader, nap_params=nap_params)
+        #             df_unknown = self._process_dataset(self.unknown_loader,
+        #                                                nap_params=nap_params)
+        #             threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
+        #
+        #             loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+        #                                 num_workers=self.args.workers, pin_memory=True)
+        #
+        #             correct = 0.0
+        #             total_count = 0
+        #             print(f"quantiles {nap_params}")
+        #             print(f"threshold {threshold}")
+        #
+        #             with tqdm.tqdm(total=len(loader)) as pbar:
+        #
+        #                 for i, (image, label) in enumerate(loader):
+        #                     pbar.update()
+        #
+        #                     # Get and prepare data.
+        #                     input, target = image.to(self.args.device), label.to(self.args.device)
+        #
+        #                     outputs, intermediate_values, _ = self.base_model.forward_nap(input,
+        #                                                                                   nap_params=nap_params)
+        #                     _, predicted = torch.max(outputs.data, 1)
+        #                     distance = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                                      predicted.cpu().detach().numpy(),
+        #                                                                      omit=self.omit)
+        #
+        #                     classification = np.where(distance <= threshold, 0, 1)
+        #
+        #                     correct += (classification == label.numpy()).sum()
+        #
+        #                     total_count += len(input)
+        #                     message = 'Accuracy %.4f' % (correct / total_count)
+        #                     pbar.set_description(message)
+        #
+        #                 test_average_acc = correct / total_count
+        #                 print("Final Test average accuracy %s" % (
+        #                     colored('%.4f%%' % (test_average_acc * 100), 'red')))
+        #                 data.append((self.model_name, dataset.datasets[0].name, self.valid_dataset_name,
+        #                              dataset.datasets[1].name, layer,
+        #                              0, pool_type, q, threshold, acc, test_average_acc))
+        # df = pd.DataFrame(data,
+        #                   columns=['model', 'ds', 'dv', 'dt', 'layer', 'pool', 'pool_type', 'quantile', 'threshold',
+        #                            'valid_acc', 'test_acc'])
+        # fname = self.model_name + dataset.datasets[0].name + self.valid_dataset_name + dataset.datasets[
+        #     1].name + "otherlayers.csv"
+        # fpath = os.path.join("results/article_plots", fname)
+        # df.to_csv(fpath)
         # return test_average_acc.item()
-        data = []
-        self.omit = False
-        with torch.no_grad():
-            for pool_type in ["avg"]:
-                for layer in range(7, 48, 8):
-                    for pool in range(1, 3):
-                        for q in np.linspace(0.1, 0.9, num=4):
-                            nap_params = {
-                                str(layer): {
-                                    "pool_type": pool_type,
-                                    "pool_size": pool,
-                                    "quantile": q
-                                }
-                            }
-                            self._get_layers_shapes(nap_params)
-                            self.monitor = Monitor(self.class_count, self.nap_device,
-                                                   layers_shapes=self.monitored_layers_shapes)
-                            self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
-                            df_known = self._process_dataset(self.known_loader, nap_params=nap_params)
-                            df_unknown = self._process_dataset(self.unknown_loader,
-                                                               nap_params=nap_params)
-                            threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
-
-                            loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-                                                num_workers=self.args.workers, pin_memory=True)
-
-                            correct = 0.0
-                            total_count = 0
-                            print(f"quantiles {nap_params}")
-                            print(f"threshold {threshold}")
-
-                            with tqdm.tqdm(total=len(loader)) as pbar:
-
-                                for i, (image, label) in enumerate(loader):
-                                    pbar.update()
-
-                                    # Get and prepare data.
-                                    input, target = image.to(self.args.device), label.to(self.args.device)
-
-                                    outputs, intermediate_values, _ = self.base_model.forward_nap(input,
-                                                                                                  nap_params=nap_params)
-                                    _, predicted = torch.max(outputs.data, 1)
-                                    distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                                                     predicted.cpu().detach().numpy(),
-                                                                                     omit=self.omit)
-
-                                    classification = np.where(distance <= threshold, 0, 1)
-
-                                    correct += (classification == label.numpy()).sum()
-
-                                    total_count += len(input)
-                                    message = 'Accuracy %.4f' % (correct / total_count)
-                                    pbar.set_description(message)
-                                test_average_acc = correct / total_count
-                                print("Final Test average accuracy %s" % (
-                                    colored('%.4f%%' % (test_average_acc * 100), 'red')))
-                                data.append((self.model_name, dataset.datasets[0].name, self.valid_dataset_name,
-                                             dataset.datasets[1].name,
-                                             layer, pool, pool_type, q, threshold, acc, test_average_acc))
-            # for pool_type in ["avg"]:
-            #     for layer in [13, 14]:
-            #         for q in np.linspace(0.1, 0.9, num=4):
-            #             nap_params = {
-            #                 str(layer): {
-            #                     "pool_type": pool_type,
-            #                     "pool_size": 0,
-            #                     "quantile": q
-            #                 }
-            #             }
-            #             self._get_layers_shapes(nap_params)
-            #             self.monitor = Monitor(self.class_count, self.nap_device,
-            #                                    layers_shapes=self.monitored_layers_shapes)
-            #             self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
-            #             df_known = self._process_dataset(self.known_loader, nap_params=nap_params)
-            #             df_unknown = self._process_dataset(self.unknown_loader,
-            #                                                nap_params=nap_params)
-            #             threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
-            #
-            #             loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-            #                                 num_workers=self.args.workers, pin_memory=True)
-            #
-            #             correct = 0.0
-            #             total_count = 0
-            #             print(f"quantiles {nap_params}")
-            #             print(f"threshold {threshold}")
-            #
-            #             with tqdm.tqdm(total=len(loader)) as pbar:
-            #
-            #                 for i, (image, label) in enumerate(loader):
-            #                     pbar.update()
-            #
-            #                     # Get and prepare data.
-            #                     input, target = image.to(self.args.device), label.to(self.args.device)
-            #
-            #                     outputs, intermediate_values, _ = self.base_model.forward_nap(input,
-            #                                                                                   nap_params=nap_params)
-            #                     _, predicted = torch.max(outputs.data, 1)
-            #                     distance = self.monitor.compute_hamming_distance(intermediate_values,
-            #                                                                      predicted.cpu().detach().numpy(),
-            #                                                                      omit=self.omit)
-            #
-            #                     classification = np.where(distance <= threshold, 0, 1)
-            #
-            #                     correct += (classification == label.numpy()).sum()
-            #
-            #                     total_count += len(input)
-            #                     message = 'Accuracy %.4f' % (correct / total_count)
-            #                     pbar.set_description(message)
-            #
-            #                 test_average_acc = correct / total_count
-            #                 print("Final Test average accuracy %s" % (
-            #                     colored('%.4f%%' % (test_average_acc * 100), 'red')))
-            #                 data.append((self.model_name, dataset.datasets[0].name, self.valid_dataset_name,
-            #                              dataset.datasets[1].name, layer,
-            #                              0, pool_type, q, threshold, acc, test_average_acc))
-        df = pd.DataFrame(data,
-                          columns=['model', 'ds', 'dv', 'dt', 'layer', 'pool', 'pool_type', 'quantile', 'threshold',
-                                   'valid_acc', 'test_acc'])
-        fname = self.model_name + dataset.datasets[0].name + self.valid_dataset_name + dataset.datasets[1].name + "otherlayers.csv"
-        fpath = os.path.join("results/article_plots", fname)
-        df.to_csv(fpath)
-        return test_average_acc.item()
 
     def method_identifier(self):
         output = "NeuronActivationPatterns"
@@ -282,8 +297,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         with torch.no_grad():
             last_layer_fraction = self.nap_params.pop("last_layer_fraction", None)
             self._get_layers_shapes(self.nap_params)
-            self.monitor = Monitor(self.class_count, self.nap_device,
-                                   layers_shapes=self.monitored_layers_shapes)
+            self.monitor = FullNetMonitor(self.class_count, self.nap_device,
+                                          layers_shapes=self.monitored_layers_shapes)
             if not last_layer_fraction:
                 self.omit = False
             else:
@@ -292,14 +307,14 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     int(self.monitored_layers_shapes[0] * last_layer_fraction))
                 self.monitor.set_neurons_to_monitor(neurons_to_monitor)
 
-            # self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
             # self._check_duplicates_count()
-            self._draw_train_vs_valid_heatmaps(self.known_loader, self.unknown_loader, self.nap_params)
-            return 0
+
             df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
             df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params)
             self.threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
             print(f"threshold: {self.threshold}, accuracy: {acc}")
+            self.accuracies = acc
             return acc
 
     def _find_best_layer_to_monitor(self):
@@ -380,8 +395,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 print(i)
         return best_acc
 
-    def _process_dataset(self, testloader, nap_params=None):
+    def _process_dataset(self, testloader, nap_params=None, full=False):
         hamming_distance = np.array([])
+        labels = np.array([])
         testiter = iter(testloader)
 
         for imgs, label in testiter:
@@ -389,36 +405,46 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             imgs = imgs.to(self.args.device)
             outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=nap_params)
             _, predicted = torch.max(outputs.data, 1)
-            correct_bitmap = (predicted == label)
+            # correct_bitmap = (predicted == label)
             distance = self.monitor.compute_hamming_distance(intermediate_values,
                                                              predicted.cpu().detach().numpy(), omit=self.omit)
-            stacked = np.stack((label.cpu().numpy(), distance, correct_bitmap.cpu().numpy()), axis=1)
+
+            # stacked = np.hstack((label.unsqueeze(1).cpu().numpy(), distance))
             if hamming_distance.size:
-                hamming_distance = np.concatenate((hamming_distance, stacked))
+                hamming_distance = np.concatenate((hamming_distance, distance))
+                labels = np.concatenate((labels, label.unsqueeze(1).cpu().numpy()))
             else:
-                hamming_distance = stacked
+                hamming_distance = distance
+                labels = label.unsqueeze(1).cpu().numpy()
+        frames = []
+        for i in range(hamming_distance.shape[1]):
+            df = pd.DataFrame({"class": labels.flatten(), "hamming_distance": hamming_distance[:, i]})
+            frames.append(df)
+        return frames
 
-        return pd.DataFrame(hamming_distance, columns=['class', 'hamming_distance', 'correct'], dtype=np.int32)
-
-    def _find_threshold(self, df_known, df_unknown, integers=True, steps=1000):
-        min = df_unknown["hamming_distance"].min() if df_unknown["hamming_distance"].min() > df_known[
-            "hamming_distance"].min() else \
-            df_known["hamming_distance"].min()
-        max = df_unknown["hamming_distance"].max() if df_unknown["hamming_distance"].max() > df_known[
-            "hamming_distance"].max() else \
-            df_known["hamming_distance"].max()
-        best_correct_count = 0
-        best_threshold = 0
-        for i in range(min - 1, max + 1) if integers else np.linspace(min, max, num=steps):
-            correct_count = 0
-            correct_count += (df_unknown["hamming_distance"] > i).sum()
-            correct_count += (df_known["hamming_distance"] <= i).sum()
-            if best_correct_count < correct_count:
-                best_correct_count = correct_count
-                best_threshold = i
-        print(f" best threshold: {best_threshold}")
-        print(f" accuracy: {best_correct_count / (len(df_unknown.index) + len(df_known.index))}")
-        return best_threshold, best_correct_count / (len(df_unknown.index) + len(df_known.index))
+    def _find_threshold(self, dfs_known, dfs_unknown, integers=True, steps=1000):
+        thresholds = []
+        accuracies = []
+        for j, (df_known, df_unknown) in enumerate(zip(dfs_known, dfs_unknown)):
+            min = df_unknown["hamming_distance"].min() if df_unknown["hamming_distance"].min() > df_known[
+                "hamming_distance"].min() else \
+                df_known["hamming_distance"].min()
+            max = df_unknown["hamming_distance"].max() if df_unknown["hamming_distance"].max() > df_known[
+                "hamming_distance"].max() else \
+                df_known["hamming_distance"].max()
+            best_correct_count = 0
+            best_threshold = 0
+            for i in range(min - 1, max + 1) if integers else np.linspace(min, max, num=steps):
+                correct_count = 0
+                correct_count += (df_unknown["hamming_distance"] > i).sum()
+                correct_count += (df_known["hamming_distance"] <= i).sum()
+                if best_correct_count < correct_count:
+                    best_correct_count = correct_count
+                    best_threshold = i
+            acc = best_correct_count / (len(df_unknown.index) + len(df_known.index))
+            thresholds.append(best_threshold)
+            accuracies.append(acc)
+        return np.array(thresholds), accuracies
 
     def _get_layers_shapes(self, nap_params):
         trainiter = iter(self.train_loader)
@@ -441,25 +467,25 @@ class NeuronActivationPatterns(AbstractMethodInterface):
     def _count_classes_valid(self, loader, nap_params):
         dataiter = iter(loader)
         count_class = dict()
-        for imgs, _ in dataiter:
-            imgs = imgs.to(self.args.device)
-            outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=nap_params)
-            _, predicted = torch.max(outputs.data, 1)
-            for i in range(predicted.shape[0]):
-                if count_class.get(predicted[i].item()):
-                    count_class[predicted[i].item()] += 1
-                else:
-                    count_class[predicted[i].item()] = 1
+        with torch.no_grad():
+            for imgs, _ in dataiter:
+                imgs = imgs.to(self.args.device)
+                outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=nap_params)
+                _, predicted = torch.max(outputs.data, 1)
+                for i in range(predicted.shape[0]):
+                    if count_class.get(predicted[i].item()):
+                        count_class[predicted[i].item()] += 1
+                    else:
+                        count_class[predicted[i].item()] = 1
         return count_class
 
     def _draw_train_vs_valid_heatmaps(self, loader, valid_loader=None, nap_params=None):
         count_class = self._count_classes_valid(loader, nap_params)
         count_class_valid = self._count_classes_valid(valid_loader, nap_params)
-        minimum = min(list(count_class.values()) + list(count_class_valid.values()))
+
         for k in sorted(count_class_valid):
             print(f"class: {k} count: {count_class_valid[k]}")
 
-        return
         heatmap = dict()
         count_class_ = dict()
         heatmap_valid = dict()
@@ -471,41 +497,56 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             count_class_valid[i] = 0
 
         dataiter = iter(loader)
-        for img, label in tqdm.tqdm(dataiter):
-            img = img.to(self.args.device)
-            outputs, intermediate_values, _ = self.base_model.forward_nap(img, nap_params=nap_params)
-            _, predicted = torch.max(outputs.data, 1)
-            mat_torch = torch.zeros(intermediate_values.shape, device=intermediate_values.device)
-            neuron_on_off_pattern = intermediate_values.gt(mat_torch).type(torch.int).to(torch.device(self.nap_device))
-            predicted = predicted.cpu().numpy()
-            for i in range(neuron_on_off_pattern.shape[0]):
-                # if count_class_[predicted[i]] < minimum:
-                    if heatmap[predicted[i]].numel():
-                        heatmap[predicted[i]] += neuron_on_off_pattern[i]
+        with torch.no_grad():
+            for img, label in tqdm.tqdm(dataiter):
+                img = img.to(self.args.device)
+                outputs, intermediate_values, _ = self.base_model.forward_nap(img, nap_params=nap_params)
+                _, predicted = torch.max(outputs.data, 1)
+                mat_torch = torch.zeros(intermediate_values.shape, device=intermediate_values.device)
+                neuron_on_off_pattern = intermediate_values.gt(mat_torch).type(torch.int).to(
+                    torch.device(self.nap_device))
+                predicted = predicted.cpu().numpy()
+                for i in range(neuron_on_off_pattern.shape[0]):
+                    # if count_class_[predicted[i]] < minimum:
+                    if heatmap[0].numel():
+                        heatmap[0] += neuron_on_off_pattern[i]
                     else:
-                        heatmap[predicted[i]] = neuron_on_off_pattern[i]
+                        heatmap[0] = neuron_on_off_pattern[i]
                     # count_class_[predicted[i]] += 1
 
         dataiter = iter(valid_loader)
-        for img, label in tqdm.tqdm(dataiter):
-            img = img.to(self.args.device)
-            outputs, intermediate_values, shapes = self.base_model.forward_nap(img, nap_params=nap_params)
-            _, predicted = torch.max(outputs.data, 1)
-            mat_torch = torch.zeros(intermediate_values.shape, device=intermediate_values.device)
-            neuron_on_off_pattern = intermediate_values.gt(mat_torch).type(torch.int).to(torch.device(self.nap_device))
-            predicted = predicted.cpu().numpy()
-            for i in range(neuron_on_off_pattern.shape[0]):
-                # if count_class_valid[predicted[i]] < minimum:
-                    if heatmap_valid[predicted[i]].numel():
-                        heatmap_valid[predicted[i]] += neuron_on_off_pattern[i]
+        with torch.no_grad():
+            for img, label in tqdm.tqdm(dataiter):
+                img = img.to(self.args.device)
+                outputs, intermediate_values, shapes = self.base_model.forward_nap(img, nap_params=nap_params)
+                _, predicted = torch.max(outputs.data, 1)
+                mat_torch = torch.zeros(intermediate_values.shape, device=intermediate_values.device)
+                neuron_on_off_pattern = intermediate_values.gt(mat_torch).type(torch.int).to(
+                    torch.device(self.nap_device))
+                predicted = predicted.cpu().numpy()
+                for i in range(neuron_on_off_pattern.shape[0]):
+                    # if count_class_valid[predicted[i]] < minimum:
+                    if heatmap_valid[0].numel():
+                        heatmap_valid[0] += neuron_on_off_pattern[i]
                     else:
-                        heatmap_valid[predicted[i]] = neuron_on_off_pattern[i]
+                        heatmap_valid[0] = neuron_on_off_pattern[i]
                     # count_class_valid[predicted[i]] += 1
         import seaborn as sns
+        ax_labels = []
+        shapes.reverse()
+        shapes_np = np.array(shapes)
+        rows = shapes_np.min()
+        for i, shape in enumerate(shapes):
+            layer_label_len = int(math.ceil(shape / rows))
+            for j in range(layer_label_len):
+                label = str(i) + "." + str(j)
+                ax_labels.append(label)
+
         shapes_np = np.array(shapes)
         keys = set(heatmap.keys())
         diffs_sum = torch.Tensor([])
-        for k in keys:
+        print(shapes)
+        for k in [0]:
             if heatmap_valid[k].numel():
                 diff = heatmap[k] - heatmap_valid[k]
             else:
@@ -519,15 +560,21 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 diffs_sum += diff
             else:
                 diffs_sum = diff
-        _ = sns.heatmap(diffs_sum.reshape((shapes_np.min(), int(shapes_np.sum() / shapes_np.min()))).cpu())
-        title = "VGG_MNIST" + "_vs_" + self.valid_dataset_name
+        print(f"diffsum max {diffs_sum.max()}")
+        _ = sns.heatmap(
+            diffs_sum.flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0, 1).cpu())
+        title = "VGG_" + self.train_dataset_name + "_vs_" + self.valid_dataset_name
         # plt.show()
+        plt.xticks(np.arange(len(ax_labels)), ax_labels)
+        plt.xlabel("layer_num.part")
+        plt.ylabel("neuron_row_num")
+        plt.tight_layout()
+        plt.xticks(rotation=90)
         plt.savefig(os.path.join("results/article_plots/heatmaps", title))
         plt.close()
 
     def _draw_train_heatmaps(self, loader, nap_params=None):
         count_class = self._count_classes(loader)
-
         minimum = min(count_class.values())
         heatmap = dict()
         count_class_ = dict()
@@ -536,26 +583,37 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             count_class_[i] = 0
 
         dataiter = iter(loader)
-        for img, label in tqdm.tqdm(dataiter):
-            label = label.to(self.args.device)
-            img = img.to(self.args.device)
-            _, intermediate_values, shapes = self.base_model.forward_nap(img, nap_params=nap_params)
-            mat_torch = torch.zeros(intermediate_values.shape, device=intermediate_values.device)
+        with torch.no_grad():
+            for img, label in tqdm.tqdm(dataiter):
+                label = label.to(self.args.device)
+                img = img.to(self.args.device)
+                _, intermediate_values, shapes = self.base_model.forward_nap(img, nap_params=nap_params)
+                mat_torch = torch.zeros(intermediate_values.shape, device=intermediate_values.device)
 
-            neuron_on_off_pattern = intermediate_values.gt(mat_torch).type(torch.int).to(torch.device(self.nap_device))
-            label_np = label.cpu().numpy()
+                neuron_on_off_pattern = intermediate_values.gt(mat_torch).type(torch.int).to(
+                    torch.device(self.nap_device))
+                label_np = label.cpu().numpy()
 
-            for i in range(neuron_on_off_pattern.shape[0]):
-                if count_class_[label_np[i]] < minimum:
-                    if heatmap[label_np[i]].numel():
-                        heatmap[label_np[i]] += neuron_on_off_pattern[i]
-                    else:
-                        heatmap[label_np[i]] = neuron_on_off_pattern[i]
-                    count_class_[label_np[i]] += 1
+                for i in range(neuron_on_off_pattern.shape[0]):
+                    if count_class_[label_np[i]] < minimum:
+                        if heatmap[label_np[i]].numel():
+                            heatmap[label_np[i]] += neuron_on_off_pattern[i]
+                        else:
+                            heatmap[label_np[i]] = neuron_on_off_pattern[i]
+                        count_class_[label_np[i]] += 1
 
         # draw_activations(intermediate_values, shapes)
         import seaborn as sns
+        ax_labels = []
+        shapes.reverse()
         shapes_np = np.array(shapes)
+        rows = shapes_np.min()
+        for i, shape in enumerate(shapes):
+            layer_label_len = int(math.ceil(shape / rows))
+            for j in range(layer_label_len):
+                label = str(i) + "." + str(j)
+                ax_labels.append(label)
+
         keys = set(heatmap.keys())
         keys2 = set(heatmap.keys())
         for k in keys:
@@ -566,9 +624,18 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             print(heatmap[k].sum())
             print(heatmap[k].numel())
             print(heatmap[k].shape)
-            _ = sns.heatmap(heatmap[k].reshape((shapes_np.min(), int(shapes_np.sum() / shapes_np.min()))).cpu())
-            title = "VGG_MNIST_class" + str(k)
+            print(shapes_np)
+
+            _ = sns.heatmap(
+                heatmap[k].flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0,
+                                                                                                                1).cpu())
+            title = "VGG_TinyImagenet_class" + str(k)
             # plt.show()
+            plt.xticks(np.arange(len(ax_labels)), ax_labels)
+            plt.xlabel("layer_num.part")
+            plt.ylabel("neuron_row_num")
+            plt.tight_layout()
+            plt.xticks(rotation=90)
             plt.savefig(os.path.join("results/article_plots/heatmaps", title))
             plt.close()
             keys2.pop()
@@ -581,18 +648,31 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                         diffs_sum += diff
                     else:
                         diffs_sum = diff
-            _ = sns.heatmap(diff.reshape((shapes_np.min(), int(shapes_np.sum() / shapes_np.min()))).cpu())
-            title = "VGG_MNIST_class" + str(k) + "_diffsum"
+            print(f"diffsum max {diffs_sum.max()}")
+            _ = sns.heatmap(
+                diffs_sum.flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0,
+                                                                                                               1).cpu())
+            title = "VGG_TinyImagenet_class" + str(k) + "_diffsum"
             # plt.show()
+            plt.xticks(np.arange(len(ax_labels)), ax_labels)
+            plt.xlabel("layer_num.part")
+            plt.ylabel("neuron_row_num")
+            plt.tight_layout()
+            plt.xticks(rotation=90)
             plt.savefig(os.path.join("results/article_plots/heatmaps", title))
             plt.close()
-            for k2 in keys2:
-                diff = heatmap[k] - heatmap[k2]
-                _ = sns.heatmap(diff.reshape((shapes_np.min(), int(shapes_np.sum() / shapes_np.min()))).cpu())
-                title = "VGG_MNIST_class" + str(k) + "_minus_" + str(k2)
-                # plt.show()
-                plt.savefig(os.path.join("results/article_plots/heatmaps", title))
-                plt.close()
+            # for k2 in keys2:
+            #     diff = heatmap[k] - heatmap[k2]
+            #     _ = sns.heatmap(diff.flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0, 1).cpu())
+            #     title = "VGG_CIFAR10_class" + str(k) + "_minus_" + str(k2)
+            #     # plt.show()
+            #     plt.xticks(np.arange(len(ax_labels)), ax_labels)
+            #     plt.xlabel("layer_num.part")
+            #     plt.ylabel("neuron_row_num")
+            #     plt.tight_layout()
+            #     plt.xticks(rotation=90)
+            #     plt.savefig(os.path.join("results/article_plots/heatmaps", title))
+            #     plt.close()
 
     def _add_class_patterns_to_monitor(self, loader, nap_params=None):
         count_class = self._count_classes(loader)
