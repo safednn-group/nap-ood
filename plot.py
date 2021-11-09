@@ -533,7 +533,7 @@ def linearize(frames, thresholds, dt):
 
 
 def full_net_plot():
-    d1_tasks = ['MNIST', 'FashionMNIST', 'STL10', "CIFAR100"]
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', 'CIFAR100', "TinyImagenet"]
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
     types = [0, 1, 2]
@@ -547,21 +547,24 @@ def full_net_plot():
             for d1 in d1_tasks:
                 for d2 in d2_tasks:
                     if d2 in d2_compatiblity[d1]:
-                        df_thresholds = pd.read_csv("results/article_plots/full_nets/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                        df_thresholds = pd.read_csv("results/article_plots/full_nets/cut_tail/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
                                                     index_col=0)
 
                         for d3 in d2_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "*"
-                                files = glob.glob(os.path.join("results/article_plots/full_nets", file_pattern))
+                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
+                                files = glob.glob(os.path.join("results/article_plots/full_nets/cut_tail", file_pattern))
                                 frames = dict()
                                 rows = 0
+                                file_counter = 0
                                 for file in files:
                                     df = pd.read_csv(file, index_col=0)
                                     rows = len(df.index)
                                     layernum = file.split("_")[-1].split(".")[0]
                                     if df_thresholds["threshold"][int(layernum)] != -1:
                                         frames[layernum] = df
+                                    # print(f"n: {file_counter}, {file}")
+                                    file_counter += 1
                                 correct_count = 0
                                 thresholds_lin = linearize(frames, df_thresholds, d1)
                                 for i in range(rows):
@@ -580,13 +583,13 @@ def full_net_plot():
                 for d2 in d2_tasks:
                     if d2 in d2_compatiblity[d1]:
                         df_thresholds = pd.read_csv(
-                            "results/article_plots/full_nets/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                            "results/article_plots/full_nets/cut_tail/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
                             index_col=0)
 
                         for d3 in d2_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "*"
-                                files = glob.glob(os.path.join("results/article_plots/full_nets", file_pattern))
+                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
+                                files = glob.glob(os.path.join("results/article_plots/full_nets/cut_tail", file_pattern))
                                 frames = dict()
                                 rows = 0
                                 for file in files:
@@ -611,7 +614,7 @@ def full_net_plot():
                                 acc = correct_count / rows
                                 agg_acc += acc
                                 counter += 1
-                print(f"{d1} - type {type}, centile {votes} Aggregated accuracy: {agg_acc / counter}")
+                print(f"{d1} - type {type}, votes {votes} Aggregated accuracy: {agg_acc / counter}")
 
 
 if __name__ == "__main__":

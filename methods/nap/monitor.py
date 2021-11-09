@@ -40,7 +40,6 @@ class BaseMonitor(object):
     def set_class_patterns_count(self, count):
         self.class_patterns_count = count
 
-
 class Monitor(BaseMonitor):
 
     def __init__(self, class_count, device, layers_shapes, neurons_to_monitor=None):
@@ -122,6 +121,8 @@ class Monitor(BaseMonitor):
         for i in self.known_patterns_tensor:
             self.known_patterns_tensor[i] = self.known_patterns_tensor[i][:len(self.known_patterns_set[i]), :]
 
+    def trim_class_zero(self, length):
+        self.known_patterns_tensor[0] = self.known_patterns_tensor[0][:length, :]
 
 class FullNetMonitor(BaseMonitor):
 
@@ -245,6 +246,9 @@ class FullNetMonitor(BaseMonitor):
                 self.known_patterns_tensor[i][j] = self.known_patterns_tensor[i][j][:len(self.known_patterns_set[i][j]),
                                                    :]
 
+    def trim_class_zero(self, length):
+        for i in range(len(self.layers_shapes)):
+            self.known_patterns_tensor[0][i] = self.known_patterns_tensor[0][i][:length, :]
 
 class EuclideanMonitor(BaseMonitor):
 

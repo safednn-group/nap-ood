@@ -42,15 +42,15 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    # d1_tasks = ['TinyImagenet']
-    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-                'TinyImagenet']
-    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-                'TinyImagenet']
+    d1_tasks = ['MNIST']
 
-    # d2_tasks = ['TinyImagenet', 'STL10']
-    # d3_tasks = ['TinyImagenet', 'STL10']
+    # d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+    #             'TinyImagenet']
+    # d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+    #             'TinyImagenet']
+    # d1_tasks = ['TinyImagenet']
+    d2_tasks = ['UniformNoise']
+    d3_tasks = ['NormalNoise']
     method_tasks = [
         # 'binclass/0',
         # 'odin/0',

@@ -67,9 +67,8 @@ class VGG(nn.Module):
             x = layer.forward(x)
             if layer_counter in new_nap_params:
                 intermediate = torch.flatten(self.pools[new_nap_params[layer_counter]["pool_type"]][new_nap_params[layer_counter]["pool_size"]](x), 1)
-                intermediate = torch.tensor(np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(),
-                                                                                              new_nap_params[layer_counter]["quantile"]), intermediate.cpu(),
-                                                     0))
+                intermediate = torch.tensor(np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(), new_nap_params[layer_counter]["quantile"]), intermediate.cpu(), 0))
+                # intermediate = torch.where(intermediate > torch.quantile(intermediate, new_nap_params[layer_counter]["quantile"]), intermediate, 0)
                 shapes.append(intermediate.shape[-1])
                 if prev.numel():
                     intermediate = torch.cat((intermediate, prev), dim=1)
@@ -80,8 +79,8 @@ class VGG(nn.Module):
         for _, layer in self.classifier.named_children():
             x = layer.forward(x)
             if layer_counter in new_nap_params:
-                intermediate = torch.tensor(np.where(x.cpu().numpy() > np.quantile(x.cpu().numpy(), new_nap_params[layer_counter]["quantile"]), x.cpu(),
-                                                     0))
+                intermediate = torch.tensor(np.where(x.cpu().numpy() > np.quantile(x.cpu().numpy(), new_nap_params[layer_counter]["quantile"]), x.cpu(), 0))
+                # intermediate = torch.where(x > torch.quantile(x, new_nap_params[layer_counter]["quantile"]), x, 0)
                 shapes.append(intermediate.shape[-1])
                 if prev.numel():
                     intermediate = torch.cat((intermediate, prev), dim=1)

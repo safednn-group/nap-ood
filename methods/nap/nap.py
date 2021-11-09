@@ -4,6 +4,7 @@ import os.path
 from os import path
 
 import matplotlib.pyplot as plt
+import numpy
 import numpy as np
 import pandas as pd
 import torch
@@ -82,13 +83,13 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                          pin_memory=True)
         self.valid_dataset_name = dataset.datasets[1].name
         self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
-        # self._draw_train_vs_valid_heatmaps(self.known_loader, self.unknown_loader, self.nap_params)
-        # return 0
+        self._generate_execution_times()
+        return 0
         return self._find_only_threshold()
         # # return self._find_best_layer_to_monitor()
 
     def test_H(self, dataset):
-
+        return 0
         self.test_dataset_name = dataset.datasets[1].name
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
@@ -131,11 +132,11 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         test_average_acc = correct / total_count
         print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
         pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv(
-            "results/article_plots/full_nets/cut_tail/" + self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "th-acc.csv")
+            "results/article_plots/full_nets/" + self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "th-acc.csv")
         for i in range(len(self.accuracies)):
             fname = self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
                 i) + ".csv"
-            path = os.path.join("results/article_plots/full_nets/cut_tail", fname)
+            path = os.path.join("results/article_plots/full_nets", fname)
             pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(path)
 
         return test_average_acc[0].item()
@@ -314,7 +315,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
             df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
             df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params)
-            self.threshold, acc = self._find_threshold(df_known, df_unknown, integers=True, cut_tail=True)
+            self.threshold, acc = self._find_threshold(df_known, df_unknown, integers=True, cut_tail=False)
             print(f"threshold: {self.threshold}, accuracy: {acc}")
             self.accuracies = acc
             return acc
@@ -770,3 +771,84 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         fname = "testdistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_vs_" + self.test_dataset_name + ".csv"
         df = pd.DataFrame(test_distances, columns=['hamming_distance'])
         df.to_csv(fname)
+
+    def _generate_execution_times(self):
+        import time
+        n_times = 1000
+        trim_sizes = np.arange(100, 4001, 300)[::-1]
+        sizes_len = len(trim_sizes)
+        net_pass_times = np.ones(n_times)
+        nap_net_pass_times = np.ones(n_times)
+        compute_hamming_times = np.ones((sizes_len, n_times))
+        compute_hamming_and_times = np.ones((sizes_len, n_times))
+        compute_hamming_full_net_times = np.ones((sizes_len, n_times))
+        compute_hamming_and_full_net_times = np.ones((sizes_len, n_times))
+
+        trainiter = iter(self.train_loader)
+        x = trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device)
+        with torch.no_grad():
+            self._get_layers_shapes(self.nap_params)
+            self.monitor = FullNetMonitor(self.class_count, self.nap_device,
+                                          layers_shapes=self.monitored_layers_shapes)
+            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+            for size_id, size in enumerate(trim_sizes):
+                self.monitor.trim_class_zero(size)
+                for i in range(n_times):
+                    start_time = time.time()
+                    self.base_model.forward(x)
+                    net_pass_times[i] = time.time() - start_time
+                    start_time = time.time()
+                    self.base_model.forward_nap(x,
+                                                nap_params=self.nap_params)
+                    nap_net_pass_times[i] = time.time() - start_time
+
+                    outputs, intermediate_values, _ = self.base_model.forward_nap(
+                        x, nap_params=self.nap_params)
+                    _, predicted = torch.max(outputs.data, 1)
+                    start_time = time.time()
+                    _ = self.monitor.compute_hamming_distance(intermediate_values,
+                                                              np.zeros(1), omit=False)
+                    compute_hamming_and_full_net_times[size_id, i] = time.time() - start_time
+                    start_time = time.time()
+                    _ = self.monitor.compute_hamming_distance(intermediate_values,
+                                                              np.zeros(1), omit=False,
+                                                              ignore_minor_values=False)
+                    compute_hamming_full_net_times[size_id, i] = time.time() - start_time
+            self.nap_cfg_path = "nap_cfgs/default.json"
+            with open(self.nap_cfg_path) as cf:
+                self.nap_cfg = json.load(cf)
+            self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
+            self._get_layers_shapes(self.nap_params)
+            self.monitor = Monitor(self.class_count, self.nap_device,
+                                   layers_shapes=self.monitored_layers_shapes)
+            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+            for size in trim_sizes:
+                self.monitor.trim_class_zero(size)
+                for i in range(n_times):
+                    outputs, intermediate_values, _ = self.base_model.forward_nap(
+                        x, nap_params=self.nap_params)
+                    _, predicted = torch.max(outputs.data, 1)
+                    start_time = time.time()
+                    _ = self.monitor.compute_hamming_distance(intermediate_values,
+                                                              np.zeros(1), omit=False)
+                    compute_hamming_and_times[size_id, i] = time.time() - start_time
+                    start_time = time.time()
+                    _ = self.monitor.compute_hamming_distance(intermediate_values,
+                                                              np.zeros(1), omit=False,
+                                                              ignore_minor_values=False)
+                    compute_hamming_times[size_id, i] = time.time() - start_time
+        avg_net_pass = net_pass_times.mean()
+        avg_nap_net_pass = nap_net_pass_times.mean()
+        avg_compute_hamming = compute_hamming_times.mean(axis=1)
+        avg_compute_hamming_and = compute_hamming_and_times.mean(axis=1)
+        avg_compute_hamming_full_net = compute_hamming_full_net_times.mean(axis=1)
+        avg_compute_hamming_and_full_net = compute_hamming_and_full_net_times.mean(axis=1)
+        print(avg_net_pass)
+        print(avg_nap_net_pass)
+        print(avg_compute_hamming)
+        print(avg_compute_hamming_and)
+        print(avg_compute_hamming_full_net)
+        print(avg_compute_hamming_and_full_net)
+        numpy.savez("execution_times", avg_net_pass=avg_net_pass, avg_nap_net_pass=avg_nap_net_pass,
+                    avg_compute_hamming=avg_compute_hamming, avg_compute_hamming_and=avg_compute_hamming_and,
+                    avg_compute_hamming_full_net =avg_compute_hamming_full_net, avg_compute_hamming_and_full_net=avg_compute_hamming_and_full_net)
