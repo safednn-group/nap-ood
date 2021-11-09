@@ -473,46 +473,47 @@ def draw_activations(patterns, shapes):
         plt.show()
 
 
-def choose_layer(frames, thresholds, rownum):
+def choose_layer(frames, thresholds, rownum, type=0, centile=1.):
     distances = []
     layernums = []
     for layernum in frames:
         df = frames[layernum]
         distance = df["distance"][rownum]
-        # distances.append(distance)
-        distances.append(abs(distance - thresholds["threshold"][int(layernum)]))
-        # distances.append(thresholds["valid_acc"][int(layernum)])
+        if type == 0:
+            distances.append(distance)
+        elif type == 1:
+            distances.append(abs(distance - thresholds["threshold"][int(layernum)]))
+        elif type == 2:
+            distances.append(thresholds["valid_acc"][int(layernum)])
         layernums.append(layernum)
-
-        # if distance > max_distance or (distance == max_distance and thresholds["threshold"][int(layernum)] < thresholds["threshold"][int(max_id)]):
-        #     max_distance = distance
-        #     max_id = layernum
     distances = np.array(distances)
-    # return layernums[distances.argsort()[int(len(distances) * 0.5)]]
-    return layernums[distances.argmax()]
+    return layernums[distances.argsort()[int(len(distances) * centile) - 1]]
+    # return layernums[distances.argmax()]
 
 
-def choose_layers(frames, thresholds, rownum):
+def choose_layers(frames, thresholds, rownum, type=0, votes=1):
     distances = []
-    distances_ = []
     layernums = []
     for layernum in frames:
         df = frames[layernum]
         distance = df["distance"][rownum]
-        # distances.append(distance)
-        distances_.append(abs(distance - thresholds["threshold"][int(layernum)]))
-        distances.append(thresholds["valid_acc"][int(layernum)])
+        if type == 0:
+            distances.append(distance)
+        elif type == 1:
+            distances.append(abs(distance - thresholds["threshold"][int(layernum)]))
+        elif type == 2:
+            distances.append(thresholds["valid_acc"][int(layernum)])
         layernums.append(layernum)
 
     distances = np.array(distances)
-    distances_ = np.array(distances_)
     layernums = np.array(layernums)
-    ids = np.append(distances.argsort()[::-1][:4], distances_.argsort()[::-1][:1])
-    if np.unique(ids.size) != 5:
-        ids = np.append(ids, distances_.argsort()[::-1][1])
-    if np.unique(ids.size) != 5:
-        ids = np.append(ids, distances.argsort()[::-1][4])
-    assert ids.size == 5
+    ids = distances.argsort()[::-1][:votes]
+    # ids = np.append(distances.argsort()[::-1][:4], distances_.argsort()[::-1][:1])
+    # if np.unique(ids.size) != 5:
+    #     ids = np.append(ids, distances_.argsort()[::-1][1])
+    # if np.unique(ids.size) != 5:
+    #     ids = np.append(ids, distances.argsort()[::-1][4])
+    # assert ids.size == 5
     return layernums[ids]
 
 
@@ -535,51 +536,82 @@ def full_net_plot():
     d1_tasks = ['MNIST', 'FashionMNIST', 'STL10', "CIFAR100"]
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
-    agg_acc = 0
-    counter = 0
-    for d1 in d1_tasks:
-        for d2 in d2_tasks:
-            if d2 in d2_compatiblity[d1]:
-                df_thresholds = pd.read_csv("results/article_plots/full_nets/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
-                                            index_col=0)
+    types = [0, 1, 2]
+    n_votes = [1, 3, 5, 7]
+    centiles = [0.25, 0.5, 0.75, 1.]
 
-                for d3 in d2_tasks:
-                    if d2 != d3 and d3 in d2_compatiblity[d1]:
-                        file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "*"
-                        files = glob.glob(os.path.join("results/article_plots/full_nets", file_pattern))
-                        frames = dict()
-                        rows = 0
-                        for file in files:
-                            df = pd.read_csv(file, index_col=0)
-                            rows = len(df.index)
-                            layernum = file.split("_")[-1].split(".")[0]
-                            if df_thresholds["threshold"][int(layernum)] != -1:
-                                frames[layernum] = df
-                        correct_count = 0
-                        thresholds_lin = linearize(frames, df_thresholds, d1)
-                        # print(df_thresholds)
-                        # print(thresholds_lin)
-                        # chosen_ids = dict()
-                        for i in range(rows):
-                            # chosen_id = choose_layer(frames, thresholds_lin, i)
-                            chosen_ids = choose_layers(frames, thresholds_lin, i)
-                            correct_votes = 0
-                            for chosen in chosen_ids:
-                                correct_votes += frames[chosen]["correct"][i]
-                            correct_count += (correct_votes > (len(chosen_ids) /2))
-                            # if chosen_ids.get(chosen_id) is None:
-                            #     chosen_ids[chosen_id] = 0
-                            # else:
-                            #     chosen_ids[chosen_id] += 1
-                            # correct_count += frames[chosen_id]["correct"][i]
-                        acc = correct_count / rows
-                        print("VGG_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
-                        agg_acc += acc
-                        counter += 1
-                        # for id in chosen_ids:
-                        #     print(f"id {id} count {chosen_ids[id]}")
-                        # return
-        print(f"Aggregated accuracy: {agg_acc / counter}")
+    for type in types:
+        for centile in centiles:
+            agg_acc = 0
+            counter = 0
+            for d1 in d1_tasks:
+                for d2 in d2_tasks:
+                    if d2 in d2_compatiblity[d1]:
+                        df_thresholds = pd.read_csv("results/article_plots/full_nets/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                                                    index_col=0)
+
+                        for d3 in d2_tasks:
+                            if d2 != d3 and d3 in d2_compatiblity[d1]:
+                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "*"
+                                files = glob.glob(os.path.join("results/article_plots/full_nets", file_pattern))
+                                frames = dict()
+                                rows = 0
+                                for file in files:
+                                    df = pd.read_csv(file, index_col=0)
+                                    rows = len(df.index)
+                                    layernum = file.split("_")[-1].split(".")[0]
+                                    if df_thresholds["threshold"][int(layernum)] != -1:
+                                        frames[layernum] = df
+                                correct_count = 0
+                                thresholds_lin = linearize(frames, df_thresholds, d1)
+                                for i in range(rows):
+                                    chosen_id = choose_layer(frames, thresholds_lin, i, type=type, centile=centile)
+                                    correct_count += frames[chosen_id]["correct"][i]
+                                acc = correct_count / rows
+                                agg_acc += acc
+                                counter += 1
+                print(f"{d1} - type {type}, centile {centile} Aggregated accuracy: {agg_acc / counter}")
+
+    for type in types:
+        for votes in n_votes:
+            agg_acc = 0
+            counter = 0
+            for d1 in d1_tasks:
+                for d2 in d2_tasks:
+                    if d2 in d2_compatiblity[d1]:
+                        df_thresholds = pd.read_csv(
+                            "results/article_plots/full_nets/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                            index_col=0)
+
+                        for d3 in d2_tasks:
+                            if d2 != d3 and d3 in d2_compatiblity[d1]:
+                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "*"
+                                files = glob.glob(os.path.join("results/article_plots/full_nets", file_pattern))
+                                frames = dict()
+                                rows = 0
+                                for file in files:
+                                    df = pd.read_csv(file, index_col=0)
+                                    rows = len(df.index)
+                                    layernum = file.split("_")[-1].split(".")[0]
+                                    if df_thresholds["threshold"][int(layernum)] != -1:
+                                        frames[layernum] = df
+                                correct_count = 0
+                                thresholds_lin = linearize(frames, df_thresholds, d1)
+                                # chosen_ids = dict()
+                                for i in range(rows):
+                                    chosen_ids = choose_layers(frames, thresholds_lin, i, type=type, votes=votes)
+                                    correct_votes = 0
+                                    for chosen in chosen_ids:
+                                        correct_votes += frames[chosen]["correct"][i]
+                                    correct_count += (correct_votes > (len(chosen_ids) / 2))
+                                    # if chosen_ids.get(chosen_id) is None:
+                                    #     chosen_ids[chosen_id] = 0
+                                    # else:
+                                    #     chosen_ids[chosen_id] += 1
+                                acc = correct_count / rows
+                                agg_acc += acc
+                                counter += 1
+                print(f"{d1} - type {type}, centile {votes} Aggregated accuracy: {agg_acc / counter}")
 
 
 if __name__ == "__main__":

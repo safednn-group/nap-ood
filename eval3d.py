@@ -42,7 +42,7 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['CIFAR10', 'TinyImagenet']
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     # d1_tasks = ['TinyImagenet']
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']

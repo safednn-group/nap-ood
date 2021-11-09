@@ -130,10 +130,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
         test_average_acc = correct / total_count
         print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
-        pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv("results/article_plots/full_nets/" + self.model_name + "_" + self.train_dataset_name  + "_" + self.valid_dataset_name  + "th-acc.csv")
+        pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv(
+            "results/article_plots/full_nets/cut_tail/" + self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "th-acc.csv")
         for i in range(len(self.accuracies)):
-            fname = self.model_name + "_" + self.train_dataset_name  + "_" + self.valid_dataset_name  + "_" + self.test_dataset_name  + "_" + str(i) + ".csv"
-            path = os.path.join("results/article_plots/full_nets", fname)
+            fname = self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
+                i) + ".csv"
+            path = os.path.join("results/article_plots/full_nets/cut_tail", fname)
             pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(path)
 
         return test_average_acc[0].item()
@@ -312,7 +314,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
             df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
             df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params)
-            self.threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
+            self.threshold, acc = self._find_threshold(df_known, df_unknown, integers=True, cut_tail=True)
             print(f"threshold: {self.threshold}, accuracy: {acc}")
             self.accuracies = acc
             return acc
@@ -422,7 +424,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             frames.append(df)
         return frames
 
-    def _find_threshold(self, dfs_known, dfs_unknown, integers=True, steps=1000):
+    def _find_threshold(self, dfs_known, dfs_unknown, integers=True, steps=1000, cut_tail=True):
         thresholds = []
         accuracies = []
         for j, (df_known, df_unknown) in enumerate(zip(dfs_known, dfs_unknown)):
@@ -432,6 +434,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             max = df_unknown["hamming_distance"].max() if df_unknown["hamming_distance"].max() > df_known[
                 "hamming_distance"].max() else \
                 df_known["hamming_distance"].max()
+            if cut_tail:
+                cut_threshold = int(df_known["hamming_distance"].quantile(.95))
+                cut_correct_count = (df_unknown["hamming_distance"] > cut_threshold).sum()
+                cut_correct_count += (df_known["hamming_distance"] <= cut_threshold).sum()
             best_correct_count = 0
             best_threshold = 0
             for i in range(min - 1, max + 1) if integers else np.linspace(min, max, num=steps):
@@ -441,6 +447,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 if best_correct_count < correct_count:
                     best_correct_count = correct_count
                     best_threshold = i
+            if cut_tail:
+                if best_threshold > cut_threshold:
+                    best_correct_count = cut_correct_count
+                    best_threshold = cut_threshold
             acc = best_correct_count / (len(df_unknown.index) + len(df_known.index))
             thresholds.append(best_threshold)
             accuracies.append(acc)
