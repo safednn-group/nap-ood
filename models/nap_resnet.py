@@ -212,6 +212,11 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
+        self.maxpools = [nn.Identity(), nn.AdaptiveMaxPool2d(1), nn.AdaptiveMaxPool2d(2), nn.AdaptiveMaxPool2d(3),
+                         nn.AdaptiveMaxPool2d(4)]
+        self.avgpools = [nn.Identity(), nn.AdaptiveAvgPool2d(1), nn.AdaptiveAvgPool2d(2), nn.AdaptiveAvgPool2d(3),
+                         nn.AdaptiveAvgPool2d(4)]
+        self.pools = {"avg": self.avgpools, "max": self.maxpools}
         # self.layers = nn.Sequential(self.layer1, self.layer2, self.layer3, self.layer4)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
@@ -258,80 +263,61 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def _forward_impl(self, x, nap_params=None):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+
+        return x
+
+    def forward(self, x):
+        return self._forward_impl(x)
+
+    def forward_nap(self, x, nap_params):
+        self.eval()
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        intermediate0 = intermediate1 = intermediate2 = intermediate3 = intermediate4 = None
         from itertools import chain
         layer_counter = 0
         prev = torch.Tensor([])
         shapes = []
+        zero_tensor = torch.zeros(1, device="cuda")
 
         for name, layer in chain(self.layer1.named_children(), self.layer2.named_children(), self.layer3.named_children(), self.layer4.named_children()):
-            x, intermediate_, shapes_ = layer.forward_nap(x, nap_params, layer_counter * 3)
-            if shapes_:
-                shapes = shapes + shapes_
+            x = layer.forward(x)
+            layer_counter_str = str(layer_counter)
+            if layer_counter_str in nap_params:
+                intermediate = torch.flatten(
+                    self.pools[nap_params[layer_counter_str]["pool_type"]][nap_params[layer_counter_str]["pool_size"]](
+                        x), 1)
+                intermediate = torch.tensor(np.where(
+                    intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(),
+                                                             nap_params[layer_counter_str]["quantile"]),
+                    intermediate.cpu(), 0))
+                # intermediate = torch.where(intermediate > torch.quantile(intermediate, nap_params[layer_counter_str]["quantile"]), intermediate, zero_tensor)
+                shapes.append(intermediate.shape[-1])
                 if prev.numel():
-                    intermediate_ = torch.cat((intermediate_, prev), dim=1)
-                prev = intermediate_
+                    intermediate = torch.cat((intermediate, prev), dim=1)
+                prev = intermediate
             layer_counter += 1
 
-        # if str(0) in nap_params:
-        #     intermediate0 = torch.flatten(self.pools[nap_params[str(0)]["pool_type"]][nap_params[str(0)]["pool_size"]](x), 1)
-        #     intermediate0 = torch.tensor(
-        #         np.where(intermediate0.cpu().numpy() > np.quantile(intermediate0.cpu().numpy(), nap_params[str(0)]["quantile"]),
-        #                  intermediate0.cpu(), 0))
-        #     shapes.append(intermediate0.shape[-1])
-        # x = self.layer1(x)
-        # if str(1) in nap_params:
-        #     intermediate1 = torch.flatten(self.pools[nap_params[str(1)]["pool_type"]][nap_params[str(1)]["pool_size"]](x), 1)
-        #     intermediate1 = torch.tensor(
-        #         np.where(intermediate1.cpu().numpy() > np.quantile(intermediate1.cpu().numpy(),
-        #                                                            nap_params[str(1)]["quantile"]),
-        #                  intermediate1.cpu(), 0))
-        #     shapes.append(intermediate1.shape[-1])
-        # x = self.layer2(x)
-        # if str(2) in nap_params:
-        #     intermediate2 = torch.flatten(
-        #         self.pools[nap_params[str(2)]["pool_type"]][nap_params[str(2)]["pool_size"]](x), 1)
-        #     intermediate2 = torch.tensor(
-        #         np.where(intermediate2.cpu().numpy() > np.quantile(intermediate2.cpu().numpy(),
-        #                                                            nap_params[str(2)]["quantile"]),
-        #                  intermediate2.cpu(), 0))
-        #     shapes.append(intermediate2.shape[-1])
-        # x = self.layer3(x)
-        # if str(3) in nap_params:
-        #     intermediate3 = torch.flatten(
-        #         self.pools[nap_params[str(3)]["pool_type"]][nap_params[str(3)]["pool_size"]](x), 1)
-        #     intermediate3 = torch.tensor(
-        #         np.where(intermediate3.cpu().numpy() > np.quantile(intermediate3.cpu().numpy(),
-        #                                                            nap_params[str(3)]["quantile"]),
-        #                  intermediate3.cpu(), 0))
-        #     shapes.append(intermediate3.shape[-1])
-        # x = self.layer4(x)
-        # if str(4) in nap_params:
-        #     intermediate4 = torch.flatten(
-        #         self.pools[nap_params[str(4)]["pool_type"]][nap_params[str(4)]["pool_size"]](x), 1)
-        #     intermediate4 = torch.tensor(
-        #         np.where(intermediate4.cpu().numpy() > np.quantile(intermediate4.cpu().numpy(),
-        #                                                            nap_params[str(4)]["quantile"]),
-        #                  intermediate4.cpu(), 0))
-        #     shapes.append(intermediate4.shape[-1])
-        # intermediates = tuple({intermediate4, intermediate3, intermediate2, intermediate1, intermediate0} - {None})
         shapes.reverse()
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
         return x, prev, shapes
-
-    def forward(self, x):
-        return self._forward_impl(x)[0]
-
-    def forward_nap(self, x, nap_params):
-        self.eval()
-        return self._forward_impl(x, nap_params)
 
 
 def _resnet(arch, block, layers, pretrained, progress, **kwargs):

@@ -536,9 +536,9 @@ def full_net_plot():
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', 'CIFAR100', "TinyImagenet"]
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
-    types = [0, 1, 2]
-    n_votes = [1, 3, 5, 7]
-    centiles = [0.25, 0.5, 0.75, 1.]
+    types = [ 2]
+    n_votes = [5 ]
+    centiles = []
 
     for type in types:
         for centile in centiles:
@@ -547,13 +547,13 @@ def full_net_plot():
             for d1 in d1_tasks:
                 for d2 in d2_tasks:
                     if d2 in d2_compatiblity[d1]:
-                        df_thresholds = pd.read_csv("results/article_plots/full_nets/cut_tail/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                        df_thresholds = pd.read_csv("results/article_plots/full_nets/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
                                                     index_col=0)
 
                         for d3 in d2_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
                                 file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
-                                files = glob.glob(os.path.join("results/article_plots/full_nets/cut_tail", file_pattern))
+                                files = glob.glob(os.path.join("results/article_plots/full_nets", file_pattern))
                                 frames = dict()
                                 rows = 0
                                 file_counter = 0
@@ -611,11 +611,48 @@ def full_net_plot():
                                     #     chosen_ids[chosen_id] = 0
                                     # else:
                                     #     chosen_ids[chosen_id] += 1
+
                                 acc = correct_count / rows
+                                print("VGG_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
                                 agg_acc += acc
                                 counter += 1
                 print(f"{d1} - type {type}, votes {votes} Aggregated accuracy: {agg_acc / counter}")
 
+
+def execution_times_plot():
+    arr = np.load("results/article_plots/execution_times/servercifar10.npz")
+    print(arr["avg_net_pass"])
+    print(arr["avg_nap_net_pass"])
+    print(arr["avg_compute_hamming"])
+    print(arr["avg_compute_hamming_and"])
+    print(arr["avg_compute_hamming_full_net"])
+    print(arr["avg_compute_hamming_and_full_net"])
+ #    avg_net_pass = 0.0016404402256011963
+ #    avg_nap_net_pass = 0.005233125925064087
+ #    avg_compute_hamming = [0.00066327, 0.00062416, 0.00058117, 0.00054174, 0.00050372, 0.00046766,
+ # 0.00043449, 0.00040042, 0.000353,   0.0003119,  0.00028,    0.00023929,
+ # 0.0002119,  0.00020369]
+ #    avg_compute_hamming_and =
+ #    avg_compute_hamming_full_net =
+ #    avg_compute_hamming_and_full_net =
+    x = np.arange(100, 4001, 300)[::-1]
+    figure, axes = plt.subplots()
+    _ = axes.plot(x, arr["avg_compute_hamming"], label="hamming_distance (xor) len=4096")
+    _ = axes.plot(x, arr["avg_compute_hamming_and"], label="(xor) & (and) len=4096")
+    _ = axes.plot(x, arr["avg_compute_hamming_full_net"], label="full net xor len=12416")
+    _ = axes.plot(x, arr["avg_compute_hamming_and_full_net"], label="full net xor & and len=12416")
+    plt.axhline(y=arr["avg_net_pass"], linestyle='-')
+    min_xlim, max_xlim = plt.xlim()
+    plt.text((max_xlim - min_xlim) / 2, arr["avg_net_pass"] * 1.1, f'Avg single net pass: {arr["avg_net_pass"]:.4f}')
+    plt.text((max_xlim - min_xlim) / 2, arr["avg_nap_net_pass"] * 1.1, f'Avg single NAP net pass: {arr["avg_nap_net_pass"]:.4f}')
+    plt.axhline(y=arr["avg_nap_net_pass"], linestyle='-')
+    plt.xlabel("N known patterns to compare with")
+    plt.ylabel("Execution time (seconds)")
+    plt.legend(loc='upper left')
+    plt.title("Server CIFAR10")
+    plt.savefig("results/article_plots/execution_times/ServerCIFAR10")
+
+    # show_values_on_bars(axes)
 
 if __name__ == "__main__":
     # draw_boxplots()
@@ -630,4 +667,5 @@ if __name__ == "__main__":
     # generate_latex('matplotlib_ex-dpir', r'1\textwidth', dpi=100)
     # generate_latex_heatmaps('matplotlib_ex-heatmaps', r'1\textwidth', dpi=100)
     # fix_vgg_results()
-    full_net_plot()
+    # full_net_plot()
+    execution_times_plot()

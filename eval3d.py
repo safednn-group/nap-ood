@@ -42,21 +42,21 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['MNIST']
+    d1_tasks = ['TinyImagenet', 'STL10', 'CIFAR100']
 
-    # d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-    #             'TinyImagenet']
-    # d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-    #             'TinyImagenet']
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
+    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
     # d1_tasks = ['TinyImagenet']
-    d2_tasks = ['UniformNoise']
-    d3_tasks = ['NormalNoise']
+    # d2_tasks = ['UniformNoise']
+    # d3_tasks = ['NormalNoise']
     method_tasks = [
         # 'binclass/0',
         # 'odin/0',
         # 'reconst_thresh/0', 'reconst_thresh/1',
         # 'prob_threshold/0', 'prob_threshold/1',
-        'nap/0',
+        'nap/1',
         # 'vaeaeknn/1',
         # 'mseaeknn/1',
     ]
