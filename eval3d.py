@@ -80,13 +80,11 @@ if args.exp == 'test-eval':
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = ['TinyImagenet', 'STL10']
+    d1_tasks = ['STL10']
     # d2_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     # d3_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-                'TinyImagenet']
-    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-                'TinyImagenet']
+    d2_tasks = ['UniformNoise']
+    d3_tasks = ['NormalNoise', 'FashionMNIST', 'TinyImagenet']
     method_tasks = ['nap/0']
 ########################################################
 """

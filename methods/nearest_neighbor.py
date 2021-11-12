@@ -56,7 +56,7 @@ class KNNSVM(ScoreSVM):
         self.default_model = 1
 
     def method_identifier(self):
-        output = "KNNSVM/%d"%self.default_model
+        output = "KNNSVM%d"%self.default_model
         return output
 
     def propose_H(self, dataset):
@@ -82,6 +82,9 @@ class KNNSVM(ScoreSVM):
         # self.base_data = torch.cat([x.view(1, -1) for x,_ in dataset])
         self.base_model = KNNModel(self.base_data, k=self.default_model).to(self.args.device)
         self.base_model.eval()
+        self.train_dataset_name = dataset.name
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
 
 class AEKNNModel(nn.Module):
     """
@@ -127,7 +130,7 @@ class AEKNNSVM(ScoreSVM):
         self.default_model = 1
 
     def method_identifier(self):
-        output = "AEKNNSVM/%d"%self.default_model
+        output = "AEKNNSVM%d"%self.default_model
         return output
 
     def propose_H(self, dataset):
@@ -191,15 +194,15 @@ class AEKNNSVM(ScoreSVM):
 class BCEKNNSVM(AEKNNSVM):
     def method_identifier(self):
         # output = "BCEKNNSVM/%d"%self.default_model
-        output = "BCEKNNSVM"
+        output = "BCEKNNSVM%d"%self.default_model
         return output
 class MSEKNNSVM(AEKNNSVM):
     def method_identifier(self):
         # output = "MSEKNNSVM/%d"%self.default_model
-        output = "MSEKNNSVM"
+        output = "MSEKNNSVM%d"%self.default_model
         return output
 class VAEKNNSVM(AEKNNSVM):
     def method_identifier(self):
         # output = "VAEKNNSVM/%d"%self.default_model
-        output = "VAEKNNSVM"
+        output = "VAEKNNSVM%d"%self.default_model
         return output
