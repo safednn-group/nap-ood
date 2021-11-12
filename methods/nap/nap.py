@@ -833,7 +833,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         compute_hamming_and_times = np.ones((sizes_len, n_times))
         compute_hamming_full_net_times = np.ones((sizes_len, n_times))
         compute_hamming_and_full_net_times = np.ones((sizes_len, n_times))
-
+        exec_times = np.ones(n_times)
         trainiter = iter(self.train_loader)
         x = trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device)
         with torch.no_grad():
@@ -841,64 +841,73 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                           layers_shapes=self.monitored_layers_shapes)
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
-            for size_id, size in enumerate(trim_sizes):
-                self.monitor.trim_class_zero(size)
-                for i in range(n_times):
-                    start_time = time.time()
-                    self.base_model.forward(x)
-                    net_pass_times[i] = time.time() - start_time
-                    start_time = time.time()
-                    self.base_model.forward_nap(x,
-                                                nap_params=self.nap_params)
-                    nap_net_pass_times[i] = time.time() - start_time
+            print(len(self.monitor.known_patterns_set[0][0]))
+            # for size_id, size in enumerate(trim_sizes):
+                # self.monitor.trim_class_zero(size)
 
-                    outputs, intermediate_values, _ = self.base_model.forward_nap(
-                        x, nap_params=self.nap_params)
-                    _, predicted = torch.max(outputs.data, 1)
-                    start_time = time.time()
-                    _ = self.monitor.compute_hamming_distance(intermediate_values,
-                                                              np.zeros(1), omit=False)
-                    compute_hamming_and_full_net_times[size_id, i] = time.time() - start_time
-                    start_time = time.time()
-                    _ = self.monitor.compute_hamming_distance(intermediate_values,
-                                                              np.zeros(1), omit=False,
-                                                              ignore_minor_values=False)
-                    compute_hamming_full_net_times[size_id, i] = time.time() - start_time
-            self.nap_cfg_path = "nap_cfgs/default.json"
-            with open(self.nap_cfg_path) as cf:
-                self.nap_cfg = json.load(cf)
-            self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
-            self._get_layers_shapes(self.nap_params)
-            self.monitor = Monitor(self.class_count, self.nap_device,
-                                   layers_shapes=self.monitored_layers_shapes)
-            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
-            for size_id, size in enumerate(trim_sizes):
-                self.monitor.trim_class_zero(size)
-                for i in range(n_times):
-                    outputs, intermediate_values, _ = self.base_model.forward_nap(
-                        x, nap_params=self.nap_params)
-                    _, predicted = torch.max(outputs.data, 1)
-                    start_time = time.time()
-                    _ = self.monitor.compute_hamming_distance(intermediate_values,
-                                                              np.zeros(1), omit=False)
-                    compute_hamming_and_times[size_id, i] = time.time() - start_time
-                    start_time = time.time()
-                    _ = self.monitor.compute_hamming_distance(intermediate_values,
-                                                              np.zeros(1), omit=False,
-                                                              ignore_minor_values=False)
-                    compute_hamming_times[size_id, i] = time.time() - start_time
-        avg_net_pass = net_pass_times.mean()
-        avg_nap_net_pass = nap_net_pass_times.mean()
-        avg_compute_hamming = compute_hamming_times.mean(axis=1)
-        avg_compute_hamming_and = compute_hamming_and_times.mean(axis=1)
-        avg_compute_hamming_full_net = compute_hamming_full_net_times.mean(axis=1)
-        avg_compute_hamming_and_full_net = compute_hamming_and_full_net_times.mean(axis=1)
-        print(avg_net_pass)
-        print(avg_nap_net_pass)
-        print(avg_compute_hamming)
-        print(avg_compute_hamming_and)
-        print(avg_compute_hamming_full_net)
-        print(avg_compute_hamming_and_full_net)
-        numpy.savez("execution_times_FashionMNIST", avg_net_pass=avg_net_pass, avg_nap_net_pass=avg_nap_net_pass,
-                    avg_compute_hamming=avg_compute_hamming, avg_compute_hamming_and=avg_compute_hamming_and,
-                    avg_compute_hamming_full_net =avg_compute_hamming_full_net, avg_compute_hamming_and_full_net=avg_compute_hamming_and_full_net)
+            for i in range(n_times):
+                start_time = time.time()
+                outputs, intermediate_values, _ = self.base_model.forward_nap(
+                    x, nap_params=self.nap_params)
+                _, predicted = torch.max(outputs.data, 1)
+                _ = self.monitor.compute_hamming_distance(intermediate_values,
+                                                          np.zeros(1), omit=False)
+                exec_times[i] = time.time() - start_time
+        #             self.base_model.forward(x)
+        #             net_pass_times[i] = time.time() - start_time
+        #             start_time = time.time()
+        #             self.base_model.forward_nap(x,
+        #                                         nap_params=self.nap_params)
+        #             nap_net_pass_times[i] = time.time() - start_time
+        #
+        #             outputs, intermediate_values, _ = self.base_model.forward_nap(
+        #                 x, nap_params=self.nap_params)
+        #             _, predicted = torch.max(outputs.data, 1)
+        #             start_time = time.time()
+        #             _ = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                       np.zeros(1), omit=False)
+        #             compute_hamming_and_full_net_times[size_id, i] = time.time() - start_time
+        #             start_time = time.time()
+        #             _ = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                       np.zeros(1), omit=False,
+        #                                                       ignore_minor_values=False)
+        #             compute_hamming_full_net_times[size_id, i] = time.time() - start_time
+        #     self.nap_cfg_path = "nap_cfgs/default.json"
+        #     with open(self.nap_cfg_path) as cf:
+        #         self.nap_cfg = json.load(cf)
+        #     self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
+        #     self._get_layers_shapes(self.nap_params)
+        #     self.monitor = Monitor(self.class_count, self.nap_device,
+        #                            layers_shapes=self.monitored_layers_shapes)
+        #     self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+        #     for size_id, size in enumerate(trim_sizes):
+        #         self.monitor.trim_class_zero(size)
+        #         for i in range(n_times):
+        #             outputs, intermediate_values, _ = self.base_model.forward_nap(
+        #                 x, nap_params=self.nap_params)
+        #             _, predicted = torch.max(outputs.data, 1)
+        #             start_time = time.time()
+        #             _ = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                       np.zeros(1), omit=False)
+        #             compute_hamming_and_times[size_id, i] = time.time() - start_time
+        #             start_time = time.time()
+        #             _ = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                       np.zeros(1), omit=False,
+        #                                                       ignore_minor_values=False)
+        #             compute_hamming_times[size_id, i] = time.time() - start_time
+        # avg_net_pass = net_pass_times.mean()
+        # avg_nap_net_pass = nap_net_pass_times.mean()
+        # avg_compute_hamming = compute_hamming_times.mean(axis=1)
+        # avg_compute_hamming_and = compute_hamming_and_times.mean(axis=1)
+        # avg_compute_hamming_full_net = compute_hamming_full_net_times.mean(axis=1)
+        exec_times = exec_times.mean(axis=1)
+        np.savez("execution_times_"+self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)
+        # print(avg_net_pass)
+        # print(avg_nap_net_pass)
+        # print(avg_compute_hamming)
+        # print(avg_compute_hamming_and)
+        # print(avg_compute_hamming_full_net)
+        # print(avg_compute_hamming_and_full_net)
+        # numpy.savez("execution_times_FashionMNIST", avg_net_pass=avg_net_pass, avg_nap_net_pass=avg_nap_net_pass,
+        #             avg_compute_hamming=avg_compute_hamming, avg_compute_hamming_and=avg_compute_hamming_and,
+        #             avg_compute_hamming_full_net =avg_compute_hamming_full_net, avg_compute_hamming_and_full_net=avg_compute_hamming_and_full_net)

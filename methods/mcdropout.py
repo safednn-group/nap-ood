@@ -112,4 +112,7 @@ class MCDropout(ProbabilityThreshold):
         config.logger = Logger()
         config.max_epoch = 100
 
+        self.train_dataset_name = train_ds.name
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
         return config

@@ -107,6 +107,9 @@ class PixelCNN(ProbabilityThreshold):
 
         self.base_model = config.model
         self.base_model.eval()
+        self.add_identifier = ""
+        self.train_dataset_name = dataset.name
+        self.model_name = "PixelCNN"
 
     def get_H_config(self, dataset, will_train=True):
         print("Preparing training D1+D2 (H)")

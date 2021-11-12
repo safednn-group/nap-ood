@@ -180,6 +180,9 @@ class DeepEnsemble(ProbabilityThreshold):
         config.autoencoder_target = False
         config.visualize = False
         config.logger = Logger()
+        self.train_dataset_name = dataset.name
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
         return config
 
     def propose_H(self, dataset):

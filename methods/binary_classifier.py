@@ -112,7 +112,9 @@ class BinaryClassifier(ProbabilityThreshold):
             for key, value in iter(model_train_config.items()):  # model_train_config.iteritems():
                 print('Overriding config.%s' % key)
                 config.__setattr__(key, value)
-
+        self.train_dataset_name = train_ds.name
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
         return config
 
     def propose_H(self, dataset):

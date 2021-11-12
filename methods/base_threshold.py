@@ -194,7 +194,9 @@ class ProbabilityThreshold(AbstractMethodInterface):
                                                                 factor=0.1, verbose=True)
         config.logger = Logger()
         config.max_epoch = 100
-
+        self.train_dataset_name = train_ds.name
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
         return config
 
     def train_H(self, dataset):
@@ -277,11 +279,15 @@ class ProbabilityThreshold(AbstractMethodInterface):
         return test_average_acc
 
     def test_H(self, dataset):
+
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True, num_workers=self.args.workers,
                              pin_memory=True)
+
         correct = 0.0
         total_count = 0
         self.H_class.eval()
+        self._generate_execution_times(dataset)
+        return 0
         with tqdm(total=len(dataset)) as pbar:
             for i, (image, label) in enumerate(dataset):
                 pbar.update()
@@ -312,3 +318,21 @@ class ProbabilityThreshold(AbstractMethodInterface):
         test_average_acc = correct / total_count
         print("Final Test average accuracy %s" % (colored('%.4f%%' % (test_average_acc * 100), 'red')))
         return test_average_acc.item()
+
+    def _generate_execution_times(self, loader):
+        import time
+        import numpy as np
+        n_times = 1000
+        exec_times = np.ones(n_times)
+
+        trainiter = iter(loader)
+        x = trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device)
+        with torch.no_grad():
+            for i in range(n_times):
+                start_time = time.time()
+                prediction = self.H_class(x)
+                _ = self.H_class.classify(prediction)
+                exec_times[i] = time.time() - start_time
+
+        exec_times = exec_times.mean()
+        np.savez("results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)

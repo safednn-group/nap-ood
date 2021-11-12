@@ -181,19 +181,25 @@ class AEKNNSVM(ScoreSVM):
         # self.base_data = torch.cat([x.view(1, -1) for x,_ in dataset])
         self.base_model = AEKNNModel(base_model, self.base_data, k=self.default_model).to(self.args.device)
         self.base_model.eval()
+        self.train_dataset_name = dataset.name
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
 
 """
     Actual implementation in AEKNNSVM.
 """
 class BCEKNNSVM(AEKNNSVM):
     def method_identifier(self):
-        output = "BCEKNNSVM/%d"%self.default_model
+        # output = "BCEKNNSVM/%d"%self.default_model
+        output = "BCEKNNSVM"
         return output
 class MSEKNNSVM(AEKNNSVM):
     def method_identifier(self):
-        output = "MSEKNNSVM/%d"%self.default_model
+        # output = "MSEKNNSVM/%d"%self.default_model
+        output = "MSEKNNSVM"
         return output
 class VAEKNNSVM(AEKNNSVM):
     def method_identifier(self):
-        output = "VAEKNNSVM/%d"%self.default_model
+        # output = "VAEKNNSVM/%d"%self.default_model
+        output = "VAEKNNSVM"
         return output
