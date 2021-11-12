@@ -242,9 +242,10 @@ class FullNetMonitor(BaseMonitor):
 
     def cut_duplicates(self):
         for i in self.known_patterns_tensor:
-            for j in range(len(self.layers_shapes)):
-                self.known_patterns_tensor[i][j] = self.known_patterns_tensor[i][j][:len(self.known_patterns_set[i][j]),
-                                                   :]
+            for j in self.known_patterns_tensor[i]:
+                if self.known_patterns_tensor[i][j].numel():
+                    self.known_patterns_tensor[i][j] = self.known_patterns_tensor[i][j][:len(self.known_patterns_set[i][j]),
+                                                       :]
 
     def trim_class_zero(self, length):
         for i in range(len(self.layers_shapes)):

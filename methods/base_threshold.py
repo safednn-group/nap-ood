@@ -289,6 +289,7 @@ class ProbabilityThreshold(AbstractMethodInterface):
                 # Get and prepare data.
                 input, target = image.to(self.args.device), label.to(self.args.device)
 
+
                 prediction = self.H_class(input)
                 classification = self.H_class.classify(prediction)
 

@@ -34,6 +34,15 @@ layers_shapes = {
     'TinyImagenet': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
 }
 
+layers_shapes_resnet = {
+    'MNIST': [2048, 2048, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 256, 256],
+    'FashionMNIST': [2048, 2048, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 256, 256],
+    'CIFAR10': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
+    'CIFAR100': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
+    'STL10': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
+    'TinyImagenet': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
+}
+
 
 def trim_method_str(method_str: str):
     method_list = method_str.split("/")
@@ -518,7 +527,7 @@ def choose_layers(frames, thresholds, rownum, type=0, votes=1):
 
 
 def linearize(frames, thresholds, dt):
-    shapes = np.array(layers_shapes[dt])
+    shapes = np.array(layers_shapes_resnet[dt])
     shape_factors = shapes / shapes.min()
     max_factor = shape_factors.max()
     thresholds_ = thresholds.copy()
@@ -536,8 +545,8 @@ def full_net_plot():
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', 'CIFAR100', "TinyImagenet"]
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
-    types = [ 2]
-    n_votes = [5 ]
+    types = [2]
+    n_votes = [3, 5, 7, 9 ]
     centiles = []
 
     for type in types:
@@ -547,13 +556,13 @@ def full_net_plot():
             for d1 in d1_tasks:
                 for d2 in d2_tasks:
                     if d2 in d2_compatiblity[d1]:
-                        df_thresholds = pd.read_csv("results/article_plots/full_nets/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                        df_thresholds = pd.read_csv("results/article_plots/full_nets/cut_tail/Resnet_" + d1 + '_' + d2 + 'th-acc.csv',
                                                     index_col=0)
 
                         for d3 in d2_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
-                                files = glob.glob(os.path.join("results/article_plots/full_nets", file_pattern))
+                                file_pattern = "Resnet_" + d1 + '_' + d2 + '_' + d3 + "_*"
+                                files = glob.glob(os.path.join("results/article_plots/full_nets/cut_tail", file_pattern))
                                 frames = dict()
                                 rows = 0
                                 file_counter = 0
@@ -583,12 +592,12 @@ def full_net_plot():
                 for d2 in d2_tasks:
                     if d2 in d2_compatiblity[d1]:
                         df_thresholds = pd.read_csv(
-                            "results/article_plots/full_nets/cut_tail/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                            "results/article_plots/full_nets/cut_tail/Resnet_" + d1 + '_' + d2 + 'th-acc.csv',
                             index_col=0)
 
                         for d3 in d2_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
+                                file_pattern = "Resnet_" + d1 + '_' + d2 + '_' + d3 + "_*"
                                 files = glob.glob(os.path.join("results/article_plots/full_nets/cut_tail", file_pattern))
                                 frames = dict()
                                 rows = 0
@@ -613,7 +622,7 @@ def full_net_plot():
                                     #     chosen_ids[chosen_id] += 1
 
                                 acc = correct_count / rows
-                                print("VGG_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
+                                # print("VGG_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
                                 agg_acc += acc
                                 counter += 1
                 print(f"{d1} - type {type}, votes {votes} Aggregated accuracy: {agg_acc / counter}")
@@ -667,5 +676,5 @@ if __name__ == "__main__":
     # generate_latex('matplotlib_ex-dpir', r'1\textwidth', dpi=100)
     # generate_latex_heatmaps('matplotlib_ex-heatmaps', r'1\textwidth', dpi=100)
     # fix_vgg_results()
-    # full_net_plot()
-    execution_times_plot()
+    full_net_plot()
+    # execution_times_plot()
