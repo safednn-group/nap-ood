@@ -158,7 +158,7 @@ class AEKNNSVM(ScoreSVM):
         print(colored('Loading H1 model from %s'%best_h_path, 'red'))
         base_model.load_state_dict(torch.load(best_h_path))
         base_model.eval()
-
+        self.train_dataset_name = dataset.name
         if dataset.name in Global.mirror_augment:
             print(colored("Mirror augmenting %s"%dataset.name, 'green'))
             new_train_ds = dataset + MirroredDataset(dataset)
@@ -184,7 +184,6 @@ class AEKNNSVM(ScoreSVM):
         # self.base_data = torch.cat([x.view(1, -1) for x,_ in dataset])
         self.base_model = AEKNNModel(base_model, self.base_data, k=self.default_model).to(self.args.device)
         self.base_model.eval()
-        self.train_dataset_name = dataset.name
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
         self.add_identifier = ""
 

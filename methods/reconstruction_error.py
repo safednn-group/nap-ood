@@ -140,7 +140,7 @@ class ReconstructionThreshold(ProbabilityThreshold):
 
         # 80%, 20% for local train+test
         train_ds, valid_ds = dataset.split_dataset(0.8)
-
+        self.train_dataset_name = dataset.name
         if self.args.D1 in Global.mirror_augment:
             print(colored("Mirror augmenting %s"%self.args.D1, 'green'))
             new_train_ds = train_ds + MirroredDataset(train_ds)
@@ -202,7 +202,7 @@ class ReconstructionThreshold(ProbabilityThreshold):
         config.scheduler = optim.lr_scheduler.ReduceLROnPlateau(config.optim, patience=10, threshold=1e-1, min_lr=1e-8, factor=0.1, verbose=True)
         config.logger = Logger()
         config.max_epoch = 100
-        self.train_dataset_name = train_ds.name
+
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
         self.add_identifier = ""
         return config

@@ -83,12 +83,13 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                          pin_memory=True)
         self.valid_dataset_name = dataset.datasets[1].name
         self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
-        # self._generate_execution_times()
-        # return 0
+        self._generate_execution_times()
+        return 0
         # return self._find_only_threshold()
         return self._find_thresolds_for_every_layer()
 
     def test_H(self, dataset):
+        return 0
         self.test_dataset_name = dataset.datasets[1].name
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
@@ -267,8 +268,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
     def method_identifier(self):
         output = "NeuronActivationPatterns"
-        if len(self.add_identifier) > 0:
-            output = output + "/" + self.add_identifier
+        # if len(self.add_identifier) > 0:
+        #     output = output + "/" + self.add_identifier
         return output
 
     def get_H_config(self, dataset, mirror):

@@ -234,7 +234,7 @@ class OpenMax(ProbabilityThreshold):
     def get_H_config(self, dataset, will_train=True):
         print("Preparing training D1+D2 (H)")
         print("Mixture size: %s"%colored('%d'%len(dataset), 'green'))
-
+        self.train_dataset_name = dataset.name
         # 80%, 20% for local train+test
         train_ds, valid_ds = dataset.split_dataset(0.8)
 
@@ -298,7 +298,6 @@ class OpenMax(ProbabilityThreshold):
         config.scheduler = optim.lr_scheduler.ReduceLROnPlateau(config.optim, patience=10, threshold=1e-1, min_lr=1e-8, factor=0.1, verbose=True)
         config.logger = Logger()
         config.max_epoch = 100
-        self.train_dataset_name = train_ds.name
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
         self.add_identifier = ""
         return config
