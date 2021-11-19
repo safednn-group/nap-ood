@@ -280,14 +280,14 @@ class ProbabilityThreshold(AbstractMethodInterface):
 
     def test_H(self, dataset):
 
-        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True, num_workers=self.args.workers,
+        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.workers,
                              pin_memory=True)
 
         correct = 0.0
         total_count = 0
         self.H_class.eval()
-        self._generate_execution_times(dataset)
-        return 0
+        # self._generate_execution_times(dataset)
+        # return 0
         with tqdm(total=len(dataset)) as pbar:
             for i, (image, label) in enumerate(dataset):
                 pbar.update()

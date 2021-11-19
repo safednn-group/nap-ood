@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import torch
 import tqdm
+from scipy import stats
 from termcolor import colored
 from torch.utils.data.dataloader import DataLoader
 
@@ -83,13 +84,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                          pin_memory=True)
         self.valid_dataset_name = dataset.datasets[1].name
         self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
-        self._generate_execution_times()
-        return 0
+        # self._generate_execution_times()
+        # return 0
         # return self._find_only_threshold()
         return self._find_thresolds_for_every_layer()
 
     def test_H(self, dataset):
-        return 0
         self.test_dataset_name = dataset.datasets[1].name
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
@@ -98,8 +98,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         total_count = 0
         # print(f"quantiles {self.nap_params}")
         # print(f"threshold {self.threshold}")
-        concat_distances = np.array([])
-        concat_classification = np.array([])
+        # concat_distances = np.array([])
+        # concat_classification = np.array([])
         with tqdm.tqdm(total=len(dataset)) as pbar:
             with torch.no_grad():
                 for i, (image, label) in enumerate(dataset):
@@ -110,161 +110,47 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
                     outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
                     _, predicted = torch.max(outputs.data, 1)
-                    # zeros = np.zeros(intermediate_values.shape[0])
-                    # distance = self.monitor.compute_hamming_distance(intermediate_values,
-                    #                                                  zeros, omit=self.omit)
                     distance = self.monitor.compute_hamming_distance(intermediate_values,
                                                                      predicted.cpu().detach().numpy(), omit=self.omit)
-                    classification = np.where(distance <= self.threshold, 0, 1)
-                    compared = classification == label.unsqueeze(1).numpy()
-                    if concat_distances.size:
-                        concat_distances = np.concatenate((concat_distances, distance))
-                        concat_classification = np.concatenate((concat_classification, compared))
-                    else:
-                        concat_distances = distance
-                        concat_classification = compared
-
-                    correct += compared.sum(axis=0)
+                    # print(distance.shape)
+                    # print(self.threshold.shape)
+                    # print(self.threshold[self.chosen_layers])
+                    # print(self.threshold[self.chosen_layers].shape)
+                    # print(np.where(distance[:, self.chosen_layers] <= self.threshold[self.chosen_layers], 0, 1).shape)
+                    classification = stats.mode(np.where(distance[:, self.chosen_layers] <= self.threshold[self.chosen_layers], 0, 1), axis=1)[0]
+                    # print(classification)
+                    # print(classification.shape)
+                    # compared = classification == label.unsqueeze(1).numpy()
+                    #
+                    # if concat_distances.size:
+                    #     concat_distances = np.concatenate((concat_distances, distance))
+                    #     concat_classification = np.concatenate((concat_classification, compared))
+                    # else:
+                    #     concat_distances = distance
+                    #     concat_classification = compared
+                    #
+                    # correct += compared.sum(axis=0)
+                    classification = classification.squeeze(1)
+                    # print(classification)
+                    # print(label)
+                    correct += (classification == label.numpy()).sum()
 
                     total_count += len(input)
                     # message = 'Accuracy %.4f' % (correct / total_count)
-                    message = 'Accuracy: ' + str(correct / total_count)[0]
+                    message = 'Accuracy: ' + str(correct / total_count)
                     pbar.set_description(message)
 
         test_average_acc = correct / total_count
         print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
-        pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv(
-            "results/article_plots/full_nets/cut_tail/scoring/" + self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "th-acc.csv")
-        for i in range(len(self.accuracies)):
-            fname = self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
-                i) + ".csv"
-            path = os.path.join("results/article_plots/full_nets/cut_tail/scoring", fname)
-            pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(path)
+        # pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv(
+        #     "results/article_plots/full_nets/cut_tail/scoring/" + self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "th-acc.csv")
+        # for i in range(len(self.accuracies)):
+        #     fname = self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
+        #         i) + ".csv"
+        #     path = os.path.join("results/article_plots/full_nets/cut_tail/scoring", fname)
+        #     pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(path)
 
-        return test_average_acc[0].item()
-        # data = []
-        # self.omit = False
-        # with torch.no_grad():
-        #     for pool_type in ["avg"]:
-        #         for layer in range(7, 48, 8):
-        #             for pool in range(1, 3):
-        #                 for q in np.linspace(0.1, 0.9, num=4):
-        #                     nap_params = {
-        #                         str(layer): {
-        #                             "pool_type": pool_type,
-        #                             "pool_size": pool,
-        #                             "quantile": q
-        #                         }
-        #                     }
-        #                     self._get_layers_shapes(nap_params)
-        #                     self.monitor = Monitor(self.class_count, self.nap_device,
-        #                                            layers_shapes=self.monitored_layers_shapes)
-        #                     self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
-        #                     df_known = self._process_dataset(self.known_loader, nap_params=nap_params)
-        #                     df_unknown = self._process_dataset(self.unknown_loader,
-        #                                                        nap_params=nap_params)
-        #                     threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
-        #
-        #                     loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-        #                                         num_workers=self.args.workers, pin_memory=True)
-        #
-        #                     correct = 0.0
-        #                     total_count = 0
-        #                     print(f"quantiles {nap_params}")
-        #                     print(f"threshold {threshold}")
-        #
-        #                     with tqdm.tqdm(total=len(loader)) as pbar:
-        #
-        #                         for i, (image, label) in enumerate(loader):
-        #                             pbar.update()
-        #
-        #                             # Get and prepare data.
-        #                             input, target = image.to(self.args.device), label.to(self.args.device)
-        #
-        #                             outputs, intermediate_values, _ = self.base_model.forward_nap(input,
-        #                                                                                           nap_params=nap_params)
-        #                             _, predicted = torch.max(outputs.data, 1)
-        #                             distance = self.monitor.compute_hamming_distance(intermediate_values,
-        #                                                                              predicted.cpu().detach().numpy(),
-        #                                                                              omit=self.omit)
-        #
-        #                             classification = np.where(distance <= threshold, 0, 1)
-        #
-        #                             correct += (classification == label.numpy()).sum()
-        #
-        #                             total_count += len(input)
-        #                             message = 'Accuracy %.4f' % (correct / total_count)
-        #                             pbar.set_description(message)
-        #                         test_average_acc = correct / total_count
-        #                         print("Final Test average accuracy %s" % (
-        #                             colored('%.4f%%' % (test_average_acc * 100), 'red')))
-        #                         data.append((self.model_name, dataset.datasets[0].name, self.valid_dataset_name,
-        #                                      dataset.datasets[1].name,
-        #                                      layer, pool, pool_type, q, threshold, acc, test_average_acc))
-        # for pool_type in ["avg"]:
-        #     for layer in [13, 14]:
-        #         for q in np.linspace(0.1, 0.9, num=4):
-        #             nap_params = {
-        #                 str(layer): {
-        #                     "pool_type": pool_type,
-        #                     "pool_size": 0,
-        #                     "quantile": q
-        #                 }
-        #             }
-        #             self._get_layers_shapes(nap_params)
-        #             self.monitor = Monitor(self.class_count, self.nap_device,
-        #                                    layers_shapes=self.monitored_layers_shapes)
-        #             self._add_class_patterns_to_monitor(self.train_loader, nap_params=nap_params)
-        #             df_known = self._process_dataset(self.known_loader, nap_params=nap_params)
-        #             df_unknown = self._process_dataset(self.unknown_loader,
-        #                                                nap_params=nap_params)
-        #             threshold, acc = self._find_threshold(df_known, df_unknown, integers=True)
-        #
-        #             loader = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-        #                                 num_workers=self.args.workers, pin_memory=True)
-        #
-        #             correct = 0.0
-        #             total_count = 0
-        #             print(f"quantiles {nap_params}")
-        #             print(f"threshold {threshold}")
-        #
-        #             with tqdm.tqdm(total=len(loader)) as pbar:
-        #
-        #                 for i, (image, label) in enumerate(loader):
-        #                     pbar.update()
-        #
-        #                     # Get and prepare data.
-        #                     input, target = image.to(self.args.device), label.to(self.args.device)
-        #
-        #                     outputs, intermediate_values, _ = self.base_model.forward_nap(input,
-        #                                                                                   nap_params=nap_params)
-        #                     _, predicted = torch.max(outputs.data, 1)
-        #                     distance = self.monitor.compute_hamming_distance(intermediate_values,
-        #                                                                      predicted.cpu().detach().numpy(),
-        #                                                                      omit=self.omit)
-        #
-        #                     classification = np.where(distance <= threshold, 0, 1)
-        #
-        #                     correct += (classification == label.numpy()).sum()
-        #
-        #                     total_count += len(input)
-        #                     message = 'Accuracy %.4f' % (correct / total_count)
-        #                     pbar.set_description(message)
-        #
-        #                 test_average_acc = correct / total_count
-        #                 print("Final Test average accuracy %s" % (
-        #                     colored('%.4f%%' % (test_average_acc * 100), 'red')))
-        #                 data.append((self.model_name, dataset.datasets[0].name, self.valid_dataset_name,
-        #                              dataset.datasets[1].name, layer,
-        #                              0, pool_type, q, threshold, acc, test_average_acc))
-        # df = pd.DataFrame(data,
-        #                   columns=['model', 'ds', 'dv', 'dt', 'layer', 'pool', 'pool_type', 'quantile', 'threshold',
-        #                            'valid_acc', 'test_acc'])
-        # fname = self.model_name + dataset.datasets[0].name + self.valid_dataset_name + dataset.datasets[
-        #     1].name + "otherlayers.csv"
-        # fpath = os.path.join("results/article_plots", fname)
-        # df.to_csv(fpath)
-        # return test_average_acc.item()
+        return test_average_acc
 
     def method_identifier(self):
         output = "NeuronActivationPatterns"
@@ -354,10 +240,19 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self.accuracies = np.take_along_axis(accuracies, max_acc_ids, axis=1).squeeze()
             for k in self.nap_params:
                 self.nap_params[k]["quantile"] = linspace[max_acc_ids[self.threshold.shape[0] - int(k) - 1, :]]
-                print(f" k: {k}, maxaccid {max_acc_ids[self.threshold.shape[0] - int(k) - 1, :]} linspace {linspace[max_acc_ids[self.threshold.shape[0] - int(k) - 1, :]]}")
-            print(thresholds)
-            print(accuracies)
-            print(scores)
+            self.votes = int(len(self.monitored_layers_shapes) / 3 + 1)
+            if self.votes % 2 == 0:
+                self.votes += 1
+            while (self.accuracies > 0.5).sum() < self.votes:
+                self.votes -= 2
+            self.chosen_layers = self.accuracies.argsort()[::-1][:self.votes]
+            print(self.votes)
+            print(self.chosen_layers)
+            print(self.chosen_layers.shape)
+            #     print(f" k: {k}, maxaccid {max_acc_ids[self.threshold.shape[0] - int(k) - 1, :]} linspace {linspace[max_acc_ids[self.threshold.shape[0] - int(k) - 1, :]]}")
+            # print(thresholds)
+            # print(accuracies)
+            # print(scores)
             print(f"threshold: {self.threshold}, accuracy: {self.accuracies}")
             self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                           layers_shapes=self.monitored_layers_shapes)

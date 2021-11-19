@@ -50,7 +50,7 @@ class ScoreSVM(ProbabilityThreshold):
 
         # 80%, 20% for local train+test
         train_ds, valid_ds = dataset.split_dataset(0.8)
-        self.train_dataset_name = dataset.name
+        self.train_dataset_name = self.args.D1
         if self.args.D1 in Global.mirror_augment:
             print(colored("Mirror augmenting %s"%self.args.D1, 'green'))
             new_train_ds = train_ds + MirroredDataset(train_ds)

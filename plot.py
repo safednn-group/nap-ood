@@ -527,7 +527,7 @@ def choose_layers(frames, thresholds, rownum, type=0, votes=1):
 
 
 def linearize(frames, thresholds, dt):
-    shapes = np.array(layers_shapes[dt])
+    shapes = np.array(layers_shapes_resnet[dt])
     shape_factors = shapes / shapes.min()
     max_factor = shape_factors.max()
     thresholds_ = thresholds.copy()
@@ -545,8 +545,12 @@ def full_net_plot():
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', "TinyImagenet", "CIFAR100"]
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
+    d1_tasks = ['STL10']
+    # d2_tasks = ['MNIST']
+    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
+                'TinyImagenet']
     types = [2]
-    n_votes = [1, 3, 5, 7, 9]
+    n_votes = [1]
     centiles = []
 
     for type in types:
@@ -557,12 +561,12 @@ def full_net_plot():
                 for d2 in d2_tasks:
                     if d2 in d2_compatiblity[d1]:
                         df_thresholds = pd.read_csv(
-                            "results/article_plots/full_nets/cut_tail/scoring/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                            "results/article_plots/full_nets/cut_tail/scoring/Resnet_" + d1 + '_' + d2 + 'th-acc.csv',
                             index_col=0)
 
                         for d3 in d2_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
+                                file_pattern = "Resnet_" + d1 + '_' + d2 + '_' + d3 + "_*"
                                 files = glob.glob(
                                     os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
                                 frames = dict()
@@ -591,15 +595,18 @@ def full_net_plot():
             agg_acc = 0
             counter = 0
             for d1 in d1_tasks:
+                votes = int(len(layers_shapes_resnet[d1]) / 3 + 1)
+                if votes % 2 == 0:
+                    votes += 1
                 for d2 in d2_tasks:
                     if d2 in d2_compatiblity[d1]:
                         df_thresholds = pd.read_csv(
-                            "results/article_plots/full_nets/cut_tail/scoring/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
+                            "results/article_plots/full_nets/cut_tail/scoring/Resnet_" + d1 + '_' + d2 + 'th-acc.csv',
                             index_col=0)
 
-                        for d3 in d2_tasks:
+                        for d3 in d3_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
+                                file_pattern = "Resnet_" + d1 + '_' + d2 + '_' + d3 + "_*"
                                 files = glob.glob(
                                     os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
                                 frames = dict()
@@ -625,7 +632,7 @@ def full_net_plot():
                                     #     chosen_ids[chosen_id] += 1
 
                                 acc = correct_count / rows
-                                # print("VGG_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
+                                print("VGG_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
                                 agg_acc += acc
                                 counter += 1
                 print(f"{d1} - type {type}, votes {votes} Aggregated accuracy: {agg_acc / counter}")
@@ -661,29 +668,36 @@ def execution_times_plot():
 
 
 def compare_exec_times_all_methods():
-    d1_tasks = ['MNIST']
-    data = []
+    d1_tasks = ['TinyImagenet']
+
     for d1 in d1_tasks:
+        data = []
         file_pattern = "*" + d1 + '*.npz'
         files = glob.glob(os.path.join("results/article_plots/execution_times", file_pattern))
         for file in files:
+            if d1 == "CIFAR10":
+                if file.split('/')[-1].split("_")[2][7] == '0':
+                    print(file)
+                    continue
             method = file.split("/")[-1].split("_")[0]
             model = file.split("/")[-1].split("_")[1]
             exec_time = np.load(file)["exec_times"]
             data.append((method, model, d1, exec_time.item()))
-    df = pd.DataFrame(data, columns=["method", "model", "dataset", "exec_time"])
-    print(df)
-    # _ = sns.catplot(x="method", y="exec_time", kind="box", data=df)
-    # plt.show()
-    grouped = df.groupby(["method", "model"])[
-        "exec_time"].mean()
-    figure, axes = plt.subplots()
-    x = np.arange(len(grouped.index))
-    v = axes.bar(x, grouped.values)
-    show_values_on_bars(axes)
-    plt.xticks(x, grouped.index, rotation=90)
-    plt.tight_layout()
-    plt.show()
+        df = pd.DataFrame(data, columns=["method", "model", "dataset", "exec_time"])
+        print(df)
+        # _ = sns.catplot(x="method", y="exec_time", kind="box", data=df)
+        # plt.show()
+        grouped = df.groupby(["method", "model"])[
+            "exec_time"].mean().sort_values(ascending=True)
+        figure, axes = plt.subplots()
+        x = np.arange(len(grouped.index))
+        v = axes.bar(x, grouped.values)
+        show_values_on_bars(axes)
+        plt.xticks(x, grouped.index, rotation=90)
+        plt.tight_layout()
+        plt.title(d1)
+        # plt.show()
+        plt.savefig("results/article_plots/execution_times/plots/" + d1)
 
 
 if __name__ == "__main__":

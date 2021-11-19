@@ -56,6 +56,7 @@ class VGG(nn.Module):
 
     def forward_nap(self, x, nap_params=None):
         self.classifier.eval()
+        self.features.eval()
         layer_counter = 0
         prev = torch.Tensor([])
         shapes = []
