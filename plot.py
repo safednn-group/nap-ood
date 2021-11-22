@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 import math
+
+import torch
 from pylatex import Document, Section, Figure, NoEscape, Subsection, NewPage, SubFigure, PageStyle
 from PIL import Image
 
@@ -545,7 +547,7 @@ def full_net_plot():
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', "TinyImagenet", "CIFAR100"]
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
-    d1_tasks = ['STL10']
+    # d1_tasks = ['STL10']
     # d2_tasks = ['MNIST']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
@@ -632,7 +634,7 @@ def full_net_plot():
                                     #     chosen_ids[chosen_id] += 1
 
                                 acc = correct_count / rows
-                                print("VGG_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
+                                print("Resnet_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
                                 agg_acc += acc
                                 counter += 1
                 print(f"{d1} - type {type}, votes {votes} Aggregated accuracy: {agg_acc / counter}")
@@ -716,3 +718,5 @@ if __name__ == "__main__":
     full_net_plot()
     # execution_times_plot()
     # compare_exec_times_all_methods()
+    # results = torch.load("results_confirm.pth")
+    # print(results)

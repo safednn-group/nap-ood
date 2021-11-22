@@ -208,7 +208,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self.accuracies = acc
             return acc
 
-    def _find_thresolds_for_every_layer(self, n_steps=5):
+    def _find_thresolds_for_every_layer(self, n_steps=2):
         with torch.no_grad():
             last_layer_fraction = self.nap_params.pop("last_layer_fraction", None)
             self._get_layers_shapes(self.nap_params)
@@ -219,44 +219,62 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 neurons_to_monitor = self._choose_neurons_to_monitor(
                     int(self.monitored_layers_shapes[0] * last_layer_fraction))
                 self.monitor.set_neurons_to_monitor(neurons_to_monitor)
-            thresholds = np.zeros((len(self.monitored_layers_shapes), n_steps))
+            thresholds = np.zeros((2, len(self.monitored_layers_shapes), n_steps))
             accuracies = np.zeros(thresholds.shape)
             scores = np.zeros(accuracies.shape)
             linspace = np.linspace(0.1, 0.9, num=n_steps)
-            for i, q in enumerate(linspace):
-                for k in self.nap_params:
-                    self.nap_params[k]["quantile"] = q
-                self.monitor = FullNetMonitor(self.class_count, self.nap_device,
-                                              layers_shapes=self.monitored_layers_shapes)
-                self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
-                df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
-                df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params)
-                thresholds[:, i], accuracies[:, i] = self._find_threshold(df_known, df_unknown, integers=True, cut_tail=True)
+            for pool_type_id, pool_type in enumerate(["max", "avg"]):
+                for i, q in enumerate(linspace):
+                    for k in self.nap_params:
+                        self.nap_params[k]["quantile"] = q
+                        self.nap_params[k]["pool_type"] = pool_type
+                    self.monitor = FullNetMonitor(self.class_count, self.nap_device,
+                                                  layers_shapes=self.monitored_layers_shapes)
+                    self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+                    df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
+                    df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params)
+                    thresholds[pool_type_id, :, i], accuracies[pool_type_id, :, i] = self._find_threshold(df_known, df_unknown, integers=True, cut_tail=True)
+
             quantile_factors = np.sqrt(1. / np.abs(linspace - np.rint(linspace)))
-            max_threshold = np.max((thresholds + quantile_factors) * quantile_factors, axis=1)[:, np.newaxis]
+            max_threshold = np.max((thresholds + quantile_factors) * quantile_factors, axis=2)[:, :, np.newaxis]
             scores = (accuracies - 0.5) * (0.1 + np.abs(((thresholds + quantile_factors) * quantile_factors - max_threshold) / max_threshold))
-            max_acc_ids = np.argmax(scores, axis=1)[:, np.newaxis]
-            self.threshold = np.take_along_axis(thresholds, max_acc_ids, axis=1).squeeze()
-            self.accuracies = np.take_along_axis(accuracies, max_acc_ids, axis=1).squeeze()
+            max_acc_ids = np.argmax(scores, axis=2)[:, :, np.newaxis]
+            self.threshold = np.take_along_axis(thresholds, max_acc_ids, axis=2).squeeze()
+            self.accuracies = np.take_along_axis(accuracies, max_acc_ids, axis=2).squeeze()
+            new_th = np.zeros(len(self.monitored_layers_shapes))
+            new_acc = np.zeros(len(self.monitored_layers_shapes))
             for k in self.nap_params:
-                self.nap_params[k]["quantile"] = linspace[max_acc_ids[self.threshold.shape[0] - int(k) - 1, :]]
+                # print(f"k: {k} a0: {self.accuracies[0, len(self.monitored_layers_shapes) - int(k) - 1] } a1: {self.accuracies[1, len(self.monitored_layers_shapes) - int(k) - 1]} ")
+
+                if self.accuracies[0, len(self.monitored_layers_shapes) - int(k) - 1] >= self.accuracies[1, len(self.monitored_layers_shapes) - int(k) - 1]:
+                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[0, len(self.monitored_layers_shapes) - int(k) - 1, :]]
+                    self.nap_params[k]["pool_type"] = "max"
+                    new_th[len(self.monitored_layers_shapes) - int(k) - 1] = self.threshold[0, len(self.monitored_layers_shapes) - int(k) - 1]
+                    new_acc[len(self.monitored_layers_shapes) - int(k) - 1] = self.accuracies[0, len(self.monitored_layers_shapes) - int(k) - 1]
+                else:
+                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[1, len(self.monitored_layers_shapes) - int(k) - 1, :]]
+                    self.nap_params[k]["pool_type"] = "avg"
+                    new_th[len(self.monitored_layers_shapes) - int(k) - 1] = self.threshold[1, len(self.monitored_layers_shapes) - int(k) - 1]
+                    new_acc[len(self.monitored_layers_shapes) - int(k) - 1] = self.accuracies[1, len(self.monitored_layers_shapes) - int(k) - 1]
+                # print(f" param: {self.nap_params[k] } new_th: {new_th} new_acc: {new_acc}")
+            self.accuracies = new_acc
+            self.threshold = new_th
             self.votes = int(len(self.monitored_layers_shapes) / 3 + 1)
             if self.votes % 2 == 0:
                 self.votes += 1
             while (self.accuracies > 0.5).sum() < self.votes:
                 self.votes -= 2
             self.chosen_layers = self.accuracies.argsort()[::-1][:self.votes]
-            print(self.votes)
             print(self.chosen_layers)
-            print(self.chosen_layers.shape)
             #     print(f" k: {k}, maxaccid {max_acc_ids[self.threshold.shape[0] - int(k) - 1, :]} linspace {linspace[max_acc_ids[self.threshold.shape[0] - int(k) - 1, :]]}")
             # print(thresholds)
             # print(accuracies)
             # print(scores)
-            print(f"threshold: {self.threshold}, accuracy: {self.accuracies}")
+            print(f"threshold: {self.threshold}, accuracy: {self.accuracies} nap_params: {self.nap_params}")
             self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                           layers_shapes=self.monitored_layers_shapes)
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+
             return self.accuracies
 
     def _find_best_layer_to_monitor(self):

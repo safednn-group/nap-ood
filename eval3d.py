@@ -81,8 +81,10 @@ if args.exp == 'test-eval':
 """
 if args.exp == 'simple-eval':
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-
-    d2_tasks = ['MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+    # d1_tasks = ['STL10']
+    # d2_tasks = ['NormalNoise']
+    # d3_tasks = ['UniformNoise']
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
@@ -253,5 +255,6 @@ if __name__ == '__main__':
                     torch.save(results, results_path)
 
     for i, (m, ds, dm, dt, mi, a_train, a_test) in enumerate(results):
-        print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%% %s' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100, mi))
+        # print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%% %s' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100, mi))
+        print(f" i: {i} m: {m} ds: {ds} dm: {dm} dt: {dt} mi: {mi} a_train: {a_train} a_test: {a_test}")
     save_results_as_csv(results)
