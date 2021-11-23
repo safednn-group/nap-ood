@@ -139,7 +139,7 @@ class FullNetMonitor(BaseMonitor):
                 self.known_patterns_tensor[i][j] = torch.Tensor()
 
     def compute_hamming_distance(self, neuron_values, class_id, omit=False, ignore_minor_values=True,
-                                 monitored_class=None):
+                                 monitored_class=None, reverse=False):
 
         monitored_class = monitored_class if monitored_class else class_id
         mat_torch = torch.zeros(neuron_values.shape, device=neuron_values.device)
@@ -172,7 +172,10 @@ class FullNetMonitor(BaseMonitor):
                     distance.append(full_net_distances)
         else:
             if ignore_minor_values:
-                for i in range(neuron_on_off_pattern.shape[0]):
+                r = range(neuron_on_off_pattern.shape[0])
+                if reverse:
+                    r = reversed(r)
+                for i in r:
                     full_net_distances = []
                     offset = 0
                     for shape_id, shape in enumerate(self.layers_shapes):

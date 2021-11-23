@@ -91,6 +91,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
     def test_H(self, dataset):
         self.test_dataset_name = dataset.datasets[1].name
+        dataset_shuffle = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
+                             num_workers=self.args.workers, pin_memory=True)
+        dataset2 = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+                             num_workers=self.args.workers, pin_memory=True)
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
 
@@ -142,13 +146,105 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
         test_average_acc = correct / total_count
         print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
+
+
+
+        # correct = 0.0
+        # total_count = 0
+        # # print(f"quantiles {self.nap_params}")
+        # # print(f"threshold {self.threshold}")
+        # concat_distances = np.array([])
+        # concat_classification = np.array([])
+        # with tqdm.tqdm(total=len(dataset_shuffle)) as pbar:
+        #     with torch.no_grad():
+        #         for i, (image, label) in enumerate(dataset_shuffle):
+        #             pbar.update()
+        #
+        #             # Get and prepare data.
+        #             input, target = image.to(self.args.device), label.to(self.args.device)
+        #
+        #             outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
+        #             _, predicted = torch.max(outputs.data, 1)
+        #             # zeros = np.zeros(intermediate_values.shape[0])
+        #             # distance = self.monitor.compute_hamming_distance(intermediate_values,
+        #             #                                                  zeros, omit=self.omit)
+        #             distance = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                              predicted.cpu().detach().numpy(), omit=self.omit)
+        #             classification = np.where(distance <= self.threshold, 0, 1)
+        #             compared = classification == label.unsqueeze(1).numpy()
+        #             if concat_distances.size:
+        #                 concat_distances = np.concatenate((concat_distances, distance))
+        #                 concat_classification = np.concatenate((concat_classification, compared))
+        #             else:
+        #                 concat_distances = distance
+        #                 concat_classification = compared
+        #
+        #             correct += compared.sum(axis=0)
+        #
+        #             total_count += len(input)
+        #             # message = 'Accuracy %.4f' % (correct / total_count)
+        #             message = 'Accuracy: ' + str(correct / total_count)[0]
+        #             pbar.set_description(message)
+        #
+        # test_average_acc = correct / total_count
+        # print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
+        #
         # pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv(
-        #     "results/article_plots/full_nets/cut_tail/scoring/" + self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "th-acc.csv")
+        #      self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "th-acc.csv")
         # for i in range(len(self.accuracies)):
         #     fname = self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
         #         i) + ".csv"
-        #     path = os.path.join("results/article_plots/full_nets/cut_tail/scoring", fname)
-        #     pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(path)
+        #
+        #     pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(fname)
+        #
+        #
+        # correct = 0.0
+        # total_count = 0
+        # # print(f"quantiles {self.nap_params}")
+        # # print(f"threshold {self.threshold}")
+        # concat_distances = np.array([])
+        # concat_classification = np.array([])
+        # with tqdm.tqdm(total=len(dataset2)) as pbar:
+        #     with torch.no_grad():
+        #         for i, (image, label) in enumerate(dataset2):
+        #             pbar.update()
+        #
+        #             # Get and prepare data.
+        #             input, target = image.to(self.args.device), label.to(self.args.device)
+        #
+        #             outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
+        #             _, predicted = torch.max(outputs.data, 1)
+        #             # zeros = np.zeros(intermediate_values.shape[0])
+        #             # distance = self.monitor.compute_hamming_distance(intermediate_values,
+        #             #                                                  zeros, omit=self.omit)
+        #             distance = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                              predicted.cpu().detach().numpy(), omit=self.omit, reverse=True)
+        #             classification = np.where(distance <= self.threshold, 0, 1)
+        #             compared = classification == label.unsqueeze(1).numpy()
+        #             if concat_distances.size:
+        #                 concat_distances = np.concatenate((concat_distances, distance))
+        #                 concat_classification = np.concatenate((concat_classification, compared))
+        #             else:
+        #                 concat_distances = distance
+        #                 concat_classification = compared
+        #
+        #             correct += compared.sum(axis=0)
+        #
+        #             total_count += len(input)
+        #             # message = 'Accuracy %.4f' % (correct / total_count)
+        #             message = 'Accuracy: ' + str(correct / total_count)[0]
+        #             pbar.set_description(message)
+        #
+        # test_average_acc = correct / total_count
+        # print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
+        #
+        # pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv(
+        #      self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "reversedth-acc.csv")
+        # for i in range(len(self.accuracies)):
+        #     fname = self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
+        #         i) + "reversed.csv"
+        #
+        #     pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(fname)
 
         return test_average_acc
 
@@ -208,7 +304,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self.accuracies = acc
             return acc
 
-    def _find_thresolds_for_every_layer(self, n_steps=2):
+    def _find_thresolds_for_every_layer(self, n_steps=5):
         with torch.no_grad():
             last_layer_fraction = self.nap_params.pop("last_layer_fraction", None)
             self._get_layers_shapes(self.nap_params)
@@ -244,18 +340,26 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             new_th = np.zeros(len(self.monitored_layers_shapes))
             new_acc = np.zeros(len(self.monitored_layers_shapes))
             for k in self.nap_params:
+                layer_id = len(self.monitored_layers_shapes) - int(k) - 1
                 # print(f"k: {k} a0: {self.accuracies[0, len(self.monitored_layers_shapes) - int(k) - 1] } a1: {self.accuracies[1, len(self.monitored_layers_shapes) - int(k) - 1]} ")
-
-                if self.accuracies[0, len(self.monitored_layers_shapes) - int(k) - 1] >= self.accuracies[1, len(self.monitored_layers_shapes) - int(k) - 1]:
-                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[0, len(self.monitored_layers_shapes) - int(k) - 1, :]]
+                max_threshold_pools = np.min(max_threshold[:, layer_id, :])
+                # print(max_threshold_pools)
+                # print(self.accuracies)
+                # print(self.accuracies[:, layer_id])
+                scores = (self.accuracies[:, layer_id] - 0.5) * (0.1 + np.abs(
+                    ((self.threshold[:, layer_id] + quantile_factors[max_acc_ids[:, layer_id, :]]) * quantile_factors[max_acc_ids[:, layer_id, :]] - max_threshold_pools) / max_threshold_pools))
+                # print(scores)
+                # if self.accuracies[0, layer_id] >= self.accuracies[1, layer_id]:
+                if (scores[:, 0] >= scores[:, 1]).all():
+                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[0, layer_id, :]]
                     self.nap_params[k]["pool_type"] = "max"
-                    new_th[len(self.monitored_layers_shapes) - int(k) - 1] = self.threshold[0, len(self.monitored_layers_shapes) - int(k) - 1]
-                    new_acc[len(self.monitored_layers_shapes) - int(k) - 1] = self.accuracies[0, len(self.monitored_layers_shapes) - int(k) - 1]
+                    new_th[layer_id] = self.threshold[0, layer_id]
+                    new_acc[layer_id] = self.accuracies[0, layer_id]
                 else:
-                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[1, len(self.monitored_layers_shapes) - int(k) - 1, :]]
+                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[1, layer_id, :]]
                     self.nap_params[k]["pool_type"] = "avg"
-                    new_th[len(self.monitored_layers_shapes) - int(k) - 1] = self.threshold[1, len(self.monitored_layers_shapes) - int(k) - 1]
-                    new_acc[len(self.monitored_layers_shapes) - int(k) - 1] = self.accuracies[1, len(self.monitored_layers_shapes) - int(k) - 1]
+                    new_th[layer_id] = self.threshold[1, layer_id]
+                    new_acc[layer_id] = self.accuracies[1, layer_id]
                 # print(f" param: {self.nap_params[k] } new_th: {new_th} new_acc: {new_acc}")
             self.accuracies = new_acc
             self.threshold = new_th

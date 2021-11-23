@@ -597,18 +597,18 @@ def full_net_plot():
             agg_acc = 0
             counter = 0
             for d1 in d1_tasks:
-                votes = int(len(layers_shapes_resnet[d1]) / 3 + 1)
+                votes = int(len(layers_shapes[d1]) / 3 + 1)
                 if votes % 2 == 0:
                     votes += 1
                 for d2 in d2_tasks:
                     if d2 in d2_compatiblity[d1]:
                         df_thresholds = pd.read_csv(
-                            "results/article_plots/full_nets/cut_tail/scoring/Resnet_" + d1 + '_' + d2 + 'th-acc.csv',
+                            "results/article_plots/full_nets/cut_tail/scoring/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
                             index_col=0)
 
                         for d3 in d3_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "Resnet_" + d1 + '_' + d2 + '_' + d3 + "_*"
+                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
                                 files = glob.glob(
                                     os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
                                 frames = dict()
@@ -701,6 +701,55 @@ def compare_exec_times_all_methods():
         # plt.show()
         plt.savefig("results/article_plots/execution_times/plots/" + d1)
 
+def auroc():
+    from sklearn.metrics import roc_auc_score
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', "TinyImagenet", "CIFAR100"]
+
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
+                'TinyImagenet']
+    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
+                'TinyImagenet']
+    layer_dict = {
+        "MNIST": 6,
+        "FashionMNIST": 2,
+        "CIFAR10": 4,
+        "CIFAR100": 4,
+        "STL10": 11,
+        "TinyImagenet": 6
+    }
+    scores = 0
+    counter = 0
+    for d1 in d1_tasks:
+        best_layer = layer_dict[d1]
+        frames = []
+        for d2 in d2_tasks:
+            if d2 in d2_compatiblity[d1]:
+                for d3 in d3_tasks:
+                    if d2 != d3 and d3 in d2_compatiblity[d1]:
+                        file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_" + str(best_layer) + ".csv"
+                        files = glob.glob(
+                            os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
+
+                        for file in files:
+                            # print(file)
+                            df = pd.read_csv(file, index_col=0)
+                            rows = len(df.index)
+                            df["label"] = 0
+                            df.loc[int(rows/2):, "label"] = 1
+                            frames.append(df)
+                            # print(f'{df["correct"].sum() / len(df.index)}')
+                            # print(df)
+
+        frame = pd.concat(frames, axis=0, ignore_index=True)
+        # print(frame)
+
+        score = roc_auc_score(frame["label"], frame["distance"])
+        acc = frame["correct"].sum() / len(frame.index)
+        print(f"DT: {d1} auroc: {score}")
+        print(f"DT: {d1} acc: {acc}")
+        counter += 1
+        scores += score
+    print(f"Aggregated auroc: {scores / counter}")
 
 if __name__ == "__main__":
     # draw_boxplots()
@@ -716,6 +765,7 @@ if __name__ == "__main__":
     # generate_latex_heatmaps('matplotlib_ex-heatmaps', r'1\textwidth', dpi=100)
     # fix_vgg_results()
     full_net_plot()
+    # auroc()
     # execution_times_plot()
     # compare_exec_times_all_methods()
     # results = torch.load("results_confirm.pth")

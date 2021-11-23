@@ -88,7 +88,7 @@ if args.exp == 'simple-eval':
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
-    method_tasks = ['nap/0', 'nap/1']
+    method_tasks = ['nap/0']
 ########################################################
 """
     Default Evaluation
