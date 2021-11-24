@@ -101,55 +101,55 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
                              num_workers=self.args.workers, pin_memory=True)
 
-        correct = 0.0
-        total_count = 0
-        # print(f"quantiles {self.nap_params}")
-        # print(f"threshold {self.threshold}")
-        # concat_distances = np.array([])
-        # concat_classification = np.array([])
-        with tqdm.tqdm(total=len(dataset)) as pbar:
-            with torch.no_grad():
-                for i, (image, label) in enumerate(dataset):
-                    pbar.update()
-
-                    # Get and prepare data.
-                    input, target = image.to(self.args.device), label.to(self.args.device)
-
-                    outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
-                    _, predicted = torch.max(outputs.data, 1)
-                    distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                                     predicted.cpu().detach().numpy(), omit=self.omit)
-                    # print(distance.shape)
-                    # print(self.threshold.shape)
-                    # print(self.threshold[self.chosen_layers])
-                    # print(self.threshold[self.chosen_layers].shape)
-                    # print(np.where(distance[:, self.chosen_layers] <= self.threshold[self.chosen_layers], 0, 1).shape)
-                    classification = stats.mode(np.where(distance[:, self.chosen_layers] <= self.threshold[self.chosen_layers], 0, 1), axis=1)[0]
-                    # print(classification)
-                    # print(classification.shape)
-                    # compared = classification == label.unsqueeze(1).numpy()
-                    #
-                    # if concat_distances.size:
-                    #     concat_distances = np.concatenate((concat_distances, distance))
-                    #     concat_classification = np.concatenate((concat_classification, compared))
-                    # else:
-                    #     concat_distances = distance
-                    #     concat_classification = compared
-                    #
-                    # correct += compared.sum(axis=0)
-                    classification = classification.squeeze(1)
-                    # print(classification)
-                    # print(label)
-                    correct += (classification == label.numpy()).sum()
-
-                    total_count += len(input)
-                    # message = 'Accuracy %.4f' % (correct / total_count)
-                    message = 'Accuracy: ' + str(correct / total_count)
-                    pbar.set_description(message)
-
-        test_average_acc = correct / total_count
-        print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
-
+        # correct = 0.0
+        # total_count = 0
+        # # print(f"quantiles {self.nap_params}")
+        # # print(f"threshold {self.threshold}")
+        # # concat_distances = np.array([])
+        # # concat_classification = np.array([])
+        # with tqdm.tqdm(total=len(dataset)) as pbar:
+        #     with torch.no_grad():
+        #         for i, (image, label) in enumerate(dataset):
+        #             pbar.update()
+        #
+        #             # Get and prepare data.
+        #             input, target = image.to(self.args.device), label.to(self.args.device)
+        #
+        #             outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
+        #             _, predicted = torch.max(outputs.data, 1)
+        #             distance = self.monitor.compute_hamming_distance(intermediate_values,
+        #                                                              predicted.cpu().detach().numpy(), omit=self.omit)
+        #             # print(distance.shape)
+        #             # print(self.threshold.shape)
+        #             # print(self.threshold[self.chosen_layers])
+        #             # print(self.threshold[self.chosen_layers].shape)
+        #             # print(np.where(distance[:, self.chosen_layers] <= self.threshold[self.chosen_layers], 0, 1).shape)
+        #             classification = stats.mode(np.where(distance[:, self.chosen_layers] <= self.threshold[self.chosen_layers], 0, 1), axis=1)[0]
+        #             # print(classification)
+        #             # print(classification.shape)
+        #             # compared = classification == label.unsqueeze(1).numpy()
+        #             #
+        #             # if concat_distances.size:
+        #             #     concat_distances = np.concatenate((concat_distances, distance))
+        #             #     concat_classification = np.concatenate((concat_classification, compared))
+        #             # else:
+        #             #     concat_distances = distance
+        #             #     concat_classification = compared
+        #             #
+        #             # correct += compared.sum(axis=0)
+        #             classification = classification.squeeze(1)
+        #             # print(classification)
+        #             # print(label)
+        #             correct += (classification == label.numpy()).sum()
+        #
+        #             total_count += len(input)
+        #             # message = 'Accuracy %.4f' % (correct / total_count)
+        #             message = 'Accuracy: ' + str(correct / total_count)
+        #             pbar.set_description(message)
+        #
+        # test_average_acc = correct / total_count
+        # print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
+        #
 
 
         # correct = 0.0
@@ -201,53 +201,53 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         #     pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(fname)
         #
         #
-        # correct = 0.0
-        # total_count = 0
-        # # print(f"quantiles {self.nap_params}")
-        # # print(f"threshold {self.threshold}")
-        # concat_distances = np.array([])
-        # concat_classification = np.array([])
-        # with tqdm.tqdm(total=len(dataset2)) as pbar:
-        #     with torch.no_grad():
-        #         for i, (image, label) in enumerate(dataset2):
-        #             pbar.update()
-        #
-        #             # Get and prepare data.
-        #             input, target = image.to(self.args.device), label.to(self.args.device)
-        #
-        #             outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
-        #             _, predicted = torch.max(outputs.data, 1)
-        #             # zeros = np.zeros(intermediate_values.shape[0])
-        #             # distance = self.monitor.compute_hamming_distance(intermediate_values,
-        #             #                                                  zeros, omit=self.omit)
-        #             distance = self.monitor.compute_hamming_distance(intermediate_values,
-        #                                                              predicted.cpu().detach().numpy(), omit=self.omit, reverse=True)
-        #             classification = np.where(distance <= self.threshold, 0, 1)
-        #             compared = classification == label.unsqueeze(1).numpy()
-        #             if concat_distances.size:
-        #                 concat_distances = np.concatenate((concat_distances, distance))
-        #                 concat_classification = np.concatenate((concat_classification, compared))
-        #             else:
-        #                 concat_distances = distance
-        #                 concat_classification = compared
-        #
-        #             correct += compared.sum(axis=0)
-        #
-        #             total_count += len(input)
-        #             # message = 'Accuracy %.4f' % (correct / total_count)
-        #             message = 'Accuracy: ' + str(correct / total_count)[0]
-        #             pbar.set_description(message)
-        #
-        # test_average_acc = correct / total_count
-        # print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
-        #
-        # pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv(
-        #      self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "reversedth-acc.csv")
-        # for i in range(len(self.accuracies)):
-        #     fname = self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
-        #         i) + "reversed.csv"
-        #
-        #     pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(fname)
+        correct = 0.0
+        total_count = 0
+        # print(f"quantiles {self.nap_params}")
+        # print(f"threshold {self.threshold}")
+        concat_distances = np.array([])
+        concat_classification = np.array([])
+        with tqdm.tqdm(total=len(dataset)) as pbar:
+            with torch.no_grad():
+                for i, (image, label) in enumerate(dataset):
+                    pbar.update()
+
+                    # Get and prepare data.
+                    input, target = image.to(self.args.device), label.to(self.args.device)
+
+                    outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
+                    _, predicted = torch.max(outputs.data, 1)
+                    # zeros = np.zeros(intermediate_values.shape[0])
+                    # distance = self.monitor.compute_hamming_distance(intermediate_values,
+                    #                                                  zeros, omit=self.omit)
+                    distance = self.monitor.compute_hamming_distance(intermediate_values,
+                                                                     predicted.cpu().detach().numpy(), omit=self.omit, reverse=True)
+                    classification = np.where(distance <= self.threshold, 0, 1)
+                    compared = classification == label.unsqueeze(1).numpy()
+                    if concat_distances.size:
+                        concat_distances = np.concatenate((concat_distances, distance))
+                        concat_classification = np.concatenate((concat_classification, compared))
+                    else:
+                        concat_distances = distance
+                        concat_classification = compared
+
+                    correct += compared.sum(axis=0)
+
+                    total_count += len(input)
+                    # message = 'Accuracy %.4f' % (correct / total_count)
+                    message = 'Accuracy: ' + str(correct / total_count)[0]
+                    pbar.set_description(message)
+
+        test_average_acc = correct / total_count
+        print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
+
+        pd.DataFrame({"threshold": self.threshold, "valid_acc": self.accuracies}).to_csv("results/article_plots/full_nets/fixed/" +
+             self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "chosenth-acc.csv")
+        for i in range(len(self.accuracies)):
+            fname = "results/article_plots/full_nets/fixed/" + self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
+                i) + ".csv"
+
+            pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(fname)
 
         return test_average_acc
 
@@ -380,6 +380,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             # print(accuracies)
             # print(scores)
             print(f"threshold: {self.threshold}, accuracy: {self.accuracies} nap_params: {self.nap_params}")
+
+            np.savez("results/article_plots/full_nets/fixed/" + self.model_name + "_" + self.train_dataset_name + "_" +
+                     self.valid_dataset_name + "allth-acc.csv", thresholds=thresholds, accuracies=accuracies)
             self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                           layers_shapes=self.monitored_layers_shapes)
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)

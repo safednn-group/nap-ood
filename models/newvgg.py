@@ -87,12 +87,12 @@ class VGG(nn.Module):
         for _, layer in self.classifier.named_children():
             x = layer.forward(x)
             if layer_counter in new_nap_params:
-                intermediate = torch.tensor(np.where(
-                    x.cpu().numpy() > np.expand_dims(np.quantile(x.cpu().numpy(),
-                                                                            new_nap_params[layer_counter]["quantile"],
-                                                                            axis=1), 1),
-                    x.cpu(), 0))
-                # intermediate = torch.where(x > torch.quantile(x, new_nap_params[layer_counter]["quantile"], dim=1).unsqueeze(1), x, zero_tensor)
+                # intermediate = torch.tensor(np.where(
+                #     x.cpu().numpy() > np.expand_dims(np.quantile(x.cpu().numpy(),
+                #                                                             new_nap_params[layer_counter]["quantile"],
+                #                                                             axis=1), 1),
+                #     x.cpu(), 0))
+                intermediate = torch.where(x > torch.quantile(x, new_nap_params[layer_counter]["quantile"], dim=1).unsqueeze(1), x, zero_tensor)
                 # intermediate = torch.zeros(x.shape, dtype=x.dtype, device=x.device)
                 # for i in range(x.shape[0]):
                 #     intermediate[i] = torch.tensor(np.where(x[i].cpu().numpy() > np.quantile(x[i].cpu().numpy(), new_nap_params[layer_counter]["quantile"]), x[i].cpu(), 0))
