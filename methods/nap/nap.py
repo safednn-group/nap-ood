@@ -356,12 +356,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 # print(scores)
                 # if self.accuracies[0, layer_id] >= self.accuracies[1, layer_id]:
                 if (scores[:, 0] >= scores[:, 1]).all():
-                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[0, layer_id, :]]
+                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[0, layer_id, :]].item()
                     self.nap_params[k]["pool_type"] = "max"
                     new_th[layer_id] = self.threshold[0, layer_id]
                     new_acc[layer_id] = self.accuracies[0, layer_id]
                 else:
-                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[1, layer_id, :]]
+                    self.nap_params[k]["quantile"] = linspace[max_acc_ids[1, layer_id, :]].item()
                     self.nap_params[k]["pool_type"] = "avg"
                     new_th[layer_id] = self.threshold[1, layer_id]
                     new_acc[layer_id] = self.accuracies[1, layer_id]
