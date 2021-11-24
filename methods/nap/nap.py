@@ -79,9 +79,16 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.known_loader = DataLoader(dataset.datasets[0], batch_size=self.args.batch_size, shuffle=True,
                                        num_workers=self.args.workers,
                                        pin_memory=True)
-        self.unknown_loader = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
+        self.unknown_loader = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=False,
                                          num_workers=self.args.workers,
                                          pin_memory=True)
+
+        self.unknown_loader_ = DataLoader(dataset.datasets[1], batch_size=1, shuffle=False,
+                                         num_workers=self.args.workers,
+                                         pin_memory=True)
+
+
+
         self.valid_dataset_name = dataset.datasets[1].name
         self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
         # self._generate_execution_times()
@@ -91,11 +98,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
     def test_H(self, dataset):
         self.test_dataset_name = dataset.datasets[1].name
-        dataset_shuffle = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
-                             num_workers=self.args.workers, pin_memory=True)
-        dataset2 = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-                             num_workers=self.args.workers, pin_memory=True)
-        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
                              num_workers=self.args.workers, pin_memory=True)
 
         correct = 0.0
@@ -346,6 +349,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 # print(max_threshold_pools)
                 # print(self.accuracies)
                 # print(self.accuracies[:, layer_id])
+                # print(self.threshold[:, layer_id])
+                # print(quantile_factors[max_acc_ids[:, layer_id, :]])
                 scores = (self.accuracies[:, layer_id] - 0.5) * (0.1 + np.abs(
                     ((self.threshold[:, layer_id] + quantile_factors[max_acc_ids[:, layer_id, :]]) * quantile_factors[max_acc_ids[:, layer_id, :]] - max_threshold_pools) / max_threshold_pools))
                 # print(scores)

@@ -69,8 +69,9 @@ class VGG(nn.Module):
             x = layer.forward(x)
             if layer_counter in new_nap_params:
                 intermediate = torch.flatten(self.pools[new_nap_params[layer_counter]["pool_type"]][new_nap_params[layer_counter]["pool_size"]](x), 1)
-                intermediate = torch.tensor(np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(), new_nap_params[layer_counter]["quantile"]), intermediate.cpu(), 0))
-                # intermediate = torch.where(intermediate > torch.quantile(intermediate, new_nap_params[layer_counter]["quantile"]), intermediate, zero_tensor)
+                for i in range(intermediate.shape[0]):
+                    intermediate[i] = torch.tensor(np.where(intermediate[i].cpu().numpy() > np.quantile(intermediate[i].cpu().numpy(), new_nap_params[layer_counter]["quantile"]), intermediate[i].cpu(), 0))
+                    # intermediate[i] = torch.where(intermediate[i] > torch.quantile(intermediate[i], new_nap_params[layer_counter]["quantile"]), intermediate[i], zero_tensor)
                 shapes.append(intermediate.shape[-1])
                 if prev.numel():
                     intermediate = torch.cat((intermediate, prev), dim=1)
@@ -81,8 +82,10 @@ class VGG(nn.Module):
         for _, layer in self.classifier.named_children():
             x = layer.forward(x)
             if layer_counter in new_nap_params:
-                intermediate = torch.tensor(np.where(x.cpu().numpy() > np.quantile(x.cpu().numpy(), new_nap_params[layer_counter]["quantile"]), x.cpu(), 0))
-                # intermediate = torch.where(x > torch.quantile(x, new_nap_params[layer_counter]["quantile"]), x, zero_tensor)
+                intermediate = torch.zeros(x.shape, dtype=x.dtype, device=x.device)
+                for i in range(x.shape[0]):
+                    intermediate[i] = torch.tensor(np.where(x[i].cpu().numpy() > np.quantile(x[i].cpu().numpy(), new_nap_params[layer_counter]["quantile"]), x[i].cpu(), 0))
+                    # intermediate[i] = torch.where(x[i] > torch.quantile(x[i], new_nap_params[layer_counter]["quantile"]), x[i], zero_tensor)
                 shapes.append(intermediate.shape[-1])
                 if prev.numel():
                     intermediate = torch.cat((intermediate, prev), dim=1)

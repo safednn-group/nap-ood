@@ -302,11 +302,12 @@ class ResNet(nn.Module):
                 intermediate = torch.flatten(
                     self.pools[nap_params[layer_counter_str]["pool_type"]][nap_params[layer_counter_str]["pool_size"]](
                         x), 1)
-                intermediate = torch.tensor(np.where(
-                    intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(),
-                                                             nap_params[layer_counter_str]["quantile"]),
-                    intermediate.cpu(), 0))
-                # intermediate = torch.where(intermediate > torch.quantile(intermediate, nap_params[layer_counter_str]["quantile"]), intermediate, zero_tensor)
+                for i in range(intermediate.shape[0]):
+                    intermediate[i] = torch.tensor(np.where(
+                        intermediate[i].cpu().numpy() > np.quantile(intermediate[i].cpu().numpy(),
+                                                                 nap_params[layer_counter_str]["quantile"]),
+                        intermediate[i].cpu(), 0))
+                    # intermediate[i] = torch.where(intermediate[i] > torch.quantile(intermediate[i], nap_params[layer_counter_str]["quantile"]), intermediate[i], zero_tensor)
                 shapes.append(intermediate.shape[-1])
                 if prev.numel():
                     intermediate = torch.cat((intermediate, prev), dim=1)

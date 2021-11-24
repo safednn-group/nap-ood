@@ -547,10 +547,11 @@ def full_net_plot():
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', "TinyImagenet", "CIFAR100"]
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
-    # d1_tasks = ['STL10']
-    # d2_tasks = ['MNIST']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
+    d1_tasks = ['STL10']
+    d2_tasks = ['NormalNoise']
+    d3_tasks = ['UniformNoise']
     types = [2]
     n_votes = [1]
     centiles = []
@@ -563,12 +564,12 @@ def full_net_plot():
                 for d2 in d2_tasks:
                     if d2 in d2_compatiblity[d1]:
                         df_thresholds = pd.read_csv(
-                            "results/article_plots/full_nets/cut_tail/scoring/Resnet_" + d1 + '_' + d2 + 'th-acc.csv',
+                            "results/article_plots/full_nets/cut_tail/scoring/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
                             index_col=0)
 
                         for d3 in d2_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "Resnet_" + d1 + '_' + d2 + '_' + d3 + "_*"
+                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
                                 files = glob.glob(
                                     os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
                                 frames = dict()
