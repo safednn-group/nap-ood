@@ -99,7 +99,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
     def test_H(self, dataset):
         self.test_dataset_name = dataset.datasets[1].name
-        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
+        dataset2 = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
+                             num_workers=self.args.workers, pin_memory=True)
+        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
 
         # correct = 0.0
@@ -254,9 +256,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         # print(f"threshold {self.threshold}")
         concat_distances = np.array([])
         concat_classification = np.array([])
-        with tqdm.tqdm(total=len(dataset)) as pbar:
+        with tqdm.tqdm(total=len(dataset2)) as pbar:
             with torch.no_grad():
-                for i, (image, label) in enumerate(dataset):
+                for i, (image, label) in enumerate(dataset2):
                     pbar.update()
 
                     # Get and prepare data.
@@ -266,7 +268,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     _, predicted = torch.max(outputs.data, 1)
                     distance = self.monitor_avg.compute_hamming_distance(intermediate_values,
                                                                      predicted.cpu().detach().numpy(), omit=self.omit, reverse=True)
-                    classification = np.where(distance <= self.threshold, 0, 1)
+                    classification = np.where(distance <= self.threshold_avg, 0, 1)
                     compared = classification == label.unsqueeze(1).numpy()
                     if concat_distances.size:
                         concat_distances = np.concatenate((concat_distances, distance))
@@ -458,7 +460,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             print(f"threshold: {self.threshold}, accuracy: {self.accuracies} nap_params: {self.nap_params}")
 
             np.savez("results/article_plots/full_nets/fixed/" + self.model_name + "_" + self.train_dataset_name + "_" +
-                     self.valid_dataset_name + "allth-acc.csv", thresholds=thresholds, accuracies=accuracies)
+                     self.valid_dataset_name, thresholds=thresholds, accuracies=accuracies)
             self.monitor_max = FullNetMonitor(self.class_count, self.nap_device,
                                           layers_shapes=self.monitored_layers_shapes)
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params_max, monitor=self.monitor_max)
