@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 import math
-
+from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 import torch
 from pylatex import Document, Section, Figure, NoEscape, Subsection, NewPage, SubFigure, PageStyle
 from PIL import Image
@@ -28,21 +28,23 @@ d2_compatiblity = {
 }
 
 layers_shapes = {
-    'MNIST': [256, 256, 512, 512, 256, 256, 128, 128, 64],
-    'FashionMNIST': [256, 256, 512, 512, 256, 256, 128, 128, 64],
-    'CIFAR10': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
-    'CIFAR100': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
-    'STL10': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
-    'TinyImagenet': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
-}
+    "VGG": {
+        'MNIST': [256, 256, 512, 512, 256, 256, 128, 128, 64],
+        'FashionMNIST': [256, 256, 512, 512, 256, 256, 128, 128, 64],
+        'CIFAR10': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
+        'CIFAR100': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
+        'STL10': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
+        'TinyImagenet': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
+    },
+    "Resnet":{
+        'MNIST': [2048, 2048, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 256, 256],
+        'FashionMNIST': [2048, 2048, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 256, 256],
+        'CIFAR10': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
+        'CIFAR100': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
+        'STL10': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
+        'TinyImagenet': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
+    }
 
-layers_shapes_resnet = {
-    'MNIST': [2048, 2048, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 256, 256],
-    'FashionMNIST': [2048, 2048, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 256, 256],
-    'CIFAR10': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
-    'CIFAR100': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
-    'STL10': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
-    'TinyImagenet': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
 }
 
 
@@ -528,8 +530,8 @@ def choose_layers(frames, thresholds, rownum, type=0, votes=1):
     return layernums[ids]
 
 
-def linearize(frames, thresholds, dt):
-    shapes = np.array(layers_shapes_resnet[dt])
+def linearize(frames, thresholds, dt, model):
+    shapes = np.array(layers_shapes[model][dt])
     shape_factors = shapes / shapes.min()
     max_factor = shape_factors.max()
     thresholds_ = thresholds.copy()
@@ -549,96 +551,97 @@ def full_net_plot():
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
-    d1_tasks = ['STL10']
-    d2_tasks = ['NormalNoise']
-    d3_tasks = ['UniformNoise']
+    d1_tasks = ['MNIST', 'STL10', 'FashionMNIST', 'CIFAR100' ]
+    # d2_tasks = ['NormalNoise']
+    # d3_tasks = ['UniformNoise']
     types = [2]
     n_votes = [1]
     centiles = []
 
-    for type in types:
-        for centile in centiles:
-            agg_acc = 0
-            counter = 0
-            for d1 in d1_tasks:
-                for d2 in d2_tasks:
-                    if d2 in d2_compatiblity[d1]:
-                        df_thresholds = pd.read_csv(
-                            "results/article_plots/full_nets/cut_tail/scoring/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
-                            index_col=0)
+    for model_name in ["VGG", "Resnet"]:
+        for type in types:
+            for centile in centiles:
+                agg_acc = 0
+                counter = 0
+                for d1 in d1_tasks:
+                    for d2 in d2_tasks:
+                        if d2 in d2_compatiblity[d1]:
+                            df_thresholds = pd.read_csv(
+                                "results/article_plots/full_nets/cut_tail/scoring/" + model_name + '_' + d1 + '_' + d2 + 'th-acc.csv',
+                                index_col=0)
 
-                        for d3 in d2_tasks:
-                            if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
-                                files = glob.glob(
-                                    os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
-                                frames = dict()
-                                rows = 0
-                                file_counter = 0
-                                for file in files:
-                                    df = pd.read_csv(file, index_col=0)
-                                    rows = len(df.index)
-                                    layernum = file.split("_")[-1].split(".")[0]
-                                    if df_thresholds["threshold"][int(layernum)] != -1:
-                                        frames[layernum] = df
-                                    # print(f"n: {file_counter}, {file}")
-                                    file_counter += 1
-                                correct_count = 0
-                                thresholds_lin = linearize(frames, df_thresholds, d1)
-                                for i in range(rows):
-                                    chosen_id = choose_layer(frames, thresholds_lin, i, type=type, centile=centile)
-                                    correct_count += frames[chosen_id]["correct"][i]
-                                acc = correct_count / rows
-                                agg_acc += acc
-                                counter += 1
-                print(f"{d1} - type {type}, centile {centile} Aggregated accuracy: {agg_acc / counter}")
+                            for d3 in d2_tasks:
+                                if d2 != d3 and d3 in d2_compatiblity[d1]:
+                                    file_pattern = model_name + '_' + d1 + '_' + d2 + '_' + d3 + "_*"
+                                    files = glob.glob(
+                                        os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
+                                    frames = dict()
+                                    rows = 0
+                                    file_counter = 0
+                                    for file in files:
+                                        df = pd.read_csv(file, index_col=0)
+                                        rows = len(df.index)
+                                        layernum = file.split("_")[-1].split(".")[0]
+                                        if df_thresholds["threshold"][int(layernum)] != -1:
+                                            frames[layernum] = df
+                                        # print(f"n: {file_counter}, {file}")
+                                        file_counter += 1
+                                    correct_count = 0
+                                    thresholds_lin = linearize(frames, df_thresholds, d1, model_name)
+                                    for i in range(rows):
+                                        chosen_id = choose_layer(frames, thresholds_lin, i, type=type, centile=centile)
+                                        correct_count += frames[chosen_id]["correct"][i]
+                                    acc = correct_count / rows
+                                    agg_acc += acc
+                                    counter += 1
+                    print(f"{d1} - type {type}, centile {centile} Aggregated accuracy: {agg_acc / counter}")
 
-    for type in types:
-        for votes in n_votes:
-            agg_acc = 0
-            counter = 0
-            for d1 in d1_tasks:
-                votes = int(len(layers_shapes[d1]) / 3 + 1)
-                if votes % 2 == 0:
-                    votes += 1
-                for d2 in d2_tasks:
-                    if d2 in d2_compatiblity[d1]:
-                        df_thresholds = pd.read_csv(
-                            "results/article_plots/full_nets/cut_tail/scoring/VGG_" + d1 + '_' + d2 + 'th-acc.csv',
-                            index_col=0)
+        for type in types:
+            for votes in n_votes:
+                agg_acc = 0
+                counter = 0
+                for d1 in d1_tasks:
+                    votes = int(len(layers_shapes[model_name][d1]) / 3 + 1)
+                    if votes % 2 == 0:
+                        votes += 1
+                    for d2 in d2_tasks:
+                        if d2 in d2_compatiblity[d1]:
+                            df_thresholds = pd.read_csv(
+                                "results/article_plots/full_nets/cut_tail/scoring/" + model_name + '_' + d1 + '_' + d2 + 'th-acc.csv',
+                                index_col=0)
 
-                        for d3 in d3_tasks:
-                            if d2 != d3 and d3 in d2_compatiblity[d1]:
-                                file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_*"
-                                files = glob.glob(
-                                    os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
-                                frames = dict()
-                                rows = 0
-                                for file in files:
-                                    df = pd.read_csv(file, index_col=0)
-                                    rows = len(df.index)
-                                    layernum = file.split("_")[-1].split(".")[0]
-                                    if df_thresholds["threshold"][int(layernum)] != -1:
-                                        frames[layernum] = df
-                                correct_count = 0
-                                thresholds_lin = linearize(frames, df_thresholds, d1)
-                                # chosen_ids = dict()
-                                for i in range(rows):
-                                    chosen_ids = choose_layers(frames, thresholds_lin, i, type=type, votes=votes)
-                                    correct_votes = 0
-                                    for chosen in chosen_ids:
-                                        correct_votes += frames[chosen]["correct"][i]
-                                    correct_count += (correct_votes > (len(chosen_ids) / 2))
-                                    # if chosen_ids.get(chosen_id) is None:
-                                    #     chosen_ids[chosen_id] = 0
-                                    # else:
-                                    #     chosen_ids[chosen_id] += 1
+                            for d3 in d3_tasks:
+                                if d2 != d3 and d3 in d2_compatiblity[d1]:
+                                    file_pattern = model_name + '_' + d1 + '_' + d2 + '_' + d3 + "_*"
+                                    files = glob.glob(
+                                        os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
+                                    frames = dict()
+                                    rows = 0
+                                    for file in files:
+                                        df = pd.read_csv(file, index_col=0)
+                                        rows = len(df.index)
+                                        layernum = file.split("_")[-1].split(".")[0]
+                                        if df_thresholds["threshold"][int(layernum)] != -1:
+                                            frames[layernum] = df
+                                    correct_count = 0
+                                    thresholds_lin = linearize(frames, df_thresholds, d1, model_name)
+                                    # chosen_ids = dict()
+                                    for i in range(rows):
+                                        chosen_ids = choose_layers(frames, thresholds_lin, i, type=type, votes=votes)
+                                        correct_votes = 0
+                                        for chosen in chosen_ids:
+                                            correct_votes += frames[chosen]["correct"][i]
+                                        correct_count += (correct_votes > (len(chosen_ids) / 2))
+                                        # if chosen_ids.get(chosen_id) is None:
+                                        #     chosen_ids[chosen_id] = 0
+                                        # else:
+                                        #     chosen_ids[chosen_id] += 1
 
-                                acc = correct_count / rows
-                                print("Resnet_" + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
-                                agg_acc += acc
-                                counter += 1
-                print(f"{d1} - type {type}, votes {votes} Aggregated accuracy: {agg_acc / counter}")
+                                    acc = correct_count / rows
+                                    # print(model_name + '_' + d1 + '_' + d2 + '_' + d3 + " acc: " + str(acc))
+                                    agg_acc += acc
+                                    counter += 1
+                    print(f"{model_name}  {d1} - type {type}, votes {votes} Aggregated accuracy: {agg_acc / counter}")
 
 
 def execution_times_plot():
@@ -702,9 +705,10 @@ def compare_exec_times_all_methods():
         # plt.show()
         plt.savefig("results/article_plots/execution_times/plots/" + d1)
 
+
 def auroc():
-    from sklearn.metrics import roc_auc_score
-    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', "TinyImagenet", "CIFAR100"]
+
+    d1_tasks = ['MNIST', 'FashionMNIST', 'STL10', "CIFAR100"]
 
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
@@ -719,38 +723,267 @@ def auroc():
         "TinyImagenet": 6
     }
     scores = 0
+    auroc_sum = 0
+    aupr_sum = 0
+    acc_sum = 0
     counter = 0
+    model_name = "VGG"
     for d1 in d1_tasks:
         best_layer = layer_dict[d1]
-        frames = []
+
         for d2 in d2_tasks:
             if d2 in d2_compatiblity[d1]:
-                for d3 in d3_tasks:
-                    if d2 != d3 and d3 in d2_compatiblity[d1]:
-                        file_pattern = "VGG_" + d1 + '_' + d2 + '_' + d3 + "_" + str(best_layer) + ".csv"
-                        files = glob.glob(
-                            os.path.join("results/article_plots/full_nets/cut_tail/scoring", file_pattern))
+                best_auroc = 0
+                best_acc = 0
+                best_aupr = 0
+                best_auroc_pool_type = 0
+                best_acc_pool_type = 0
+                best_aupr_pool_type = 0
+                best_acc_layer = 0
+                best_aupr_layer = 0
+                best_auroc_layer = 0
+                for pool_type in ["avg", "max"]:
+                    for layer in range(len(layers_shapes[model_name][d1])):
+                        frames = []
+                        for d3 in d3_tasks:
+                            if d2 != d3 and d3 in d2_compatiblity[d1]:
 
-                        for file in files:
-                            # print(file)
-                            df = pd.read_csv(file, index_col=0)
-                            rows = len(df.index)
-                            df["label"] = 0
-                            df.loc[int(rows/2):, "label"] = 1
-                            frames.append(df)
-                            # print(f'{df["correct"].sum() / len(df.index)}')
-                            # print(df)
+                                file_pattern = model_name + '_' + d1 + '_' + d2 + '_' + d3 + "_" + str(layer) + "_" + pool_type + ".csv"
+                                files = glob.glob(
+                                    os.path.join("results/article_plots/full_nets/fixed", file_pattern))
 
-        frame = pd.concat(frames, axis=0, ignore_index=True)
-        # print(frame)
+                                for file in files:
+                                    # print(file)
+                                    df = pd.read_csv(file, index_col=0)
+                                    rows = len(df.index)
+                                    df["label"] = 0
+                                    df.loc[int(rows / 2):, "label"] = 1
+                                    frames.append(df)
+                                    # print(f'{df["correct"].sum() / len(df.index)}')
+                                    # print(df)
+                        # print(f"{model_name} {d1} vs {d2} layer {layer}")
+                        frame = pd.concat(frames, axis=0, ignore_index=True)
 
-        score = roc_auc_score(frame["label"], frame["distance"])
-        acc = frame["correct"].sum() / len(frame.index)
-        print(f"DT: {d1} auroc: {score}")
-        print(f"DT: {d1} acc: {acc}")
-        counter += 1
-        scores += score
-    print(f"Aggregated auroc: {scores / counter}")
+
+                        score = roc_auc_score(frame["label"], frame["distance"])
+                        acc = frame["correct"].sum() / len(frame.index)
+                        lr_precision, lr_recall, _ = precision_recall_curve(frame["label"], frame["distance"])
+                        lr_auc = auc(lr_recall, lr_precision)
+                        if score > best_auroc:
+                            best_auroc_layer = layer
+                            best_auroc = score
+                            best_auroc_pool_type = pool_type
+                        if acc > best_acc:
+                            best_acc_layer = layer
+                            best_acc = acc
+                            best_acc_pool_type = pool_type
+                        if lr_auc > best_aupr:
+                            best_aupr_layer = layer
+                            best_aupr = lr_auc
+                            best_aupr_pool_type = pool_type
+                        # print(f"DT: {d1} auroc: {score}")
+                        # print(f"DT: {d1} acc: {acc}")
+                auroc_sum += best_auroc
+                aupr_sum += best_aupr
+                acc_sum += best_acc
+                counter += 1
+                print(f"{model_name} {d1} vs {d2} best auroc layer {best_auroc_layer} pt {best_auroc_pool_type} auroc {best_auroc}"
+                      f" best aupr layer {best_aupr_layer} aupr {best_aupr} pt {best_aupr_pool_type} "
+                      f" best acc layer {best_acc_layer} acc {best_acc} pt {best_acc_pool_type}")
+
+        # counter += 1
+        # scores += score
+    print(f"Aggregated auroc: {auroc_sum / counter} aupr: {aupr_sum / counter} acc: {acc_sum / counter}")
+
+
+def choose_layers_and_pool_type(thresholds, accuracies, model, dt, type=0, votes=1, steps=5, thresholds_factor=0.1):
+    linspace = np.linspace(0.1, 0.9, steps)
+    quantile_factors = np.sqrt(1. / np.abs(linspace - np.rint(linspace)))
+    max_threshold = np.max((thresholds + quantile_factors) * quantile_factors, axis=2)[:, :, np.newaxis]
+    scores = (accuracies - 0.5) * (
+            thresholds_factor + np.abs(
+        ((thresholds + quantile_factors) * quantile_factors - max_threshold) / max_threshold))
+    max_acc_ids = np.argmax(scores, axis=2)[:, :, np.newaxis]
+    best_thresholds = np.take_along_axis(thresholds, max_acc_ids, axis=2).squeeze()
+    best_accuracies = np.take_along_axis(accuracies, max_acc_ids, axis=2).squeeze()
+    new_th = np.zeros(thresholds.shape[1])
+    new_acc = np.zeros(thresholds.shape[1])
+    chosen = []
+
+    shapes = np.array(layers_shapes[model][dt])
+    shape_factors = shapes / shapes.min()
+    max_factor = shape_factors.max()
+
+    for layer_id in range(thresholds.shape[1]):
+        max_threshold_pools = np.min(max_threshold[:, layer_id, :])
+        scores = (best_accuracies[:, layer_id] - 0.5) * (0.1 + np.abs(
+            ((best_thresholds[:, layer_id] + quantile_factors[max_acc_ids[:, layer_id, :]]) * quantile_factors[
+                max_acc_ids[:, layer_id, :]] - max_threshold_pools) / max_threshold_pools))
+
+        if type == 0:
+            if (scores[:, 0] >= scores[:, 1]).all():
+                add_factor = quantile_factors[max_acc_ids[0, layer_id, :]] + shape_factors[layer_id]
+                multiplier = quantile_factors[max_acc_ids[0, layer_id, :]] * (max_factor / shape_factors[layer_id])
+                chosen.append((layer_id, "max", add_factor, multiplier))
+                new_th[layer_id] = best_thresholds[0, layer_id]
+                new_acc[layer_id] = best_accuracies[0, layer_id]
+            else:
+                add_factor = quantile_factors[max_acc_ids[1, layer_id, :]] + shape_factors[layer_id]
+                multiplier = quantile_factors[max_acc_ids[1, layer_id, :]] * (max_factor / shape_factors[layer_id])
+                chosen.append((layer_id, "avg", add_factor, multiplier))
+                new_th[layer_id] = best_thresholds[1, layer_id]
+                new_acc[layer_id] = best_accuracies[1, layer_id]
+        elif type == 1:
+            if scores[0, 0] >= scores[1, 1]:
+                add_factor = quantile_factors[max_acc_ids[0, layer_id, :]] + shape_factors[layer_id]
+                multiplier = quantile_factors[max_acc_ids[0, layer_id, :]] * (max_factor / shape_factors[layer_id])
+
+                chosen.append((layer_id, "max", add_factor, multiplier))
+                new_th[layer_id] = best_thresholds[0, layer_id]
+                new_acc[layer_id] = best_accuracies[0, layer_id]
+            else:
+                add_factor = quantile_factors[max_acc_ids[1, layer_id, :]] + shape_factors[layer_id]
+                multiplier = quantile_factors[max_acc_ids[1, layer_id, :]] * (max_factor / shape_factors[layer_id])
+
+                chosen.append((layer_id, "avg", add_factor, multiplier))
+                new_th[layer_id] = best_thresholds[1, layer_id]
+                new_acc[layer_id] = best_accuracies[1, layer_id]
+        elif type == 2:
+            if best_accuracies[0, layer_id] >= best_accuracies[1, layer_id]:
+                add_factor = quantile_factors[max_acc_ids[0, layer_id, :]] + shape_factors[layer_id]
+                multiplier = quantile_factors[max_acc_ids[0, layer_id, :]] * (max_factor / shape_factors[layer_id])
+
+                chosen.append((layer_id, "max", add_factor, multiplier))
+                new_th[layer_id] = best_thresholds[0, layer_id]
+                new_acc[layer_id] = best_accuracies[0, layer_id]
+            else:
+                add_factor = quantile_factors[max_acc_ids[1, layer_id, :]] + shape_factors[layer_id]
+                multiplier = quantile_factors[max_acc_ids[1, layer_id, :]] * (max_factor / shape_factors[layer_id])
+
+                chosen.append((layer_id, "avg", add_factor, multiplier))
+                new_th[layer_id] = best_thresholds[1, layer_id]
+                new_acc[layer_id] = best_accuracies[1, layer_id]
+        elif type == 3:
+            if best_thresholds[0, layer_id] < best_thresholds[1, layer_id]:
+                add_factor = quantile_factors[max_acc_ids[0, layer_id, :]] + shape_factors[layer_id]
+                multiplier = quantile_factors[max_acc_ids[0, layer_id, :]] * (max_factor / shape_factors[layer_id])
+
+                chosen.append((layer_id, "max", add_factor, multiplier))
+                new_th[layer_id] = best_thresholds[0, layer_id]
+                new_acc[layer_id] = best_accuracies[0, layer_id]
+            else:
+                add_factor = quantile_factors[max_acc_ids[1, layer_id, :]] + shape_factors[layer_id]
+                multiplier = quantile_factors[max_acc_ids[1, layer_id, :]] * (max_factor / shape_factors[layer_id])
+
+                chosen.append((layer_id, "avg", add_factor, multiplier))
+                new_th[layer_id] = best_thresholds[1, layer_id]
+                new_acc[layer_id] = best_accuracies[1, layer_id]
+
+    chosen_layers = new_acc.argsort()[::-1][:votes]
+
+    chosen = np.array(chosen, dtype=object)
+    return chosen[chosen_layers]
+
+
+def fixed():
+    d1_tasks = ['MNIST', 'FashionMNIST', 'STL10', 'CIFAR100']
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
+                'TinyImagenet']
+    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
+                'TinyImagenet']
+    types = [0, 1]
+    n_votes = [5, 7, 9]
+    th_factors = [0.1, 0.3, 0.5, 0.7, 0.9]
+    data = []
+    for model_name in ["VGG", "Resnet"]:
+        for type in types:
+            for votes in n_votes:
+                for tf in th_factors:
+                    agg_acc = 0
+                    agg_auroc = 0
+                    agg_aupr = 0
+                    counter = 0
+                    for d1 in d1_tasks:
+                        for d2 in d2_tasks:
+                            if d2 in d2_compatiblity[d1]:
+                                df_thresholds = dict()
+                                df_thresholds["max"] = pd.read_csv(
+                                    "results/article_plots/full_nets/fixed/" + model_name + '_' + d1 + '_' + d2 + 'maxth-acc.csv',
+                                    index_col=0)
+                                df_thresholds["avg"] = pd.read_csv(
+                                    "results/article_plots/full_nets/fixed/" + model_name + '_' + d1 + '_' + d2 + 'avgth-acc.csv',
+                                    index_col=0)
+                                np_file = np.load(
+                                    "results/article_plots/full_nets/fixed/" + model_name + '_' + d1 + '_' + d2 + '.npz')
+                                np_accuracies = np_file["accuracies"]
+                                np_thresholds = np_file["thresholds"]
+                                for d3 in d3_tasks:
+                                    if d2 != d3 and d3 in d2_compatiblity[d1]:
+                                        file_pattern = model_name + '_' + d1 + '_' + d2 + '_' + d3 + "_*"
+                                        files = glob.glob(
+                                            os.path.join("results/article_plots/full_nets/fixed", file_pattern))
+                                        frames = dict()
+                                        frames["max"] = dict()
+                                        frames["avg"] = dict()
+                                        rows = 0
+
+                                        for file in files:
+                                            df = pd.read_csv(file, index_col=0)
+                                            rows = len(df.index)
+                                            df["label"] = 0
+                                            df.loc[int(rows / 2):, "label"] = 1
+                                            layernum = file.split("_")[-2]
+                                            pool_type = file.split("_")[-1].split(".")[0]
+                                            if df_thresholds[pool_type]["threshold"][int(layernum)] != -1:
+                                                frames[pool_type][layernum] = df
+                                        correct_count = 0
+
+                                        chosen_ids = choose_layers_and_pool_type(thresholds=np_thresholds,
+                                                                                 accuracies=np_accuracies, type=type,
+                                                                                 votes=votes, thresholds_factor=tf, model=model_name, dt=d1)
+                                        # for (chosen_layer, chosen_pool_type) in chosen_ids:
+                                        #     print(chosen_layer, chosen_pool_type)
+                                        distances_1 = np.zeros((rows, len(chosen_ids)))
+                                        distances_2 = np.zeros((rows, len(chosen_ids)))
+                                        distances_3 = np.zeros((rows, len(chosen_ids)))
+                                        labels = np.zeros(rows)
+                                        labels[int(rows / 2):] = 1
+                                        for i in range(rows):
+                                            correct_votes = 0
+                                            for vote_id, (chosen_layer, chosen_pool_type, add_factor, multiplier) in enumerate(chosen_ids):
+                                                scaled_th = (df_thresholds[chosen_pool_type]["threshold"][chosen_layer] + add_factor) * multiplier
+                                                distances_1[i, vote_id] = (frames[chosen_pool_type][str(chosen_layer)]["distance"][i] + add_factor) * multiplier
+                                                distances_2[i, vote_id] = (frames[chosen_pool_type][str(chosen_layer)][
+                                                                               "distance"][i] + add_factor) * multiplier - scaled_th
+                                                distances_3[i, vote_id] = (frames[chosen_pool_type][str(chosen_layer)][
+                                                                               "distance"][i] + add_factor) * multiplier / scaled_th
+                                                correct_votes += frames[chosen_pool_type][str(chosen_layer)]["correct"][i]
+                                            correct_count += (correct_votes > (len(chosen_ids) / 2))
+                                        distances_1 = distances_1.sum(axis=1)
+                                        distances_2 = distances_2.sum(axis=1)
+                                        distances_3 = distances_3.sum(axis=1)
+
+                                        acc = correct_count / rows
+                                        auroc_score_1 = roc_auc_score(labels, distances_1)
+                                        auroc_score_2 = roc_auc_score(labels, distances_2)
+                                        auroc_score_3 = roc_auc_score(labels, distances_3)
+                                        lr_precision_1, lr_recall_1, _ = precision_recall_curve(labels, distances_1)
+                                        lr_precision_2, lr_recall_2, _ = precision_recall_curve(labels, distances_2)
+                                        lr_precision_3, lr_recall_3, _ = precision_recall_curve(labels, distances_3)
+                                        aupr_1 = auc(lr_recall_1, lr_precision_1)
+                                        aupr_2 = auc(lr_recall_2, lr_precision_2)
+                                        aupr_3 = auc(lr_recall_3, lr_precision_3)
+                                        agg_acc += acc
+                                        agg_auroc += auroc_score_1
+                                        agg_aupr += aupr_1
+                                        data.append((model_name, d1, d2, d3, type, votes, tf, auroc_score_1, aupr_1, acc, auroc_score_2, aupr_2, auroc_score_3, aupr_3))
+                                        counter += 1
+
+                        # print(f"{model_name}  {d1} - type {type}, votes {votes}, thfactor {tf} Aggregated accuracy: {agg_acc / counter}")
+                        print(
+                            f"{model_name}  {d1} - type {type}, votes {votes}, thfactor {tf} Aggregated auroc: {agg_auroc / counter}"
+                            f"Aggregated aupr: {agg_aupr / counter} acc: {agg_acc / counter}")
+    pd.DataFrame(data, columns=["model", "d1", "d2", "d3", "type", "votes", "tf", "auroc1", "aupr1", "acc", "auroc2", "aupr2", "auroc3", "aupr3"]).to_csv("aurocexp.csv")
 
 if __name__ == "__main__":
     # draw_boxplots()
@@ -765,7 +998,8 @@ if __name__ == "__main__":
     # generate_latex('matplotlib_ex-dpir', r'1\textwidth', dpi=100)
     # generate_latex_heatmaps('matplotlib_ex-heatmaps', r'1\textwidth', dpi=100)
     # fix_vgg_results()
-    full_net_plot()
+    # full_net_plot()
+    fixed()
     # auroc()
     # execution_times_plot()
     # compare_exec_times_all_methods()
