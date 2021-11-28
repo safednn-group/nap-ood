@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 from torch.utils.data import DataLoader
 from utils.iterative_trainer import IterativeTrainerConfig, IterativeTrainer
 from utils.logger import Logger
@@ -278,9 +278,9 @@ class ProbabilityThreshold(AbstractMethodInterface):
         self.H_class.set_eval_direct(False)
         return test_average_acc
 
-    def test_H(self, dataset):
+    def test_H(self, dataset_):
 
-        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.workers,
+        dataset = DataLoader(dataset_, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.workers,
                              pin_memory=True)
 
         correct = 0.0
@@ -288,6 +288,8 @@ class ProbabilityThreshold(AbstractMethodInterface):
         self.H_class.eval()
         # self._generate_execution_times(dataset)
         # return 0
+        all_probs = torch.Tensor([])
+        labels = torch.Tensor([])
         with tqdm(total=len(dataset)) as pbar:
             for i, (image, label) in enumerate(dataset):
                 pbar.update()
@@ -297,7 +299,16 @@ class ProbabilityThreshold(AbstractMethodInterface):
 
 
                 prediction = self.H_class(input)
+                if all_probs.numel():
+                    labels = torch.cat((labels, label))
+                    all_probs = torch.cat((all_probs, prediction.squeeze(1)))
+                else:
+                    labels = label
+                    all_probs = prediction.squeeze(1)
+
+
                 classification = self.H_class.classify(prediction)
+
 
                 correct += (classification.detach().view(-1) == target.detach().view(-1).long()).float().view(-1).sum()
                 total_count += len(input)
@@ -316,7 +327,13 @@ class ProbabilityThreshold(AbstractMethodInterface):
                 #     visdom.images(s2.cpu().numpy(), win='out_images')                                    
 
         test_average_acc = correct / total_count
+        labels = labels.cpu()
+        all_probs = all_probs.cpu()
+        auroc = roc_auc_score(labels, all_probs)
+        p, r, _ = precision_recall_curve(labels, all_probs)
+        aupr = auc(r, p)
         print("Final Test average accuracy %s" % (colored('%.4f%%' % (test_average_acc * 100), 'red')))
+        print(f"Auroc: {auroc} aupr: {aupr}")
         return test_average_acc.item()
 
     def _generate_execution_times(self, loader):

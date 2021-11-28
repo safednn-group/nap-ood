@@ -44,15 +44,15 @@ if args.exp == 'master':
 if args.exp == 'test-eval':
     # d1_tasks = ['TinyImagenet', 'STL10', 'CIFAR100']
     #
-    # d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-    #             'TinyImagenet']
-    # d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-    #             'TinyImagenet']
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
+    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    d2_tasks = ['UniformNoise']
-    d3_tasks = ['NormalNoise']
+    # d2_tasks = ['UniformNoise']
+    # d3_tasks = ['NormalNoise']
     method_tasks = [
-        'pixelcnn/0',
+        # 'pixelcnn/0',
         'mcdropout/0',
         'prob_threshold/0', 'prob_threshold/1',
         'score_svm/0', 'score_svm/1',
@@ -66,8 +66,8 @@ if args.exp == 'test-eval':
         'bceaeknn/1', 'vaeaeknn/1', 'mseaeknn/1',
         'bceaeknn/2', 'vaeaeknn/2', 'mseaeknn/2',
         'bceaeknn/4', 'vaeaeknn/4', 'mseaeknn/4',
-        'bceaeknn/8', 'vaeaeknn/8', 'mseaeknn/8',
-        'nap/0', 'nap/1'
+        'bceaeknn/8', 'vaeaeknn/8', 'mseaeknn/8'
+        # 'nap/0', 'nap/1'
     ]
     # method_tasks = [
     #     'prob_threshold/0', 'prob_threshold/1', 'mcdropout/0', 'mcdropout/2',
@@ -80,15 +80,16 @@ if args.exp == 'test-eval':
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    # d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
-    # d1_tasks = ['STL10']
-    # d2_tasks = ['NormalNoise']
-    # d3_tasks = ['UniformNoise']
-    method_tasks = ['nap/0', 'nap/1']
+    d1_tasks = ['MNIST']
+    d2_tasks = ['NormalNoise']
+    d3_tasks = ['UniformNoise']
+    method_tasks = ['reconst_thresh/0', 'reconst_thresh/1',
+        'knn/1', 'knn/2', 'nap/0', 'nap/1']
 ########################################################
 """
     Default Evaluation
@@ -246,15 +247,15 @@ if __name__ == '__main__':
                     test_mixture = d1_test + d2_test
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
                     start_time = time.time()
-                    test_acc = BT.test_H(test_mixture)
+                    test_acc, auroc, aupr = BT.test_H(test_mixture)
                     # test_acc = BT.test_H(d2_test)
                     print("--- %s seconds ---" % (time.time() - start_time))
-                    results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc))
+                    results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc, auroc, aupr))
 
                     # Take a snapshot after each experiment.
                     torch.save(results, results_path)
 
-    for i, (m, ds, dm, dt, mi, a_train, a_test) in enumerate(results):
+    for i, (m, ds, dm, dt, mi, a_train, a_test, auroc, aupr) in enumerate(results):
         # print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%% %s' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100, mi))
-        print(f" i: {i} m: {m} ds: {ds} dm: {dm} dt: {dt} mi: {mi} a_train: {a_train} a_test: {a_test}")
-    save_results_as_csv(results)
+        print(f" i: {i} m: {m} ds: {ds} dm: {dm} dt: {dt} mi: {mi} a_train: {a_train} a_test: {a_test} auroc {auroc} aupr {aupr}")
+    save_results_as_csv(results, "all_other_metrics.csv")

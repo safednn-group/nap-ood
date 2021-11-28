@@ -62,7 +62,7 @@ def trim_method_str(method_str: str):
 
 
 def save_results_as_csv(results, filename="results.csv"):
-    df = pd.DataFrame(results, columns=["m", "ds", "dv", "dt", "method", "a", "acc"])
+    df = pd.DataFrame(results, columns=["m", "ds", "dv", "dt", "method", "a", "acc", "auroc", "aupr"])
     df = df.drop(["m", "a"], axis=1)
     df.method = df.method.apply(lambda x: trim_method_str(x))
     df = df[df.method != 'MCDropout-7/MNIST_Simple']
