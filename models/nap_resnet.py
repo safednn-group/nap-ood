@@ -263,6 +263,8 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def _forward_impl(self, x, nap_params=None):
+        print(x.shape)
+        exit(0)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -302,11 +304,11 @@ class ResNet(nn.Module):
                 intermediate = torch.flatten(
                     self.pools[nap_params[layer_counter_str]["pool_type"]][nap_params[layer_counter_str]["pool_size"]](
                         x), 1)
-                # intermediate = torch.tensor(np.where(
-                #     intermediate.cpu().numpy() > np.expand_dims(np.quantile(intermediate.cpu().numpy(),
-                #                                                 nap_params[layer_counter_str]["quantile"], axis=1), 1),
-                #     intermediate.cpu(), 0))
-                intermediate = torch.where(intermediate > torch.quantile(intermediate, nap_params[layer_counter_str]["quantile"], dim=1).unsqueeze(1), intermediate, zero_tensor)
+                intermediate = torch.tensor(np.where(
+                    intermediate.cpu().numpy() > np.expand_dims(np.quantile(intermediate.cpu().numpy(),
+                                                                nap_params[layer_counter_str]["quantile"], axis=1), 1),
+                    intermediate.cpu(), 0))
+                # intermediate = torch.where(intermediate > torch.quantile(intermediate, nap_params[layer_counter_str]["quantile"], dim=1).unsqueeze(1), intermediate, zero_tensor)
                 # for i in range(intermediate.shape[0]):
                 #     intermediate[i] = torch.tensor(np.where(
                 #         intermediate[i].cpu().numpy() > np.quantile(intermediate[i].cpu().numpy(),
@@ -324,6 +326,51 @@ class ResNet(nn.Module):
         x = torch.flatten(x, 1)
         x = self.fc(x)
         return x, prev, shapes
+
+    def feature_list(self, x):
+        out_list = []
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        out_list.append(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        out_list.append(x)
+        x = self.layer2(x)
+        out_list.append(x)
+        x = self.layer3(x)
+        out_list.append(x)
+        x = self.layer4(x)
+        out_list.append(x)
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+
+        return x, out_list
+
+    def intermediate_forward(self, x, layer_index):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        if layer_index == 1:
+            x = self.layer1(x)
+        elif layer_index == 2:
+            x = self.layer1(x)
+            x = self.layer2(x)
+        elif layer_index == 3:
+            x = self.layer1(x)
+            x = self.layer2(x)
+            x = self.layer3(x)
+        elif layer_index == 4:
+            x = self.layer1(x)
+            x = self.layer2(x)
+            x = self.layer3(x)
+            x = self.layer4(x)
+
+        return x
 
 
 def _resnet(arch, block, layers, pretrained, progress, **kwargs):

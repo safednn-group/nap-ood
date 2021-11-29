@@ -329,12 +329,13 @@ class ProbabilityThreshold(AbstractMethodInterface):
         test_average_acc = correct / total_count
         labels = labels.cpu()
         all_probs = all_probs.cpu()
+        all_probs[all_probs != all_probs] = -1
         auroc = roc_auc_score(labels, all_probs)
         p, r, _ = precision_recall_curve(labels, all_probs)
         aupr = auc(r, p)
         print("Final Test average accuracy %s" % (colored('%.4f%%' % (test_average_acc * 100), 'red')))
         print(f"Auroc: {auroc} aupr: {aupr}")
-        return test_average_acc.item()
+        return test_average_acc.item(), auroc, aupr
 
     def _generate_execution_times(self, loader):
         import time

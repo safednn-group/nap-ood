@@ -65,6 +65,7 @@ class KNNSVM(ScoreSVM):
             self.base_model.base_data = None
             self.base_model = None
 
+        self.train_dataset_name = dataset.name
         if dataset.name in Global.mirror_augment:
             print(colored("Mirror augmenting %s"%dataset.name, 'green'))
             new_train_ds = dataset + MirroredDataset(dataset)
@@ -82,7 +83,6 @@ class KNNSVM(ScoreSVM):
         # self.base_data = torch.cat([x.view(1, -1) for x,_ in dataset])
         self.base_model = KNNModel(self.base_data, k=self.default_model).to(self.args.device)
         self.base_model.eval()
-        self.train_dataset_name = dataset.name
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
         self.add_identifier = ""
 

@@ -81,15 +81,14 @@ if args.exp == 'test-eval':
 """
 if args.exp == 'simple-eval':
     # d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-                'TinyImagenet']
-    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-                'TinyImagenet']
+    # d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+    #             'TinyImagenet']
+    # d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+    #             'TinyImagenet']
     d1_tasks = ['MNIST']
     d2_tasks = ['NormalNoise']
     d3_tasks = ['UniformNoise']
-    method_tasks = ['reconst_thresh/0', 'reconst_thresh/1',
-        'knn/1', 'knn/2', 'nap/0', 'nap/1']
+    method_tasks = ['mahalanobis/1']
 ########################################################
 """
     Default Evaluation
@@ -121,7 +120,7 @@ if os.path.exists(results_path) and not args.force_run:
 
 
 def has_done_before(method, d1, d2, d3):
-    for m, ds, dm, dt, mid, a1, a2 in results:
+    for m, ds, dm, dt, mid, a1, a2, auroc, aupr in results:
         if m == method and ds == d1 and dm == d2 and dt == d3:
             return True
     return False
@@ -207,6 +206,7 @@ if __name__ == '__main__':
                 start_time = time.time()
 
                 train_acc = BT.train_H(valid_mixture)
+                train_acc = 0
                 print("--- %s seconds ---" % (time.time() - start_time))
 
                 for d3 in d3_tasks:
@@ -247,7 +247,8 @@ if __name__ == '__main__':
                     test_mixture = d1_test + d2_test
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
                     start_time = time.time()
-                    test_acc, auroc, aupr = BT.test_H(test_mixture)
+                    # test_acc, auroc, aupr = BT.test_H(test_mixture)
+                    test_acc, auroc, aupr = BT.test_H((test_mixture, d1_test, d2_test))
                     # test_acc = BT.test_H(d2_test)
                     print("--- %s seconds ---" % (time.time() - start_time))
                     results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc, auroc, aupr))

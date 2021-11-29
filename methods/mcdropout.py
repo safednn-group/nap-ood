@@ -22,7 +22,7 @@ class MCDropoutModelWrapper(AbstractModelWrapper):
         super(MCDropoutModelWrapper, self).__init__(base_model)
         self.H = nn.Module()
         self.H.register_parameter('threshold', nn.Parameter(torch.Tensor([0]))) # initialize to 0 for faster convergence.
-        self.H.register_buffer('n_evals', torch.IntTensor([100]))
+        self.H.register_buffer('n_evals', torch.IntTensor([7]))
 
     def subnetwork_eval(self, x):
         # On MCDropout, we set the dropouts to train mode.

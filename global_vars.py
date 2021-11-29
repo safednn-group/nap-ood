@@ -127,6 +127,7 @@ import methods.reconstruction_error as RE
 import methods.pixelcnn as PCNN
 import methods.openmax as OM
 import methods.nap.nap as NAP
+import methods.mahalanobis as M
 
 all_methods = {
     'prob_threshold': BT.ProbabilityThreshold,
@@ -143,7 +144,8 @@ all_methods = {
     'reconst_thresh': RE.ReconstructionThreshold,
     'pixelcnn': PCNN.PixelCNN,
     'openmax': OM.OpenMax,
-    'nap': NAP.NeuronActivationPatterns
+    'nap': NAP.NeuronActivationPatterns,
+    'mahalanobis': M.Mahalanobis
 }
 
 ##################################################################

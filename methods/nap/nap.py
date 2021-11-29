@@ -222,7 +222,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     _, predicted = torch.max(outputs.data, 1)
 
                     distance = self.monitor_max.compute_hamming_distance(intermediate_values,
-                                                                     predicted.cpu().detach().numpy(), omit=self.omit, reverse=True)
+                                                                     predicted.cpu().detach().numpy(), omit=self.omit)
                     classification = np.where(distance <= self.threshold_max, 0, 1)
                     compared = classification == label.unsqueeze(1).numpy()
                     if concat_distances.size:
@@ -267,7 +267,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params_avg)
                     _, predicted = torch.max(outputs.data, 1)
                     distance = self.monitor_avg.compute_hamming_distance(intermediate_values,
-                                                                     predicted.cpu().detach().numpy(), omit=self.omit, reverse=True)
+                                                                     predicted.cpu().detach().numpy(), omit=self.omit)
                     classification = np.where(distance <= self.threshold_avg, 0, 1)
                     compared = classification == label.unsqueeze(1).numpy()
                     if concat_distances.size:
@@ -466,7 +466,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params_max, monitor=self.monitor_max)
             self.monitor_avg = FullNetMonitor(self.class_count, self.nap_device,
                                           layers_shapes=self.monitored_layers_shapes)
-            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params_max, monitor=self.monitor_avg)
+            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params_avg, monitor=self.monitor_avg)
 
             return self.accuracies
 

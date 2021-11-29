@@ -115,6 +115,24 @@ class MNIST_Resnet(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
 
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
     def output_size(self):
         return torch.LongTensor([1, 10])
 
@@ -218,6 +236,25 @@ class CIFAR10_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
 
     def output_size(self):
         return torch.LongTensor([1, 10])
@@ -323,6 +360,25 @@ class CIFAR100_Resnet(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
 
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
     def output_size(self):
         return torch.LongTensor([1, 100])
         
@@ -427,6 +483,25 @@ class STL10_Resnet(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
 
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
     def output_size(self):
         return torch.LongTensor([1, 10])
 
@@ -529,6 +604,25 @@ class TinyImagenet_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
 
     def output_size(self):
         return torch.LongTensor([1, 200])
