@@ -262,9 +262,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def _forward_impl(self, x, nap_params=None):
-        print(x.shape)
-        exit(0)
+    def _forward_impl(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -332,9 +330,8 @@ class ResNet(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        out_list.append(x)
         x = self.maxpool(x)
-
+        out_list.append(x)
         x = self.layer1(x)
         out_list.append(x)
         x = self.layer2(x)

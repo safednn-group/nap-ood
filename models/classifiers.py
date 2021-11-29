@@ -128,7 +128,7 @@ class MNIST_Resnet(nn.Module):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
 
-        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        output = self.model.intermediate_forward(x, layer_index)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
@@ -250,7 +250,7 @@ class CIFAR10_Resnet(nn.Module):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
 
-        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        output = self.model.intermediate_forward(x, layer_index)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
@@ -373,7 +373,7 @@ class CIFAR100_Resnet(nn.Module):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
 
-        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        output = self.model.intermediate_forward(x, layer_index)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
@@ -496,7 +496,7 @@ class STL10_Resnet(nn.Module):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
 
-        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        output = self.model.intermediate_forward(x, layer_index)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
@@ -618,7 +618,7 @@ class TinyImagenet_Resnet(nn.Module):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
 
-        output, intermediate, sizes = self.model.intermediate_forward(x, layer_index)
+        output = self.model.intermediate_forward(x, layer_index)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output

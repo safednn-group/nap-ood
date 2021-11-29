@@ -114,7 +114,8 @@ class Mahalanobis(AbstractMethodInterface):
         stypes = ['mahalanobis']
 
         save_dir = os.path.join('workspace/mahalanobis/', self.train_dataset_name, self.model_name, 'tmp')
-
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
         # set information about feature extaction
         temp_x = torch.rand((2, ) + self.input_shape)
         temp_x = Variable(temp_x).cuda()
@@ -236,7 +237,7 @@ class Mahalanobis(AbstractMethodInterface):
                 train_lr_Mahalanobis.extend(Mahalanobis_scores)
 
             train_lr_Mahalanobis = np.asarray(train_lr_Mahalanobis, dtype=np.float32)
-            regressor = LogisticRegressionCV(n_jobs=-1).fit(train_lr_Mahalanobis, train_lr_label)
+            regressor = LogisticRegressionCV(n_jobs=-1).fit(train_lr_Mahalanobis, train_lr_label[:train_lr_Mahalanobis.shape[0]])
 
             print('Logistic Regressor params:', regressor.coef_, regressor.intercept_)
 
@@ -318,7 +319,7 @@ class Mahalanobis(AbstractMethodInterface):
         sample_mean, precision, lr_weights, lr_bias, magnitude = np.load(
             os.path.join('workspace/mahalanobis/', self.train_dataset_name, self.model_name, 'results.npy'),
             allow_pickle=True)
-        regressor = LogisticRegressionCV(cv=2).fit([[0, 0, 0, 0], [0, 0, 0, 0], [1, 1, 1, 1], [1, 1, 1, 1]],
+        regressor = LogisticRegressionCV(cv=2).fit([[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]],
                                                    [0, 0, 1, 1])
         regressor.coef_ = lr_weights
         regressor.intercept_ = lr_bias
@@ -417,7 +418,7 @@ class Mahalanobis(AbstractMethodInterface):
             data = Variable(inputs, requires_grad=True)
             data = data.cuda()
 
-            out_features = self.base_model.intermediate_forward(data, layer_index)
+            out_features = self.base_model.intermediate_forward(data, layer_index=layer_index)
             out_features = out_features.view(out_features.size(0), out_features.size(1), -1)
             out_features = torch.mean(out_features, 2)
 
@@ -444,7 +445,7 @@ class Mahalanobis(AbstractMethodInterface):
 
             tempInputs = torch.add(data.data, -magnitude, gradient)
 
-            noise_out_features = self.base_model.intermediate_forward(Variable(tempInputs), layer_index)
+            noise_out_features = self.base_model.intermediate_forward(Variable(tempInputs), layer_index=layer_index)
             noise_out_features = noise_out_features.view(noise_out_features.size(0), noise_out_features.size(1), -1)
             noise_out_features = torch.mean(noise_out_features, 2)
             noise_gaussian_score = 0
@@ -474,7 +475,7 @@ class Mahalanobis(AbstractMethodInterface):
         if not os.path.exists(in_save_dir):
             os.makedirs(in_save_dir)
 
-        temp_x = torch.rand(2, 3, 32, 32)
+        temp_x = torch.rand((2, ) + self.input_shape)
         temp_x = Variable(temp_x).cuda()
         temp_list = self.base_model.feature_list(temp_x)[1]
         num_output = len(temp_list)
@@ -490,6 +491,7 @@ class Mahalanobis(AbstractMethodInterface):
 
         N = len(self.known_test_loader.dataset)
         count = 0
+        all_scores = np.array([])
         for j, data in enumerate(self.known_test_loader):
             images, labels = data
             images = images.cuda()
@@ -499,7 +501,10 @@ class Mahalanobis(AbstractMethodInterface):
             inputs = images
 
             scores = self._get_score(inputs, method_args)
-
+            if all_scores.size:
+                all_scores = np.concatenate(all_scores, scores)
+            else:
+                all_scores = scores
             for score in scores:
                 f1.write("{}\n".format(score))
 
@@ -538,7 +543,7 @@ class Mahalanobis(AbstractMethodInterface):
             inputs = images
 
             scores = self._get_score(inputs, method_args)
-
+            all_scores = np.concatenate(all_scores, scores)
             for score in scores:
                 f2.write("{}\n".format(score))
 
@@ -547,8 +552,15 @@ class Mahalanobis(AbstractMethodInterface):
             t0 = time.time()
 
         f2.close()
-
-
+        from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
+        labels = np.zeros(all_scores.shape)
+        labels[int(labels.shape[0]/2):] = 1
+        auroc = roc_auc_score(labels, all_scores)
+        p, r, _ = precision_recall_curve(labels, all_scores)
+        aupr = auc(r, p)
+        print("Final Test average accuracy %s" % (colored('%.4f%%' % (0 * 100), 'red')))
+        print(f"Auroc: {auroc} aupr: {aupr}")
+        return 0, auroc, aupr
 
     def _get_score(self, inputs, method_args):
         sample_mean = method_args['sample_mean']
