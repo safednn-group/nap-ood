@@ -127,7 +127,7 @@ import methods.reconstruction_error as RE
 import methods.pixelcnn as PCNN
 import methods.openmax as OM
 import methods.nap.nap as NAP
-import methods.mahalanobis_original as M
+import methods.mahalanobis_original.integrated as M
 
 all_methods = {
     'prob_threshold': BT.ProbabilityThreshold,

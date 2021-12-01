@@ -247,8 +247,8 @@ if __name__ == '__main__':
                     test_mixture = d1_test + d2_test
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
                     start_time = time.time()
-                    # test_acc, auroc, aupr = BT.test_H(test_mixture)
-                    test_acc, auroc, aupr = BT.test_H((test_mixture, d1_test, d2_test))
+                    test_acc, auroc, aupr = BT.test_H(test_mixture)
+                    # test_acc, auroc, aupr = BT.test_H((test_mixture, d1_test, d2_test))
                     # test_acc = BT.test_H(d2_test)
                     print("--- %s seconds ---" % (time.time() - start_time))
                     results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc, auroc, aupr))

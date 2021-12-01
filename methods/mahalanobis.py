@@ -62,7 +62,7 @@ class Mahalanobis(AbstractMethodInterface):
             self.add_identifier = self.base_model.preferred_name()
 
     def method_identifier(self):
-        output = "NeuronActivationPatterns"
+        output = "Mahalanobis"
         # if len(self.add_identifier) > 0:
         #     output = output + "/" + self.add_identifier
         return output
@@ -317,7 +317,7 @@ class Mahalanobis(AbstractMethodInterface):
         dataset = DataLoader(dataset[0], batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
         sample_mean, precision, lr_weights, lr_bias, magnitude = np.load(
-            os.path.join('workspace/mahalanobis/', self.train_dataset_name, self.model_name, 'results.npy'),
+            os.path.join('workspace/mahalanobis', self.train_dataset_name, self.model_name, 'results.npy'),
             allow_pickle=True)
         regressor = LogisticRegressionCV(cv=2).fit([[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]],
                                                    [0, 0, 1, 1])
@@ -329,7 +329,7 @@ class Mahalanobis(AbstractMethodInterface):
         method_args['magnitude'] = magnitude
         method_args['regressor'] = regressor
 
-        self._eval_ood_detector(dataset, method_args)
+        return self._eval_ood_detector(dataset, method_args)
 
     def _sample_estimator(self, feature_list):
         """
@@ -468,6 +468,83 @@ class Mahalanobis(AbstractMethodInterface):
                     (Mahalanobis_scores, noise_gaussian_score.reshape((noise_gaussian_score.shape[0], -1))), axis=1)
 
         return Mahalanobis_scores
+
+    def _get_Mahalanobis_score_original(self, test_loader, out_flag, sample_mean, precision,
+                              layer_index, magnitude):
+        '''
+        Compute the proposed Mahalanobis confidence score on input dataset
+        return: Mahalanobis score from layer_index
+        '''
+        self.base_model.eval()
+        Mahalanobis = []
+
+        if out_flag == True:
+            temp_file_name = '%s/confidence_Ga%s_In.txt' % ('workspace/mahalanobis', str(layer_index))
+        else:
+            temp_file_name = '%s/confidence_Ga%s_Out.txt' % ('workspace/mahalanobis', str(layer_index))
+
+        g = open(temp_file_name, 'w')
+
+        for data, target in test_loader:
+
+            data, target = data.cuda(), target.cuda()
+            data, target = Variable(data, requires_grad=True), Variable(target)
+
+            out_features = self.base_model.intermediate_forward(data, layer_index)
+            out_features = out_features.view(out_features.size(0), out_features.size(1), -1)
+            out_features = torch.mean(out_features, 2)
+
+            # compute Mahalanobis score
+            gaussian_score = 0
+            for i in range(self.class_count):
+                batch_sample_mean = sample_mean[layer_index][i]
+                zero_f = out_features.data - batch_sample_mean
+                term_gau = -0.5 * torch.mm(torch.mm(zero_f, precision[layer_index]), zero_f.t()).diag()
+                if i == 0:
+                    gaussian_score = term_gau.view(-1, 1)
+                else:
+                    gaussian_score = torch.cat((gaussian_score, term_gau.view(-1, 1)), 1)
+
+            # Input_processing
+            sample_pred = gaussian_score.max(1)[1]
+            batch_sample_mean = sample_mean[layer_index].index_select(0, sample_pred)
+            zero_f = out_features - Variable(batch_sample_mean)
+            pure_gau = -0.5 * torch.mm(torch.mm(zero_f, Variable(precision[layer_index])), zero_f.t()).diag()
+            loss = torch.mean(-pure_gau)
+            loss.backward()
+
+            gradient = torch.ge(data.grad.data, 0)
+            gradient = (gradient.float() - 0.5) * 2
+
+            gradient.index_copy_(1, torch.LongTensor([0]).cuda(),
+                                 gradient.index_select(1, torch.LongTensor([0]).cuda()) / (0.2023))
+            gradient.index_copy_(1, torch.LongTensor([1]).cuda(),
+                                 gradient.index_select(1, torch.LongTensor([1]).cuda()) / (0.1994))
+            gradient.index_copy_(1, torch.LongTensor([2]).cuda(),
+                                 gradient.index_select(1, torch.LongTensor([2]).cuda()) / (0.2010))
+            tempInputs = torch.add(data.data, -magnitude, gradient)
+
+            noise_out_features = self.base_model.intermediate_forward(Variable(tempInputs, volatile=True), layer_index)
+            noise_out_features = noise_out_features.view(noise_out_features.size(0), noise_out_features.size(1), -1)
+            noise_out_features = torch.mean(noise_out_features, 2)
+            noise_gaussian_score = 0
+            for i in range(self.class_count):
+                batch_sample_mean = sample_mean[layer_index][i]
+                zero_f = noise_out_features.data - batch_sample_mean
+                term_gau = -0.5 * torch.mm(torch.mm(zero_f, precision[layer_index]), zero_f.t()).diag()
+                if i == 0:
+                    noise_gaussian_score = term_gau.view(-1, 1)
+                else:
+                    noise_gaussian_score = torch.cat((noise_gaussian_score, term_gau.view(-1, 1)), 1)
+
+            noise_gaussian_score, _ = torch.max(noise_gaussian_score, dim=1)
+            Mahalanobis.extend(noise_gaussian_score.cpu().numpy())
+
+            for i in range(data.size(0)):
+                g.write("{}\n".format(noise_gaussian_score[i]))
+        g.close()
+
+        return Mahalanobis
 
     def _eval_ood_detector(self, dataset, method_args):
         in_save_dir = os.path.join("workspace/mahalanobis", self.train_dataset_name, self.model_name, 'nat')
