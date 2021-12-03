@@ -121,7 +121,6 @@ class Mahalanobis(AbstractMethodInterface):
         print(f"testh best coef: {self.best_lr.coef_} inter: {self.best_lr.intercept_}")
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
-        self.H_class.eval()
         for i in range(self.num_output):
             M_in = lib_generation.get_Mahalanobis_score(self.base_model, dataset, self.class_count,
                                                         self.workspace_dir + "/test_H", \
@@ -141,25 +140,16 @@ class Mahalanobis(AbstractMethodInterface):
         # return 0
         labels = np.zeros((Mahalanobis_test.shape[0]))
         labels[int(Mahalanobis_test.shape[0] / 2):] = 1
-        with tqdm(total=len(dataset)) as pbar:
-            for i, score in enumerate(Mahalanobis_test):
-                pbar.update()
-
-                prediction = self.best_lr.predict_proba(score)[:, 1]
-                classification = np.where(prediction > 0.5, 1, 0)
-
-                correct += (classification == labels[i])
-                total_count += 1
-                message = 'Accuracy %.4f' % (correct / total_count)
-                pbar.set_description(message)
 
         y_pred = self.best_lr.predict_proba(Mahalanobis_test)[:, 1]
+        classification = np.where(y_pred > self.threshold, 1, 0)
+        correct += (classification == labels).sum()
         auroc = roc_auc_score(labels, y_pred)
         p, r, _ = precision_recall_curve(labels, y_pred)
         aupr = auc(r, p)
-        print("Final Test average accuracy %s" % (colored('%.4f%%' % (0 * 100), 'red')))
+        print("Final Test average accuracy %s" % (colored('%.4f%%' % (correct / labels.shape[0] * 100), 'red')))
         print(f"Auroc: {auroc} aupr: {aupr}")
-        return correct / total_count, auroc, aupr
+        return correct / labels.shape[0], auroc, aupr
 
     def _tune_hyperparameters(self):
         print('Tuning hyper-parameters...')
@@ -224,7 +214,7 @@ class Mahalanobis(AbstractMethodInterface):
             X_val, Y_val, X_test, Y_test = lib_regression.block_split(total_X, total_Y, self.valid_dataset_name,
                                                                       self.valid_dataset_length)
             lr = LogisticRegressionCV(n_jobs=-1).fit(X_val, Y_val)
-            results = lib_regression.detection_performance(lr, X_test, Y_test, self.workspace_dir)
+            results, self.threshold = lib_regression.detection_performance(lr, X_test, Y_test, self.workspace_dir)
             if best_tnr < results['TMP']['TNR']:
                 best_tnr = results['TMP']['TNR']
                 self.best_lr = lr
