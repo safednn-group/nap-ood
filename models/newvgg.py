@@ -105,6 +105,28 @@ class VGG(nn.Module):
         shapes.reverse()
         return x, prev, shapes
 
+    def feature_list(self, x):
+        out_list = []
+        counter = 0
+        for _, layer in self.features.named_children():
+            x = layer.forward(x)
+            if counter in self.relu_indices.values():
+                out_list.append(x)
+            counter += 1
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
+        return x, out_list
+
+    def intermediate_forward(self, x, layer_index):
+        counter = 0
+        for _, layer in self.features.named_children():
+            x = layer.forward(x)
+            if counter == self.relu_indices[layer_index]:
+                return x
+            counter += 1
+
+
+
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

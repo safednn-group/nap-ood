@@ -9,8 +9,8 @@ from termcolor import colored
 from torch.utils.data.dataloader import DataLoader
 import torch
 import os
-import methods.mahalanobis_original.lib_generation
-import methods.mahalanobis_original.lib_regression
+import methods.mahalanobis_original.lib_generation as lib_generation
+import methods.mahalanobis_original.lib_regression as lib_regression
 from torch.autograd import Variable
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
@@ -118,15 +118,16 @@ class Mahalanobis(AbstractMethodInterface):
                           self.best_magnitude]))
 
     def test_H(self, dataset):
-
+        print(f"testh best coef: {self.best_lr.coef_} inter: {self.best_lr.intercept_}")
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
-
+        self.H_class.eval()
         for i in range(self.num_output):
             M_in = lib_generation.get_Mahalanobis_score(self.base_model, dataset, self.class_count,
                                                         self.workspace_dir + "/test_H", \
                                                         True, self.sample_mean, self.precision, i, self.best_magnitude)
             M_in = np.asarray(M_in, dtype=np.float32)
+            print(M_in.shape)
             if i == 0:
                 Mahalanobis_test = M_in.reshape((M_in.shape[0], -1))
             else:
@@ -134,15 +135,31 @@ class Mahalanobis(AbstractMethodInterface):
 
             Mahalanobis_test = np.asarray(Mahalanobis_test, dtype=np.float32)
 
+        correct = 0.0
+        total_count = 0
+        # self._generate_execution_times(dataset)
+        # return 0
         labels = np.zeros((Mahalanobis_test.shape[0]))
         labels[int(Mahalanobis_test.shape[0] / 2):] = 1
+        with tqdm(total=len(dataset)) as pbar:
+            for i, score in enumerate(Mahalanobis_test):
+                pbar.update()
+
+                prediction = self.best_lr.predict_proba(score)[:, 1]
+                classification = np.where(prediction > 0.5, 1, 0)
+
+                correct += (classification == labels[i])
+                total_count += 1
+                message = 'Accuracy %.4f' % (correct / total_count)
+                pbar.set_description(message)
+
         y_pred = self.best_lr.predict_proba(Mahalanobis_test)[:, 1]
         auroc = roc_auc_score(labels, y_pred)
         p, r, _ = precision_recall_curve(labels, y_pred)
         aupr = auc(r, p)
         print("Final Test average accuracy %s" % (colored('%.4f%%' % (0 * 100), 'red')))
         print(f"Auroc: {auroc} aupr: {aupr}")
-        return 0, auroc, aupr
+        return correct / total_count, auroc, aupr
 
     def _tune_hyperparameters(self):
         print('Tuning hyper-parameters...')
@@ -190,8 +207,8 @@ class Mahalanobis(AbstractMethodInterface):
 
             Mahalanobis_in = np.asarray(Mahalanobis_in, dtype=np.float32)
             Mahalanobis_out = np.asarray(Mahalanobis_out, dtype=np.float32)
-            Mahalanobis_data, Mahalanobis_labels = lib_generation.merge_and_generate_labels(Mahalanobis_in,
-                                                                                            Mahalanobis_out)
+            Mahalanobis_data, Mahalanobis_labels = lib_generation.merge_and_generate_labels(Mahalanobis_out,
+                                                                                            Mahalanobis_in)
             file_name = os.path.join(self.workspace_dir,
                                      'Mahalanobis_%s_%s_%s.npy' % (
                                          str(magnitude), self.train_dataset_name, self.valid_dataset_name))
@@ -211,7 +228,9 @@ class Mahalanobis(AbstractMethodInterface):
             if best_tnr < results['TMP']['TNR']:
                 best_tnr = results['TMP']['TNR']
                 self.best_lr = lr
-                self.best_magnitude = score.split("_")[1]
+                print(lr.coef_)
+                print(lr.intercept_)
+                self.best_magnitude = float(score.split("_")[1])
 
     def _sample_estimator(self, feature_list):
         """
@@ -294,80 +313,3 @@ class Mahalanobis(AbstractMethodInterface):
         print('\n Training Accuracy:({:.2f}%)\n'.format(100. * correct / total))
 
         return sample_class_mean, precision
-
-    def _get_Mahalanobis_score(self, test_loader, out_flag, sample_mean, precision,
-                               layer_index, magnitude):
-        '''
-        Compute the proposed Mahalanobis confidence score on input dataset
-        return: Mahalanobis score from layer_index
-        '''
-        self.base_model.eval()
-        Mahalanobis = []
-
-        if out_flag == True:
-            temp_file_name = '%s/confidence_Ga%s_In.txt' % ('workspace/mahalanobis', str(layer_index))
-        else:
-            temp_file_name = '%s/confidence_Ga%s_Out.txt' % ('workspace/mahalanobis', str(layer_index))
-
-        g = open(temp_file_name, 'w')
-
-        for data, target in test_loader:
-
-            data, target = data.cuda(), target.cuda()
-            data, target = Variable(data, requires_grad=True), Variable(target)
-
-            out_features = self.base_model.intermediate_forward(data, layer_index)
-            out_features = out_features.view(out_features.size(0), out_features.size(1), -1)
-            out_features = torch.mean(out_features, 2)
-
-            # compute Mahalanobis score
-            gaussian_score = 0
-            for i in range(self.class_count):
-                batch_sample_mean = sample_mean[layer_index][i]
-                zero_f = out_features.data - batch_sample_mean
-                term_gau = -0.5 * torch.mm(torch.mm(zero_f, precision[layer_index]), zero_f.t()).diag()
-                if i == 0:
-                    gaussian_score = term_gau.view(-1, 1)
-                else:
-                    gaussian_score = torch.cat((gaussian_score, term_gau.view(-1, 1)), 1)
-
-            # Input_processing
-            sample_pred = gaussian_score.max(1)[1]
-            batch_sample_mean = sample_mean[layer_index].index_select(0, sample_pred)
-            zero_f = out_features - Variable(batch_sample_mean)
-            pure_gau = -0.5 * torch.mm(torch.mm(zero_f, Variable(precision[layer_index])), zero_f.t()).diag()
-            loss = torch.mean(-pure_gau)
-            loss.backward()
-
-            gradient = torch.ge(data.grad.data, 0)
-            gradient = (gradient.float() - 0.5) * 2
-
-            gradient.index_copy_(1, torch.LongTensor([0]).cuda(),
-                                 gradient.index_select(1, torch.LongTensor([0]).cuda()) / (0.2023))
-            gradient.index_copy_(1, torch.LongTensor([1]).cuda(),
-                                 gradient.index_select(1, torch.LongTensor([1]).cuda()) / (0.1994))
-            gradient.index_copy_(1, torch.LongTensor([2]).cuda(),
-                                 gradient.index_select(1, torch.LongTensor([2]).cuda()) / (0.2010))
-            tempInputs = torch.add(data.data, -magnitude, gradient)
-
-            noise_out_features = self.base_model.intermediate_forward(Variable(tempInputs, volatile=True), layer_index)
-            noise_out_features = noise_out_features.view(noise_out_features.size(0), noise_out_features.size(1), -1)
-            noise_out_features = torch.mean(noise_out_features, 2)
-            noise_gaussian_score = 0
-            for i in range(self.class_count):
-                batch_sample_mean = sample_mean[layer_index][i]
-                zero_f = noise_out_features.data - batch_sample_mean
-                term_gau = -0.5 * torch.mm(torch.mm(zero_f, precision[layer_index]), zero_f.t()).diag()
-                if i == 0:
-                    noise_gaussian_score = term_gau.view(-1, 1)
-                else:
-                    noise_gaussian_score = torch.cat((noise_gaussian_score, term_gau.view(-1, 1)), 1)
-
-            noise_gaussian_score, _ = torch.max(noise_gaussian_score, dim=1)
-            Mahalanobis.extend(noise_gaussian_score.cpu().numpy())
-
-            for i in range(data.size(0)):
-                g.write("{}\n".format(noise_gaussian_score[i]))
-        g.close()
-
-        return Mahalanobis

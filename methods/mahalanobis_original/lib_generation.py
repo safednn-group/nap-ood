@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-
+import os
 from torch.autograd import Variable
 from scipy.spatial.distance import pdist, cdist, squareform
 
@@ -136,7 +136,9 @@ def get_Mahalanobis_score(model, test_loader, num_classes, outf, out_flag, sampl
         temp_file_name = '%s/confidence_Ga%s_In.txt'%(outf, str(layer_index))
     else:
         temp_file_name = '%s/confidence_Ga%s_Out.txt'%(outf, str(layer_index))
-        
+
+    if not os.path.exists(outf):
+        os.makedirs(outf)
     g = open(temp_file_name, 'w')
     
     for data, target in test_loader:
@@ -144,7 +146,7 @@ def get_Mahalanobis_score(model, test_loader, num_classes, outf, out_flag, sampl
         data, target = data.cuda(), target.cuda()
         data, target = Variable(data, requires_grad = True), Variable(target)
         
-        out_features = model.intermediate_forward(data, layer_index)
+        out_features = model.intermediate_forward(data, layer_index=layer_index)
         out_features = out_features.view(out_features.size(0), out_features.size(1), -1)
         out_features = torch.mean(out_features, 2)
         
@@ -169,17 +171,18 @@ def get_Mahalanobis_score(model, test_loader, num_classes, outf, out_flag, sampl
          
         gradient =  torch.ge(data.grad.data, 0)
         gradient = (gradient.float() - 0.5) * 2
-        if net_type == 'densenet':
-            gradient.index_copy_(1, torch.LongTensor([0]).cuda(), gradient.index_select(1, torch.LongTensor([0]).cuda()) / (63.0/255.0))
-            gradient.index_copy_(1, torch.LongTensor([1]).cuda(), gradient.index_select(1, torch.LongTensor([1]).cuda()) / (62.1/255.0))
-            gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (66.7/255.0))
-        elif net_type == 'resnet':
-            gradient.index_copy_(1, torch.LongTensor([0]).cuda(), gradient.index_select(1, torch.LongTensor([0]).cuda()) / (0.2023))
-            gradient.index_copy_(1, torch.LongTensor([1]).cuda(), gradient.index_select(1, torch.LongTensor([1]).cuda()) / (0.1994))
-            gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (0.2010))
+        # if net_type == 'densenet':
+        #     gradient.index_copy_(1, torch.LongTensor([0]).cuda(), gradient.index_select(1, torch.LongTensor([0]).cuda()) / (63.0/255.0))
+        #     gradient.index_copy_(1, torch.LongTensor([1]).cuda(), gradient.index_select(1, torch.LongTensor([1]).cuda()) / (62.1/255.0))
+        #     gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (66.7/255.0))
+        # elif net_type == 'resnet':
+        #
+        #     gradient.index_copy_(1, torch.LongTensor([0]).cuda(), gradient.index_select(1, torch.LongTensor([0]).cuda()) / (0.2023))
+        #     gradient.index_copy_(1, torch.LongTensor([1]).cuda(), gradient.index_select(1, torch.LongTensor([1]).cuda()) / (0.1994))
+        #     gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (0.2010))
         tempInputs = torch.add(data.data, -magnitude, gradient)
  
-        noise_out_features = model.intermediate_forward(Variable(tempInputs, volatile=True), layer_index)
+        noise_out_features = model.intermediate_forward(Variable(tempInputs, volatile=True), layer_index=layer_index)
         noise_out_features = noise_out_features.view(noise_out_features.size(0), noise_out_features.size(1), -1)
         noise_out_features = torch.mean(noise_out_features, 2)
         noise_gaussian_score = 0
@@ -275,7 +278,7 @@ def get_Mahalanobis_score_adv(model, test_data, test_label, num_classes, outf, n
         total += batch_size
         data, target = Variable(data, requires_grad = True), Variable(target)
         
-        out_features = model.intermediate_forward(data, layer_index)
+        out_features = model.intermediate_forward(data, layer_index=layer_index)
         out_features = out_features.view(out_features.size(0), out_features.size(1), -1)
         out_features = torch.mean(out_features, 2)
         
@@ -309,7 +312,7 @@ def get_Mahalanobis_score_adv(model, test_data, test_label, num_classes, outf, n
             gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (0.2010))
         tempInputs = torch.add(data.data, -magnitude, gradient)
  
-        noise_out_features = model.intermediate_forward(Variable(tempInputs, volatile=True), layer_index)
+        noise_out_features = model.intermediate_forward(Variable(tempInputs, volatile=True), layer_index=layer_index)
         noise_out_features = noise_out_features.view(noise_out_features.size(0), noise_out_features.size(1), -1)
         noise_out_features = torch.mean(noise_out_features, 2)
         noise_gaussian_score = 0
