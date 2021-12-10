@@ -42,15 +42,16 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    # d1_tasks = ['TinyImagenet', 'STL10', 'CIFAR100']
-    #
+
+
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    # d2_tasks = ['UniformNoise']
-    # d3_tasks = ['NormalNoise']
+    d1_tasks = ['MNIST']
+    d2_tasks = ['UniformNoise']
+    d3_tasks = ['NormalNoise']
     method_tasks = [
         # 'pixelcnn/0',
         'mcdropout/0',
@@ -69,26 +70,24 @@ if args.exp == 'test-eval':
         'bceaeknn/8', 'vaeaeknn/8', 'mseaeknn/8'
         # 'nap/0', 'nap/1'
     ]
-    # method_tasks = [
-    #     'prob_threshold/0', 'prob_threshold/1', 'mcdropout/0', 'mcdropout/2',
-    #     'pixelcnn/0', 'score_svm/0', 'logistic_svm/0', 'score_svm/1', 'logistic_svm/1', 'openmax/0', 'openmax/1',
-    #     'deep_ensemble/0', 'deep_ensemble/1',
-    #      'knn/1', 'knn/2', 'knn/4', 'knn/8'
-    # ]
+    method_tasks = [
+        'odin/0'
+    ]
 ########################################################
 """
     Simple evaluation
 """
 if args.exp == 'simple-eval':
     # d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    # d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-    #             'TinyImagenet']
-    # d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-    #             'TinyImagenet']
-    d1_tasks = ['MNIST']
-    d2_tasks = ['NormalNoise']
-    d3_tasks = ['UniformNoise']
-    method_tasks = ['mahalanobis/1']
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
+    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
+    d1_tasks = [ 'MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    # d2_tasks = ['NormalNoise']
+    # d3_tasks = ['UniformNoise']
+    method_tasks = ['msad/0', 'msad/1', 'mahalanobis/0', 'mahalanobis/1', 'outlier_exposure/0', 'outlier_exposure/1',
+                    'energy/0', 'energy/1', 'react/0', 'react/1', 'grad_norm/0', 'grad_norm/1']
 ########################################################
 """
     Default Evaluation
@@ -120,8 +119,9 @@ if os.path.exists(results_path) and not args.force_run:
 
 
 def has_done_before(method, d1, d2, d3):
-    for m, ds, dm, dt, mid, a1, a2, auroc, aupr in results:
-        if m == method and ds == d1 and dm == d2 and dt == d3:
+    # for m, ds, dm, dt, mid, a1, a2 in results:
+    for r in results:
+        if r[0] == method and r[1] == d1 and r[2] == d2 and r[3] == d3:
             return True
     return False
 

@@ -54,6 +54,14 @@ class VGG(nn.Module):
         x = self.classifier(x)
         return x
 
+    def forward_threshold(self, x, threshold=1e10):
+        x = self.features(x)
+        # x = self.avgpool(x)
+        x = x.clamp(max=threshold)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
+        return x
+
     def forward_nap(self, x, nap_params=None):
         self.classifier.eval()
         self.features.eval()

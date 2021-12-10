@@ -146,7 +146,7 @@ def get_Mahalanobis_score(model, test_loader, num_classes, outf, out_flag, sampl
         data, target = data.cuda(), target.cuda()
         data, target = Variable(data, requires_grad = True), Variable(target)
         
-        out_features = model.intermediate_forward(data, layer_index=layer_index)
+        out_features = model.intermediate_forward(data, softmax=False, layer_index=layer_index)
         out_features = out_features.view(out_features.size(0), out_features.size(1), -1)
         out_features = torch.mean(out_features, 2)
         
@@ -182,7 +182,7 @@ def get_Mahalanobis_score(model, test_loader, num_classes, outf, out_flag, sampl
         #     gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (0.2010))
         tempInputs = torch.add(data.data, -magnitude, gradient)
  
-        noise_out_features = model.intermediate_forward(Variable(tempInputs, volatile=True), layer_index=layer_index)
+        noise_out_features = model.intermediate_forward(Variable(tempInputs, volatile=True), softmax=False, layer_index=layer_index)
         noise_out_features = noise_out_features.view(noise_out_features.size(0), noise_out_features.size(1), -1)
         noise_out_features = torch.mean(noise_out_features, 2)
         noise_gaussian_score = 0

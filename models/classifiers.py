@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import models.newvgg as VGG
 import models.nap_resnet as Resnet
 # import torchvision.models.resnet as Resnet
-
+import torchvision.models.vgg
 
 
 class MNIST_VGG(nn.Module):
@@ -73,6 +73,16 @@ class MNIST_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, out_list
 
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
@@ -132,6 +142,15 @@ class MNIST_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
 
     def feature_list(self, x, softmax=True):
         # Perform late normalization.
@@ -212,6 +231,16 @@ class CIFAR10_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, out_list
 
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
@@ -272,6 +301,15 @@ class CIFAR10_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
 
     def feature_list(self, x, softmax=True):
         # Perform late normalization.
@@ -353,6 +391,16 @@ class CIFAR100_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, out_list
 
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
@@ -413,6 +461,16 @@ class CIFAR100_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
 
     def feature_list(self, x, softmax=True):
         # Perform late normalization.
@@ -494,6 +552,16 @@ class STL10_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, out_list
 
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
@@ -554,6 +622,15 @@ class STL10_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
 
     def feature_list(self, x, softmax=True):
         # Perform late normalization.
@@ -634,6 +711,16 @@ class TinyImagenet_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, out_list
 
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
@@ -694,6 +781,15 @@ class TinyImagenet_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
 
     def feature_list(self, x, softmax=True):
         # Perform late normalization.

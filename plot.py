@@ -886,16 +886,16 @@ def choose_layers_and_pool_type(thresholds, accuracies, model, dt, type=0, votes
 
 
 def fixed():
-    d1_tasks = ['MNIST', 'FashionMNIST', 'STL10', 'CIFAR100']
+    d1_tasks = ['MNIST', 'FashionMNIST', 'STL10', 'CIFAR100', "CIFAR10", "TinyImagenet"]
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
-    types = [0, 1]
-    n_votes = [5, 7, 9]
-    th_factors = [0.1, 0.3, 0.5, 0.7, 0.9]
+    types = [0, 1, 2, 3]
+    n_votes = [3, 5, 7, 9]
+    th_factors = [0.1, 0.4, 0.7]
     data = []
-    for model_name in ["VGG", "Resnet"]:
+    for model_name in ["VGG"]:
         for type in types:
             for votes in n_votes:
                 for tf in th_factors:
@@ -908,20 +908,20 @@ def fixed():
                             if d2 in d2_compatiblity[d1]:
                                 df_thresholds = dict()
                                 df_thresholds["max"] = pd.read_csv(
-                                    "results/article_plots/full_nets/fixed/" + model_name + '_' + d1 + '_' + d2 + 'maxth-acc.csv',
+                                    "results/article_plots/full_nets/fixed/hamming/" + model_name + '_' + d1 + '_' + d2 + 'maxth-acc.csv',
                                     index_col=0)
                                 df_thresholds["avg"] = pd.read_csv(
-                                    "results/article_plots/full_nets/fixed/" + model_name + '_' + d1 + '_' + d2 + 'avgth-acc.csv',
+                                    "results/article_plots/full_nets/fixed/hamming/" + model_name + '_' + d1 + '_' + d2 + 'avgth-acc.csv',
                                     index_col=0)
                                 np_file = np.load(
-                                    "results/article_plots/full_nets/fixed/" + model_name + '_' + d1 + '_' + d2 + '.npz')
+                                    "results/article_plots/full_nets/fixed/hamming/" + model_name + '_' + d1 + '_' + d2 + '.npz')
                                 np_accuracies = np_file["accuracies"]
                                 np_thresholds = np_file["thresholds"]
                                 for d3 in d3_tasks:
                                     if d2 != d3 and d3 in d2_compatiblity[d1]:
                                         file_pattern = model_name + '_' + d1 + '_' + d2 + '_' + d3 + "_*"
                                         files = glob.glob(
-                                            os.path.join("results/article_plots/full_nets/fixed", file_pattern))
+                                            os.path.join("results/article_plots/full_nets/fixed/hamming", file_pattern))
                                         frames = dict()
                                         frames["max"] = dict()
                                         frames["avg"] = dict()
@@ -983,7 +983,33 @@ def fixed():
                         print(
                             f"{model_name}  {d1} - type {type}, votes {votes}, thfactor {tf} Aggregated auroc: {agg_auroc / counter}"
                             f"Aggregated aupr: {agg_aupr / counter} acc: {agg_acc / counter}")
-    pd.DataFrame(data, columns=["model", "d1", "d2", "d3", "type", "votes", "tf", "auroc1", "aupr1", "acc", "auroc2", "aupr2", "auroc3", "aupr3"]).to_csv("aurocexp.csv")
+    pd.DataFrame(data, columns=["model", "d1", "d2", "d3", "type", "votes", "tf", "auroc1", "aupr1", "acc", "auroc2", "aupr2", "auroc3", "aupr3"]).to_csv("hamming_aurocexp.csv")
+
+def choose_best_auroc():
+    results1 = pd.read_csv("aurocexp_all12.csv", index_col=0)
+    results2 = pd.read_csv("aurocexp_all34.csv", index_col=0)
+    results = pd.concat([results1, results2], axis=0, ignore_index=True)
+    grouped = results.groupby(["type", "votes", "tf"])["auroc1", "aupr1", "acc", "auroc2", "aupr2", "auroc3", "aupr3"].mean()
+    print(grouped.sort_values("acc").tail(3))
+
+    print(grouped.sort_values("auroc3").tail(3))
+
+    print(grouped.sort_values("aupr3").tail(3))
+    # results = results[results["model"] == "Resnet"]
+    # grouped = results.groupby(["type", "votes", "tf"])[["acc", "auroc3", "aupr3"]].mean()
+    # grouped = grouped[grouped["acc"] > 0.773]
+    # print(grouped)
+    # for type in [0, 1, 2, 3]:
+    #     results_type = results[results["type"] == type]
+    #     for model in ["VGG", "Resnet"]:
+    #         results_model = results_type[results_type["model"] == model]
+    #         for datasets in [["MNIST", "FashionMNIST"], ["CIFAR10", "CIFAR100", "STL10", "TinyImagenet"]]:
+    #             results_datasets = results_model[results_model["d1"].isin(datasets)]
+    #             grouped = results_datasets.groupby(["votes", "tf"])[["acc", "auroc3", "aupr3"]].mean()
+    #             print(f"type: {type}  model {model}  datasets {datasets}")
+    #             print(grouped.sort_values("acc").tail(3))
+    #             print(grouped.sort_values("auroc3").tail(3))
+    #             print(grouped.sort_values("aupr3").tail(3))
 
 if __name__ == "__main__":
     # draw_boxplots()
@@ -1000,8 +1026,9 @@ if __name__ == "__main__":
     # fix_vgg_results()
     # full_net_plot()
     fixed()
+    # choose_best_auroc()
     # auroc()
     # execution_times_plot()
     # compare_exec_times_all_methods()
-    # results = torch.load("results_confirm.pth")
+    # results = torch.load("results_auroc.pth")
     # print(results)
