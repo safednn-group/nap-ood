@@ -41,6 +41,7 @@ class BaseMonitor(object):
     def set_class_patterns_count(self, count):
         self.class_patterns_count = count
 
+
 class Monitor(BaseMonitor):
 
     def __init__(self, class_count, device, layers_shapes, neurons_to_monitor=None):
@@ -125,11 +126,12 @@ class Monitor(BaseMonitor):
     def trim_class_zero(self, length):
         self.known_patterns_tensor[0] = self.known_patterns_tensor[0][:length, :]
 
+
 class FullNetMonitor(BaseMonitor):
 
     def __init__(self, class_count, device, layers_shapes, neurons_to_monitor=None):
         super().__init__(class_count, device, layers_shapes, neurons_to_monitor)
-
+        self.forest = dict()
         self.known_patterns_set = dict()
         self.known_patterns_tensor = dict()
         for i in range(class_count):
@@ -140,7 +142,7 @@ class FullNetMonitor(BaseMonitor):
                 self.known_patterns_tensor[i][j] = torch.Tensor()
 
     def compute_hamming_distance(self, neuron_values, class_id, omit=False, ignore_minor_values=True,
-                                 monitored_class=None, reverse=False):
+                                 monitored_class=None, tree=False):
 
         monitored_class = monitored_class if monitored_class else class_id
         mat_torch = torch.zeros(neuron_values.shape, device=neuron_values.device)
@@ -174,8 +176,6 @@ class FullNetMonitor(BaseMonitor):
         else:
             if ignore_minor_values:
                 r = range(neuron_on_off_pattern.shape[0])
-                if reverse:
-                    r = reversed(r)
                 for i in r:
                     full_net_distances = []
                     offset = 0
@@ -191,9 +191,12 @@ class FullNetMonitor(BaseMonitor):
                     full_net_distances = []
                     offset = 0
                     for shape_id, shape in enumerate(self.layers_shapes):
-                        lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
-                                                                                   offset:offset + shape]).sum(
-                            dim=1).min()
+                        if tree:
+                            lvl = self.forest[class_id[i]][shape_id].query(np.reshape(neuron_on_off_pattern.cpu()[i, offset:offset + shape], (1, -1)))[0] * shape
+                        else:
+                            lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+                                                                                       offset:offset + shape]).sum(
+                                dim=1).min()
                         offset += shape
                         full_net_distances.append(lvl.item())
                     distance.append(full_net_distances)
@@ -244,16 +247,31 @@ class FullNetMonitor(BaseMonitor):
             #             example_id]
             #     self.known_patterns_dict_cd[label[example_id]] += 1
 
+    def make_forest(self):
+        for i in range(self.class_count):
+            self.forest[i] = dict()
+            for j in range(len(self.known_patterns_tensor[i])):
+                self.forest[i][j] = BallTree(self.known_patterns_tensor[i][j].cpu(), metric='hamming')
+        #         del self.known_patterns_tensor[i][j]
+        #         del self.known_patterns_set[i][j]
+        #     del self.known_patterns_tensor[i]
+        #     del self.known_patterns_set[i]
+        # del self.known_patterns_tensor
+        # del self.known_patterns_set
+        # torch.cuda.empty_cache()
+
     def cut_duplicates(self):
         for i in self.known_patterns_tensor:
             for j in self.known_patterns_tensor[i]:
                 if self.known_patterns_tensor[i][j].numel():
-                    self.known_patterns_tensor[i][j] = self.known_patterns_tensor[i][j][:len(self.known_patterns_set[i][j]),
+                    self.known_patterns_tensor[i][j] = self.known_patterns_tensor[i][j][
+                                                       :len(self.known_patterns_set[i][j]),
                                                        :]
 
     def trim_class_zero(self, length):
         for i in range(len(self.layers_shapes)):
             self.known_patterns_tensor[0][i] = self.known_patterns_tensor[0][i][:length, :]
+
 
 class EuclideanMonitor(BaseMonitor):
 
