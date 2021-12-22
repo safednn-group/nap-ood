@@ -50,47 +50,47 @@
     "FashionMNIST": {
       "0": {
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 1,
         "quantile": 0.9
       },
       "1": {
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 1,
         "quantile": 0.9
       },
       "2": {
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 1,
         "quantile": 0.9
       },
       "3": {
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 1,
         "quantile": 0.9
       },
       "4": {
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 1,
         "quantile": 0.9
       },
       "5": {
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 1,
         "quantile": 0.9
       },
       "6": {
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 1,
         "quantile": 0.9
       },
       "7": {
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 1,
         "quantile": 0.9
       },
       "8": {
         "pool_type": "max",
-        "pool_size": 2,
+        "pool_size": 1,
         "quantile": 0.9
       }
     },
