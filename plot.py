@@ -75,7 +75,7 @@ def show_values_on_bars(axs, ):
             _x = p.get_x() + p.get_width() / 2
             _y = p.get_y() + p.get_height()
             value = '{:.4f}'.format(p.get_height())
-            ax.text(_x, _y + 0.001, value, ha="center", rotation=90)
+            ax.text(_x, _y + 0.05, value, ha="center", rotation=90)
 
     if isinstance(axs, np.ndarray):
         for idx, ax in np.ndenumerate(axs):
@@ -84,24 +84,25 @@ def show_values_on_bars(axs, ):
         _show_on_single_plot(axs)
 
 
-def draw(filename="results.csv"):
+def draw(filename="results.csv", metric="acc"):
     df = pd.read_csv(filename, index_col=0)
-
+    # df = df[df["ds"] != "TinyImagenet"]
+    # df = df[df["ds"] == "STL10"]
     print(df)
-    plot_order = df.groupby(["method"])['acc'].mean().sort_values()
+    plot_order = df.groupby(["m"])[metric].mean().sort_values()
     print(plot_order.index)
     print(type(plot_order))
     g = sns.catplot(
         data=df, kind="bar",
-        x="method", y="acc", palette="dark", alpha=.6, order=plot_order.index
+        x="m", y=metric, palette="dark", alpha=.6, order=plot_order.index
     )
     g.despine(left=True)
-    g.set_axis_labels("", "Accuracy")
+    g.set_axis_labels("", metric)
     show_values_on_bars(g.ax)
     plt.xticks(rotation=90)
     plt.tight_layout()
     plt.show()
-    # plt.savefig("wykres.png")
+    # plt.savefig(metric + filename.split(".")[0] + ".png")
 
 
 def draw_boxplots():
@@ -816,7 +817,7 @@ def choose_layers_and_pool_type(thresholds, accuracies, model, dt, type=0, votes
 
     for layer_id in range(thresholds.shape[1]):
         max_threshold_pools = np.min(max_threshold[:, layer_id, :])
-        scores = (best_accuracies[:, layer_id] - 0.5) * (0.1 + np.abs(
+        scores = (best_accuracies[:, layer_id] - 0.5) * (thresholds_factor + np.abs(
             ((best_thresholds[:, layer_id] + quantile_factors[max_acc_ids[:, layer_id, :]]) * quantile_factors[
                 max_acc_ids[:, layer_id, :]] - max_threshold_pools) / max_threshold_pools))
 
@@ -893,13 +894,15 @@ def fixed():
                 'TinyImagenet']
     types = [0, 1, 2, 3]
     n_votes = [3, 5, 7, 9]
-    th_factors = [0.1, 0.4, 0.7]
+    th_factors = [0.1, 0.7]
     data = []
-    for model_name in ["VGG"]:
+    for model_name in ["VGG", "Resnet"]:
         for type in types:
             for votes in n_votes:
                 for tf in th_factors:
                     agg_acc = 0
+                    agg_acc2 = 0
+                    agg_acc3 = 0
                     agg_auroc = 0
                     agg_aupr = 0
                     counter = 0
@@ -964,9 +967,20 @@ def fixed():
                                         distances_3 = distances_3.sum(axis=1)
 
                                         acc = correct_count / rows
+                                        acc2 = (distances_2[:int(rows / 2)] <= 0).sum() / rows
+                                        acc2 += (distances_2[int(rows / 2):] > 0).sum() / rows
+                                        acc3 = (distances_3[:int(rows / 2)] <= votes).sum() / rows
+                                        acc3 += (distances_3[int(rows / 2):] > votes).sum() / rows
+
                                         auroc_score_1 = roc_auc_score(labels, distances_1)
                                         auroc_score_2 = roc_auc_score(labels, distances_2)
                                         auroc_score_3 = roc_auc_score(labels, distances_3)
+                                        # print(distances_3)
+                                        # plt.boxplot(distances_3[:int(rows / 2)])
+                                        # plt.show()
+                                        # plt.boxplot(distances_3[int(rows / 2):])
+                                        # plt.show()
+                                        # exit(0)
                                         lr_precision_1, lr_recall_1, _ = precision_recall_curve(labels, distances_1)
                                         lr_precision_2, lr_recall_2, _ = precision_recall_curve(labels, distances_2)
                                         lr_precision_3, lr_recall_3, _ = precision_recall_curve(labels, distances_3)
@@ -974,31 +988,40 @@ def fixed():
                                         aupr_2 = auc(lr_recall_2, lr_precision_2)
                                         aupr_3 = auc(lr_recall_3, lr_precision_3)
                                         agg_acc += acc
+                                        agg_acc2 += acc2
+                                        agg_acc3 += acc3
                                         agg_auroc += auroc_score_1
                                         agg_aupr += aupr_1
-                                        data.append((model_name, d1, d2, d3, type, votes, tf, auroc_score_1, aupr_1, acc, auroc_score_2, aupr_2, auroc_score_3, aupr_3))
+                                        data.append((model_name, d1, d2, d3, type, votes, tf, auroc_score_1, aupr_1, acc, acc2, acc3, auroc_score_2, aupr_2, auroc_score_3, aupr_3))
                                         counter += 1
 
                         # print(f"{model_name}  {d1} - type {type}, votes {votes}, thfactor {tf} Aggregated accuracy: {agg_acc / counter}")
                         print(
                             f"{model_name}  {d1} - type {type}, votes {votes}, thfactor {tf} Aggregated auroc: {agg_auroc / counter}"
-                            f"Aggregated aupr: {agg_aupr / counter} acc: {agg_acc / counter}")
-    pd.DataFrame(data, columns=["model", "d1", "d2", "d3", "type", "votes", "tf", "auroc1", "aupr1", "acc", "auroc2", "aupr2", "auroc3", "aupr3"]).to_csv("hamming_aurocexp.csv")
+                            f"Aggregated aupr: {agg_aupr / counter} acc: {agg_acc / counter} acc2: {agg_acc2 / counter} acc3: {agg_acc3 / counter}")
+    pd.DataFrame(data, columns=["model", "d1", "d2", "d3", "type", "votes", "tf", "auroc1", "aupr1", "acc", "acc2", "acc3", "auroc2", "aupr2", "auroc3", "aupr3"]).to_csv("hamming_redoall.csv")
 
-def choose_best_auroc():
-    results1 = pd.read_csv("aurocexp_all12.csv", index_col=0)
-    results2 = pd.read_csv("aurocexp_all34.csv", index_col=0)
+def choose_best_auroc(model="Resnet"):
+    # results1 = pd.read_csv("hammingvgg_aurocexp.csv", index_col=0)
+    results1 = pd.read_csv("hamming_redo.csv", index_col=0)
+    results2 = pd.read_csv("hamming_aurocexp.csv", index_col=0)
     results = pd.concat([results1, results2], axis=0, ignore_index=True)
     grouped = results.groupby(["type", "votes", "tf"])["auroc1", "aupr1", "acc", "auroc2", "aupr2", "auroc3", "aupr3"].mean()
-    print(grouped.sort_values("acc").tail(3))
+    # print(grouped.sort_values("acc").tail(10))
 
-    print(grouped.sort_values("auroc3").tail(3))
+    # print(grouped.sort_values("auroc3").tail(3))
 
-    print(grouped.sort_values("aupr3").tail(3))
-    # results = results[results["model"] == "Resnet"]
-    # grouped = results.groupby(["type", "votes", "tf"])[["acc", "auroc3", "aupr3"]].mean()
-    # grouped = grouped[grouped["acc"] > 0.773]
-    # print(grouped)
+    # print(grouped.sort_values("aupr3").tail(3))
+    results = results[results["model"] == model]
+    # results = results[results["d1"] == "FashionMNIST"]
+    grouped = results.groupby(["type", "votes", "tf"])[["acc", "auroc3", "auroc1",  "auroc2",]].mean()
+    # grouped = grouped[grouped["acc"] > 0.823]
+    # grouped = grouped[grouped["auroc3"] > 0.884]
+    # grouped = grouped[grouped["aupr3"] > 0.879]
+    print(grouped)
+    # print(grouped.sort_values("auroc1").tail(3))
+    # print(grouped.sort_values("auroc2").tail(3))
+    # print(grouped.sort_values("auroc3").tail(3))
     # for type in [0, 1, 2, 3]:
     #     results_type = results[results["type"] == type]
     #     for model in ["VGG", "Resnet"]:
@@ -1011,6 +1034,11 @@ def choose_best_auroc():
     #             print(grouped.sort_values("auroc3").tail(3))
     #             print(grouped.sort_values("aupr3").tail(3))
 
+def nap_model_to_method(x):
+    if x == "VGG":
+        return "nap/0"
+    return "nap/1"
+
 if __name__ == "__main__":
     # draw_boxplots()
     # results = pd.read_csv("results/results_working_methods.csv", index_col=0)
@@ -1019,14 +1047,44 @@ if __name__ == "__main__":
     # results4 = pd.read_csv("results/results_vgg_all_datasets.csv", index_col=0)
     # save_results_as_csv(pd.concat([results, results2, results3, results4]), "results/results_all.csv")
     # draw("results/results_all.csv")
+    # df["acc"] = df["acc"].apply(lambda x: eval(x.split("[")[1].split("]")[0]))
+    # df.to_csv("nap_confirm2.csv")
+    fixed()
+    exit(0)
+    df = pd.read_csv("allmethods_auroc2.csv", index_col=0)
+    df2 = pd.read_csv("hamming_redo2.csv", index_col=0)
+    df2 = df2[df2["tf"] == 0.1]
+    df2 = df2[df2["votes"] == 5]
+    df2 = df2[df2["type"] == 3]
+    df2.model = df2.model.apply(lambda x: nap_model_to_method(x))
+    df2.drop(["type", "votes", "tf", "auroc1", "aupr1", "auroc3", "aupr3", "acc2"], inplace=True, axis=1)
+    # print(df2)
+    df2.rename(columns={"model": "m", "auroc2": "auroc", "aupr2": "aupr", "d1": "ds", "d2": "dv", "d3": "dt"}, inplace=True)
+    # print(df2)
+    d = pd.concat([df, df2], axis=0, ignore_index=True)
+    # d = d.loc[:, ~d.columns.str.contains('^Unnamed')]
+    # d = d.drop(["method", "a"], axis=1)
+    # d.loc[d["m"] == "grad_norm/1", "auroc"] = 1 - d[d["m"] == "grad_norm/1"]["auroc"]
+    # d.loc[d["m"] == "grad_norm/0", "auroc"] = 1 - d[d["m"] == "grad_norm/0"]["auroc"]
+    d.to_csv("allmethods_auroc.csv")
+    # draw("nap_confirm2.csv", "auroc")
+    # draw("nap_confirm2.csv", "aupr")
+    # draw("nap_confirm2.csv", "acc")
+    # draw("allmethods_auroc2.csv", "auroc")
+    # draw("allmethods_auroc2.csv", "aupr")
+    # draw("allmethods_auroc2.csv", "acc")
+
+    draw("allmethods_auroc.csv")
+    draw("allmethods_auroc.csv", "auroc")
+    draw("allmethods_auroc.csv", "aupr")
+
     # draw_hamming_distances()
     # draw_article_plots()
     # generate_latex('matplotlib_ex-dpir', r'1\textwidth', dpi=100)
     # generate_latex_heatmaps('matplotlib_ex-heatmaps', r'1\textwidth', dpi=100)
     # fix_vgg_results()
     # full_net_plot()
-    fixed()
-    # choose_best_auroc()
+
     # auroc()
     # execution_times_plot()
     # compare_exec_times_all_methods()
