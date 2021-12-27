@@ -191,6 +191,45 @@ def draw_hamming_distances():
     # plt.show()
     # print(frame)
 
+def draw_hamming_distances_layerwise():
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    nap_cfg_path = "nap_cfgs/full_nets.json"
+    import json
+    with open(nap_cfg_path) as cf:
+        nap_cfg = json.load(cf)
+    for d1 in d1_tasks:
+        for model in ["VGG", "Resnet"]:
+            for layer in range(len(layers_shapes[model][d1])):
+                train_file_pattern = "*traindistances_model_" + model + "_dataset_" + d1 + "_" + str(layer) +".csv"
+                test_file_pattern = "*testdistances_model_"  + model + "_dataset_" + d1 + "*" + str(layer) + ".csv"
+                train_files = glob.glob(os.path.join("results/distances", train_file_pattern))
+                test_files = glob.glob(os.path.join("results/distances", test_file_pattern))
+                frame = pd.read_csv(train_files[0], index_col=0)
+
+                print(len(frame.index))
+                print(len(frame.sample(10)))
+                for filename in test_files:
+                    df = pd.read_csv(filename, index_col=0)
+                    frame_train_sampled = frame.sample(len(df.index))
+                    print(frame_train_sampled["hamming_distance"].mean())
+                    print(len(frame_train_sampled.index))
+                    print(len(df.index))
+                    split = filename.split(".")[0].split("_")[1:]
+                    title = "".join(split)
+                    title = "compared" + title
+                    plt.figure()
+                    _ = plt.hist(frame_train_sampled, bins=int(df["hamming_distance"].max() / 4), alpha=0.7, label='train')
+                    _ = plt.hist(df, bins=int(df["hamming_distance"].max() / 4), alpha=0.7, label='test')
+                    plt.legend(loc='lower right')
+                    threshold, acc = find_threshold(frame_train_sampled, df)
+                    plt.axvline(threshold, color='k', linestyle='dashed', linewidth=1)
+                    min_ylim, max_ylim = plt.ylim()
+                    plt.text(threshold * 1.1, max_ylim * 0.9, f'Threshold: {threshold}, Accuracy: {acc}')
+                    plt.xlabel(f'Vector length: {layers_shapes[model][d1][layer]}, {(1 - nap_cfg[model][d1][str(layer)]["quantile"]):.1f}% highest values considered')
+                    plt.title(title)
+                    plt.show()
+                    # plt.savefig(os.path.join("results/distances/plots", title))
+                    plt.close()
 
 def fix_vgg_results():
     all_files = glob.glob(os.path.join("results/article_plots", "VGG*"))
@@ -1049,17 +1088,17 @@ if __name__ == "__main__":
     # draw("results/results_all.csv")
     # df["acc"] = df["acc"].apply(lambda x: eval(x.split("[")[1].split("]")[0]))
     # df.to_csv("nap_confirm2.csv")
-    fixed()
-    exit(0)
+    # fixed()
+    # exit(0)
     df = pd.read_csv("allmethods_auroc2.csv", index_col=0)
-    df2 = pd.read_csv("hamming_redo2.csv", index_col=0)
+    df2 = pd.read_csv("hamming_redo4.csv", index_col=0)
     df2 = df2[df2["tf"] == 0.1]
-    df2 = df2[df2["votes"] == 5]
-    df2 = df2[df2["type"] == 3]
+    df2 = df2[df2["votes"] == 9]
+    df2 = df2[df2["type"] == 2]
     df2.model = df2.model.apply(lambda x: nap_model_to_method(x))
-    df2.drop(["type", "votes", "tf", "auroc1", "aupr1", "auroc3", "aupr3", "acc2"], inplace=True, axis=1)
+    df2.drop(["type", "votes", "tf", "auroc1", "aupr1", "auroc3", "aupr3", "acc", "acc3"], inplace=True, axis=1)
     # print(df2)
-    df2.rename(columns={"model": "m", "auroc2": "auroc", "aupr2": "aupr", "d1": "ds", "d2": "dv", "d3": "dt"}, inplace=True)
+    df2.rename(columns={"model": "m", "auroc2": "auroc", "aupr2": "aupr", "acc2": "acc", "d1": "ds", "d2": "dv", "d3": "dt"}, inplace=True)
     # print(df2)
     d = pd.concat([df, df2], axis=0, ignore_index=True)
     # d = d.loc[:, ~d.columns.str.contains('^Unnamed')]

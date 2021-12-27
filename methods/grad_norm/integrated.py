@@ -154,9 +154,9 @@ class GradNorm(AbstractMethodInterface):
             aupr = auc(r, p)
             print("Final Test average accuracy %s" % (
                 colored('%.4f%%' % (correct / labels.shape[0] * 100), 'red')))
-            print(f"Auroc: {auroc} aupr: {aupr}")
+            print(f"Auroc: {1 - auroc} aupr: {aupr}")
             print(counter)
-        return correct / labels.shape[0], auroc, aupr
+        return correct / labels.shape[0], 1 - auroc, aupr
 
 
 

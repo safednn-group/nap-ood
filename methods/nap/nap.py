@@ -86,23 +86,21 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                          pin_memory=True)
 
         self.unknown_loader_ = DataLoader(dataset.datasets[1], batch_size=1, shuffle=True,
-                                         num_workers=self.args.workers,
-                                         pin_memory=True)
-
-
+                                          num_workers=self.args.workers,
+                                          pin_memory=True)
 
         self.valid_dataset_name = dataset.datasets[1].name
         self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
         # self._generate_execution_times()
         # return 0
-        # return self._find_only_threshold()
+        return self._find_only_threshold()
         return self._find_thresolds_for_every_layer()
 
     def test_H(self, dataset):
-
+        return 0, 0, 0
         self.test_dataset_name = dataset.datasets[1].name
         dataset2 = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
-                             num_workers=self.args.workers, pin_memory=True)
+                              num_workers=self.args.workers, pin_memory=True)
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
                              num_workers=self.args.workers, pin_memory=True)
 
@@ -163,7 +161,6 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         # print(f"Auroc: {auroc} aupr: {aupr}")
         # return test_average_acc[0], auroc, aupr
 
-
         correct = 0.0
         total_count = 0
         # print(f"quantiles {self.nap_params}")
@@ -182,7 +179,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     _, predicted = torch.max(outputs.data, 1)
 
                     distance = self.monitor_max.compute_hamming_distance(intermediate_values,
-                                                                     predicted.cpu().detach().numpy(), omit=self.omit)
+                                                                         predicted.cpu().detach().numpy(),
+                                                                         omit=self.omit)
                     classification = np.where(distance <= self.threshold_max, 0, 1)
                     compared = classification == label.unsqueeze(1).numpy()
                     if concat_distances.size:
@@ -202,8 +200,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         test_average_acc = correct / total_count
         print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
 
-        pd.DataFrame({"threshold": self.threshold_max, "valid_acc": self.accuracies_max}).to_csv("results/article_plots/full_nets/fixed/hamming/" +
-             self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "maxth-acc.csv")
+        pd.DataFrame({"threshold": self.threshold_max, "valid_acc": self.accuracies_max}).to_csv(
+            "results/article_plots/full_nets/fixed/hamming/" +
+            self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "maxth-acc.csv")
         for i in range(len(self.accuracies_max)):
             fname = "results/article_plots/full_nets/fixed/hamming/" + self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
                 i) + "_max.csv"
@@ -227,7 +226,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params_avg)
                     _, predicted = torch.max(outputs.data, 1)
                     distance = self.monitor_avg.compute_hamming_distance(intermediate_values,
-                                                                     predicted.cpu().detach().numpy(), omit=self.omit)
+                                                                         predicted.cpu().detach().numpy(),
+                                                                         omit=self.omit)
                     classification = np.where(distance <= self.threshold_avg, 0, 1)
                     compared = classification == label.unsqueeze(1).numpy()
                     if concat_distances.size:
@@ -247,15 +247,16 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         test_average_acc = correct / total_count
         print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
 
-        pd.DataFrame({"threshold": self.threshold_avg, "valid_acc": self.accuracies_avg}).to_csv("results/article_plots/full_nets/fixed/hamming/" +
-             self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "avgth-acc.csv")
+        pd.DataFrame({"threshold": self.threshold_avg, "valid_acc": self.accuracies_avg}).to_csv(
+            "results/article_plots/full_nets/fixed/hamming/" +
+            self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "avgth-acc.csv")
         for i in range(len(self.accuracies_avg)):
             fname = "results/article_plots/full_nets/fixed/hamming/" + self.model_name + "_" + self.train_dataset_name + "_" + self.valid_dataset_name + "_" + self.test_dataset_name + "_" + str(
                 i) + "_avg.csv"
 
             pd.DataFrame({"distance": concat_distances[:, i], "correct": concat_classification[:, i]}).to_csv(fname)
 
-        return test_average_acc, 0 , 0
+        return test_average_acc, 0, 0
 
     def method_identifier(self):
         output = "NeuronActivationPatterns"
@@ -303,7 +304,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     int(self.monitored_layers_shapes[0] * last_layer_fraction))
                 self.monitor.set_neurons_to_monitor(neurons_to_monitor)
 
+            self._draw_train_vs_valid_heatmaps(self.known_loader, self.unknown_loader, self.nap_params)
+            self._draw_train_heatmaps(self.train_loader, self.nap_params)
+            return 0
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+            self._generate_test_distances(loader=self.known_loader, train=True)
+            self._generate_test_distances(loader=self.unknown_loader, train=False)
             # self._check_duplicates_count()
 
             df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
@@ -338,12 +344,16 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
                     df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
                     df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params)
-                    thresholds[pool_type_id, :, i], accuracies[pool_type_id, :, i] = self._find_threshold(df_known, df_unknown, integers=True, cut_tail=True)
+                    thresholds[pool_type_id, :, i], accuracies[pool_type_id, :, i] = self._find_threshold(df_known,
+                                                                                                          df_unknown,
+                                                                                                          integers=True,
+                                                                                                          cut_tail=True)
 
             quantile_factors = np.sqrt(1. / np.abs(linspace - np.rint(linspace)))
             max_threshold = np.max((thresholds + quantile_factors) * quantile_factors, axis=2)[:, :, np.newaxis]
             tf = 0.1
-            scores = (accuracies - 0.5) * (tf + np.abs(((thresholds + quantile_factors) * quantile_factors - max_threshold) / max_threshold))
+            scores = (accuracies - 0.5) * (tf + np.abs(
+                ((thresholds + quantile_factors) * quantile_factors - max_threshold) / max_threshold))
             max_acc_ids = np.argmax(scores, axis=2)[:, :, np.newaxis]
             self.threshold = np.take_along_axis(thresholds, max_acc_ids, axis=2).squeeze()
             self.accuracies = np.take_along_axis(accuracies, max_acc_ids, axis=2).squeeze()
@@ -433,14 +443,17 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
             print(f"threshold: {self.threshold}, accuracy: {self.accuracies} nap_params: {self.nap_params}")
 
-            np.savez("results/article_plots/full_nets/fixed/hamming/" + self.model_name + "_" + self.train_dataset_name + "_" +
-                     self.valid_dataset_name, thresholds=thresholds, accuracies=accuracies)
+            np.savez(
+                "results/article_plots/full_nets/fixed/hamming/" + self.model_name + "_" + self.train_dataset_name + "_" +
+                self.valid_dataset_name, thresholds=thresholds, accuracies=accuracies)
             self.monitor_max = FullNetMonitor(self.class_count, self.nap_device,
-                                          layers_shapes=self.monitored_layers_shapes)
-            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params_max, monitor=self.monitor_max)
+                                              layers_shapes=self.monitored_layers_shapes)
+            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params_max,
+                                                monitor=self.monitor_max)
             self.monitor_avg = FullNetMonitor(self.class_count, self.nap_device,
-                                          layers_shapes=self.monitored_layers_shapes)
-            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params_avg, monitor=self.monitor_avg)
+                                              layers_shapes=self.monitored_layers_shapes)
+            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params_avg,
+                                                monitor=self.monitor_avg)
 
             return self.accuracies
 
@@ -700,7 +713,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         print(f"diffsum max {diffs_sum.max()}")
         _ = sns.heatmap(
             diffs_sum.flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0, 1).cpu())
-        title = "VGG_" + self.train_dataset_name + "_vs_" + self.valid_dataset_name
+        title = self.model_name + "_" + self.train_dataset_name + "_vs_" + self.valid_dataset_name
         # plt.show()
         plt.xticks(np.arange(len(ax_labels)), ax_labels)
         plt.xlabel("layer_num.part")
@@ -766,7 +779,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             _ = sns.heatmap(
                 heatmap[k].flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0,
                                                                                                                 1).cpu())
-            title = "VGG_TinyImagenet_class" + str(k)
+            title = self.model_name + "_" + self.train_dataset_name + "_class" + str(k)
             # plt.show()
             plt.xticks(np.arange(len(ax_labels)), ax_labels)
             plt.xlabel("layer_num.part")
@@ -789,7 +802,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             _ = sns.heatmap(
                 diffs_sum.flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0,
                                                                                                                1).cpu())
-            title = "VGG_TinyImagenet_class" + str(k) + "_diffsum"
+            title = self.model_name + "_" + self.train_dataset_name + "_class" + str(k) + "_diffsum"
             # plt.show()
             plt.xticks(np.arange(len(ax_labels)), ax_labels)
             plt.xlabel("layer_num.part")
@@ -864,7 +877,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         for i in self.monitor.known_patterns_set:
             class_distances = np.ndarray([])
             for j in self.monitor.known_patterns_tensor[i]:
-                s = ((self.monitor.known_patterns_tensor[i] ^ j) & j).sum(dim=1)
+                s = (self.monitor.known_patterns_tensor[i] ^ j).sum(dim=1)
                 s = s[s > 0]
                 if s.numel():
                     distance = s.min().cpu().numpy().reshape((1,))
@@ -883,7 +896,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         # shape = self.monitor.known_patterns_tensor.cpu().numpy().shape
         # print(f" unique all {self.monitor.known_patterns_tensor.reshape((shape)).unique(return_counts=True, dim=0)}")
 
-    def _generate_test_distances(self, loader):
+    def _generate_test_distances(self, loader, train=False):
         test_distances = np.array([])
         with tqdm.tqdm(total=len(loader)) as pbar:
             with torch.no_grad():
@@ -903,9 +916,17 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     else:
                         test_distances = distance
 
-        fname = "testdistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_vs_" + self.test_dataset_name + ".csv"
-        df = pd.DataFrame(test_distances, columns=['hamming_distance'])
-        df.to_csv(fname)
+        if train:
+            for i in range(len(self.monitored_layers_shapes)):
+                fname = "results/distances/" + "traindistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_" + str(
+                    i) + ".csv"
+                pd.DataFrame({"hamming_distance": test_distances[:, i]}).to_csv(fname)
+        else:
+            for i in range(len(self.monitored_layers_shapes)):
+                fname = "results/distances/" + "testdistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_vs_" + self.test_dataset_name + "_" + str(
+                    i) + ".csv"
+
+                pd.DataFrame({"hamming_distance": test_distances[:, i]}).to_csv(fname)
 
     def _generate_execution_times(self):
         import time
@@ -930,7 +951,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             print(len(self.monitor.known_patterns_set[0][0]))
             self.monitor.make_forest()
             # for size_id, size in enumerate(trim_sizes):
-                # self.monitor.trim_class_zero(size)
+            # self.monitor.trim_class_zero(size)
 
             for i, (image, label) in enumerate(self.known_loader):
                 start_time = time.time()
@@ -938,9 +959,11 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     image.cuda(), nap_params=self.nap_params)
                 _, predicted = torch.max(outputs.data, 1)
                 lvl = self.monitor.compute_hamming_distance(intermediate_values,
-                                                          label.numpy(), omit=False, ignore_minor_values=False, tree=False)
+                                                            label.numpy(), omit=False, ignore_minor_values=False,
+                                                            tree=False)
                 lvl_tree = self.monitor.compute_hamming_distance(intermediate_values,
-                                                          label.numpy(), omit=False, ignore_minor_values=False, tree=True)
+                                                                 label.numpy(), omit=False, ignore_minor_values=False,
+                                                                 tree=True)
                 print((lvl - lvl_tree).sum())
                 exec_times[i] = time.time() - start_time
         #             self.base_model.forward(x)
@@ -991,7 +1014,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         # avg_compute_hamming_and = compute_hamming_and_times.mean(axis=1)
         # avg_compute_hamming_full_net = compute_hamming_full_net_times.mean(axis=1)
         exec_times = exec_times.mean()
-        np.savez("execution_times_"+self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)
+        np.savez("execution_times_" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name,
+                 exec_times=exec_times)
         exit(0)
         # print(avg_net_pass)
         # print(avg_nap_net_pass)

@@ -141,7 +141,7 @@ class FullNetMonitor(BaseMonitor):
                 self.known_patterns_set[i][j] = set()
                 self.known_patterns_tensor[i][j] = torch.Tensor()
 
-    def compute_hamming_distance(self, neuron_values, class_id, omit=False, ignore_minor_values=True,
+    def compute_hamming_distance(self, neuron_values, class_id, omit=False, ignore_minor_values=False,
                                  monitored_class=None, tree=False):
 
         monitored_class = monitored_class if monitored_class else class_id
