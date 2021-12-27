@@ -93,17 +93,92 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
         # self._generate_execution_times()
         # return 0
-        return self._find_only_threshold()
+        # return self._find_only_threshold()
         return self._find_thresolds_for_every_layer()
 
+    def _generate_configurations_results(self, dataset):
+        linspace = np.linspace(0.1, 0.9, num=5)
+
+
+        data = []
+        with torch.no_grad():
+            for pool_type_id, pool_type in enumerate(["max", "avg"]):
+                for q_i, q in enumerate(linspace):
+                    for k in self.nap_params:
+                        self.nap_params[k]["quantile"] = q
+                        self.nap_params[k]["pool_type"] = pool_type
+                    self.monitor = FullNetMonitor(self.class_count, self.nap_device,
+                                                  layers_shapes=self.monitored_layers_shapes)
+                    self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+                    with tqdm.tqdm(total=len(dataset)) as pbar:
+
+                        total_count = 0
+                        correct = np.zeros(len(self.shape_factors))
+                        for i, (image, label) in enumerate(dataset):
+                            pbar.update()
+
+                            # Get and prepare data.
+                            input, target = image.to(self.args.device), label.to(self.args.device)
+
+                            outputs, intermediate_values, _ = self.base_model.forward_nap(input,
+                                                                                          nap_params=self.nap_params)
+                            _, predicted = torch.max(outputs.data, 1)
+                            distance = self.monitor.compute_hamming_distance(intermediate_values,
+                                                                             predicted.cpu().detach().numpy(),
+                                                                             omit=self.omit, tree=False,
+                                                                             ignore_minor_values=False)
+
+
+                            concat_distances = np.array([])
+                            concat_labels = np.array([])
+                            score = np.zeros(distance.shape)
+                            for layer_id in range(len(self.shape_factors)):
+                                score[:, layer_id] = (distance[:, layer_id] + self.add_factor[layer_id, q_i]) * self.multiplier[layer_id, q_i] - self.scaled_threshold[pool_type_id, layer_id, q_i]
+                                classification = \
+                                np.where(distance[:, layer_id] <= self.threshold[pool_type_id, layer_id, q_i], 0, 1)
+                                compared = classification == label.numpy()
+
+                                correct[layer_id] += compared.sum(axis=0)
+
+                            total_count += len(input)
+                            if concat_distances.size:
+                                concat_distances = np.concatenate((concat_distances, score))
+                                concat_labels = np.concatenate((concat_labels, label.cpu().numpy()))
+                            else:
+                                concat_distances = score
+                                concat_labels = label.cpu().numpy()
+
+
+                            # message = 'Accuracy %.4f' % (correct / total_count)
+                        print("Final Test average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
+
+                        for layer_id in range(len(self.shape_factors)):
+                            test_average_acc = correct[layer_id] / total_count
+                            auroc = roc_auc_score(concat_labels, concat_distances[:, layer_id])
+                            p, r, _ = precision_recall_curve(concat_labels, concat_distances[:, layer_id])
+                            aupr = auc(r, p)
+                            data.append((self.model_name, self.train_dataset_name, self.valid_dataset_name,
+                                         self.test_dataset_name, layer_id, 1, pool_type, q,
+                                         self.threshold[pool_type_id, layer_id, q_i],
+                                         self.valid_accuracies[pool_type_id, layer_id, q_i], test_average_acc, aupr,
+                                         auroc))
+
+        df = pd.DataFrame(data,
+                          columns=['model', 'ds', 'dv', 'dt', 'layer', 'pool', 'pool_type', 'quantile', 'threshold',
+                                   'valid_acc', 'test_acc', "aupr", "auroc"])
+        fname = self.model_name + self.train_dataset_name + self.valid_dataset_name + self.test_dataset_name + "otherlayers.csv"
+        fpath = os.path.join("results/article_plots", fname)
+        df.to_csv(fpath)
+
     def test_H(self, dataset):
-        return 0, 0, 0
+
         self.test_dataset_name = dataset.datasets[1].name
         dataset2 = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
                               num_workers=self.args.workers, pin_memory=True)
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
                              num_workers=self.args.workers, pin_memory=True)
-
+        self._generate_configurations_results(dataset)
+        return 0, 0 ,0
         # correct = 0.0
         # total_count = 0
         # print(f"quantiles {self.nap_params}")
@@ -128,7 +203,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         #             # print(self.threshold[self.chosen_layers].shape)
         #             # print(np.where(distance[:, self.chosen_layers] <= self.threshold[self.chosen_layers], 0, 1).shape)
         #             classification = stats.mode(np.where(distance[:, self.chosen_layers] <= self.threshold[self.chosen_layers], 0, 1), axis=1)[0]
-        #             score = (distance[:, :] + self.add_factor) * self.multiplier / self.scaled_threshold
+        #             score = (distance[:, :] + self.add_factor) * self.multiplier - self.scaled_threshold
         #             score = score[:, self.chosen_layers]
         #             score = score.sum(axis=1)
         #             # print(classification)
@@ -334,6 +409,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             accuracies = np.zeros(thresholds.shape)
             scores = np.zeros(accuracies.shape)
             linspace = np.linspace(0.1, 0.9, num=n_steps)
+            quantile_factors = np.sqrt(1. / np.abs(linspace - np.rint(linspace)))
+            self.add_factor = np.zeros((len(self.shape_factors), n_steps))
+            self.multiplier = np.zeros((len(self.shape_factors), n_steps))
             for pool_type_id, pool_type in enumerate(["max", "avg"]):
                 for i, q in enumerate(linspace):
                     for k in self.nap_params:
@@ -348,6 +426,15 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                                                                                                           df_unknown,
                                                                                                           integers=True,
                                                                                                           cut_tail=True)
+                    for k in self.nap_params:
+                        layer_id = len(self.monitored_layers_shapes) - int(k) - 1
+                        self.add_factor[layer_id] = quantile_factors + self.shape_factors[layer_id]
+                        self.multiplier[layer_id] = quantile_factors * (self.max_factor / self.shape_factors[layer_id])
+            self.valid_accuracies = accuracies
+            self.threshold = thresholds
+
+            self.scaled_threshold = (self.threshold + self.add_factor) * self.multiplier
+            return 0
 
             quantile_factors = np.sqrt(1. / np.abs(linspace - np.rint(linspace)))
             max_threshold = np.max((thresholds + quantile_factors) * quantile_factors, axis=2)[:, :, np.newaxis]
@@ -923,7 +1010,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 pd.DataFrame({"hamming_distance": test_distances[:, i]}).to_csv(fname)
         else:
             for i in range(len(self.monitored_layers_shapes)):
-                fname = "results/distances/" + "testdistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_vs_" + self.test_dataset_name + "_" + str(
+                fname = "results/distances/" + "testdistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_vs_" + self.valid_dataset_name + "_" + str(
                     i) + ".csv"
 
                 pd.DataFrame({"hamming_distance": test_distances[:, i]}).to_csv(fname)
