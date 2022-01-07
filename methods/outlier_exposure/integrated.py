@@ -120,6 +120,7 @@ class OutlierExposure(AbstractMethodInterface):
 
     def test_H(self, dataset):
         self.base_model.eval()
+
         with tqdm.tqdm(total=len(dataset)) as pbar:
             with torch.no_grad():
 
@@ -128,6 +129,8 @@ class OutlierExposure(AbstractMethodInterface):
                 labels = np.array([])
                 dataset_iter = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                                           num_workers=self.args.workers, pin_memory=True)
+                self._generate_execution_times(dataset_iter)
+                return 0, 0, 0
                 counter = 0
                 for i, (image, label) in enumerate(dataset_iter):
                     pbar.update()
@@ -337,3 +340,24 @@ class OutlierExposure(AbstractMethodInterface):
         acc = best_correct_count / (scores_known.shape[0] * 2)
         print(f"Best th: {best_threshold} acc: {acc}")
         return acc
+
+    def _generate_execution_times(self, loader):
+        import time
+        import numpy as np
+        n_times = 1000
+        exec_times = np.ones(n_times)
+
+        trainiter = iter(loader)
+        x = trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device)
+        with torch.no_grad():
+            for i in range(n_times):
+                start_time = time.time()
+                logits = self.base_model(x, softmax=False)
+                smax = F.softmax(logits, dim=1).cpu().numpy()
+                scores = -np.max(smax, axis=1)
+                _ = np.where(scores > self.threshold, 1, 0)
+
+                exec_times[i] = time.time() - start_time
+
+        exec_times = exec_times.mean()
+        np.savez("results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)

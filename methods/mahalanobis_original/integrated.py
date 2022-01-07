@@ -121,6 +121,9 @@ class Mahalanobis(AbstractMethodInterface):
         print(f"testh best coef: {self.best_lr.coef_} inter: {self.best_lr.intercept_}")
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
+
+        self._generate_execution_times(dataset)
+        return 0, 0, 0
         for i in range(self.num_output):
             M_in = lib_generation.get_Mahalanobis_score(self.base_model, dataset, self.class_count,
                                                         self.workspace_dir + "/test_H", \
@@ -303,3 +306,89 @@ class Mahalanobis(AbstractMethodInterface):
         print('\n Training Accuracy:({:.2f}%)\n'.format(100. * correct / total))
 
         return sample_class_mean, precision
+
+    def _generate_execution_times(self, loader):
+        import time
+        import numpy as np
+        n_times = 1000
+        exec_times = np.ones(n_times)
+
+        trainiter = iter(loader)
+        data, target = trainiter.__next__()
+        data = data[0].unsqueeze(0).to(self.args.device)
+        target = target[0].unsqueeze(0).to(self.args.device)
+        self.base_model.eval()
+        for t in range(n_times):
+            start_time = time.time()
+            Mahalanobis = []
+            for i in range(self.num_output):
+                data, target = data.cuda(), target.cuda()
+                data, target = Variable(data, requires_grad=True), Variable(target)
+
+                out_features = self.base_model.intermediate_forward(data, softmax=False, layer_index=i)
+                out_features = out_features.view(out_features.size(0), out_features.size(1), -1)
+                out_features = torch.mean(out_features, 2)
+
+                # compute Mahalanobis score
+                gaussian_score = 0
+                for klass in range(self.class_count):
+                    batch_sample_mean = self.sample_mean[i][klass]
+                    zero_f = out_features.data - batch_sample_mean
+                    term_gau = -0.5 * torch.mm(torch.mm(zero_f, self.precision[i]), zero_f.t()).diag()
+                    if klass == 0:
+                        gaussian_score = term_gau.view(-1, 1)
+                    else:
+                        gaussian_score = torch.cat((gaussian_score, term_gau.view(-1, 1)), 1)
+
+                # Input_processing
+                sample_pred = gaussian_score.max(1)[1]
+                batch_sample_mean = self.sample_mean[i].index_select(0, sample_pred)
+                zero_f = out_features - Variable(batch_sample_mean)
+                pure_gau = -0.5 * torch.mm(torch.mm(zero_f, Variable(self.precision[i])), zero_f.t()).diag()
+                loss = torch.mean(-pure_gau)
+                loss.backward()
+
+                gradient = torch.ge(data.grad.data, 0)
+                gradient = (gradient.float() - 0.5) * 2
+                # if net_type == 'densenet':
+                #     gradient.index_copy_(1, torch.LongTensor([0]).cuda(), gradient.index_select(1, torch.LongTensor([0]).cuda()) / (63.0/255.0))
+                #     gradient.index_copy_(1, torch.LongTensor([1]).cuda(), gradient.index_select(1, torch.LongTensor([1]).cuda()) / (62.1/255.0))
+                #     gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (66.7/255.0))
+                # elif net_type == 'resnet':
+                #
+                #     gradient.index_copy_(1, torch.LongTensor([0]).cuda(), gradient.index_select(1, torch.LongTensor([0]).cuda()) / (0.2023))
+                #     gradient.index_copy_(1, torch.LongTensor([1]).cuda(), gradient.index_select(1, torch.LongTensor([1]).cuda()) / (0.1994))
+                #     gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (0.2010))
+                tempInputs = torch.add(data.data, -self.best_magnitude, gradient)
+
+                with torch.no_grad():
+                    noise_out_features = self.base_model.intermediate_forward(Variable(tempInputs),
+                                                                              softmax=False,
+                                                                              layer_index=i)
+                noise_out_features = noise_out_features.view(noise_out_features.size(0), noise_out_features.size(1),
+                                                             -1)
+                noise_out_features = torch.mean(noise_out_features, 2)
+                noise_gaussian_score = 0
+                for klass in range(self.class_count):
+                    batch_sample_mean = self.sample_mean[i][klass]
+                    zero_f = noise_out_features.data - batch_sample_mean
+                    term_gau = -0.5 * torch.mm(torch.mm(zero_f, self.precision[i]), zero_f.t()).diag()
+                    if klass == 0:
+                        noise_gaussian_score = term_gau.view(-1, 1)
+                    else:
+                        noise_gaussian_score = torch.cat((noise_gaussian_score, term_gau.view(-1, 1)), 1)
+
+                noise_gaussian_score, _ = torch.max(noise_gaussian_score, dim=1)
+                Mahalanobis.extend(noise_gaussian_score.cpu().numpy())
+
+            M_in = np.asarray(Mahalanobis, dtype=np.float32).reshape(1, -1)
+
+            y_pred = self.best_lr.predict_proba(M_in)[:, 1]
+            _ = np.where(y_pred > self.threshold, 1, 0)
+
+            exec_times[t] = time.time() - start_time
+
+        exec_times = exec_times.mean()
+        np.savez(
+            "results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name,
+            exec_times=exec_times)

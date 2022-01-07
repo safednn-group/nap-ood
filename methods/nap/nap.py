@@ -81,6 +81,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.known_loader = DataLoader(dataset.datasets[0], batch_size=self.args.batch_size, shuffle=True,
                                        num_workers=self.args.workers,
                                        pin_memory=True)
+        self.known_loader_parent = DataLoader(dataset.datasets[0].parent_dataset, batch_size=self.args.batch_size, shuffle=True,
+                                       num_workers=self.args.workers,
+                                       pin_memory=True)
         self.unknown_loader = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
                                          num_workers=self.args.workers,
                                          pin_memory=True)
@@ -91,9 +94,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
         self.valid_dataset_name = dataset.datasets[1].name
         self.nap_params = self.nap_cfg[self.model_name][self.train_dataset_name]
-        # self._generate_execution_times()
-        # return 0
-        # return self._find_only_threshold()
+        self._generate_execution_times()
+        return 0
+        return self._find_only_threshold()
         return self._find_thresolds_for_every_layer()
 
     def _generate_configurations_results(self, dataset):
@@ -171,14 +174,22 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         df.to_csv(fpath)
 
     def test_H(self, dataset):
-
+        return 0, 0, 0
         self.test_dataset_name = dataset.datasets[1].name
-        dataset2 = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
+        dataset2 = DataLoader(dataset.datasets[0].parent_dataset, batch_size=self.args.batch_size, shuffle=True,
                               num_workers=self.args.workers, pin_memory=True)
-        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
-                             num_workers=self.args.workers, pin_memory=True)
+
+        dataset3 = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
+                              num_workers=self.args.workers, pin_memory=True)
+
+        # dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True,
+        #                      num_workers=self.args.workers, pin_memory=True)
+        # self._draw_train_heatmaps(self.known_loader_parent, self.nap_params, True)
+        # return 0, 0, 0
+        acc_max, acc_min = self._draw_train_vs_valid_heatmaps(dataset2, dataset3, self.nap_params, True)
+        return acc_max, acc_min, 0
         self._generate_configurations_results(dataset)
-        return 0, 0 ,0
+
         # correct = 0.0
         # total_count = 0
         # print(f"quantiles {self.nap_params}")
@@ -380,11 +391,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 self.monitor.set_neurons_to_monitor(neurons_to_monitor)
 
             self._draw_train_vs_valid_heatmaps(self.known_loader, self.unknown_loader, self.nap_params)
-            self._draw_train_heatmaps(self.train_loader, self.nap_params)
+            # self._draw_train_heatmaps(self.train_loader, self.nap_params)
             return 0
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
             self._generate_test_distances(loader=self.known_loader, train=True)
             self._generate_test_distances(loader=self.unknown_loader, train=False)
+            return 0
             # self._check_duplicates_count()
 
             df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
@@ -716,24 +728,27 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                         count_class[predicted[i].item()] = 1
         return count_class
 
-    def _draw_train_vs_valid_heatmaps(self, loader, valid_loader=None, nap_params=None):
-        count_class = self._count_classes_valid(loader, nap_params)
-        count_class_valid = self._count_classes_valid(valid_loader, nap_params)
-
-        for k in sorted(count_class_valid):
-            print(f"class: {k} count: {count_class_valid[k]}")
-
+    def _draw_train_vs_valid_heatmaps(self, loader, valid_loader=None, nap_params=None, test=False):
+        # count_class = self._count_classes_valid(loader, nap_params)
+        # count_class_valid = self._count_classes_valid(valid_loader, nap_params)
+        #
+        # for k in sorted(count_class_valid):
+        #     print(f"class: {k} count: {count_class_valid[k]}")
+        #
         heatmap = dict()
-        count_class_ = dict()
+        # count_class_ = dict()
         heatmap_valid = dict()
-        count_class_valid = dict()
-        for i in range(len(count_class)):
-            heatmap[i] = torch.Tensor()
-            count_class_[i] = 0
-            heatmap_valid[i] = torch.Tensor()
-            count_class_valid[i] = 0
-
+        # count_class_valid = dict()
+        # for i in range(len(count_class)):
+        #     heatmap[i] = torch.Tensor()
+        #     count_class_[i] = 0
+        #     heatmap_valid[i] = torch.Tensor()
+        #     count_class_valid[i] = 0
+        heatmap[0] = torch.Tensor()
+        heatmap_valid[0] = torch.Tensor()
         dataiter = iter(loader)
+        counter = 0
+        counter2 = 0
         with torch.no_grad():
             for img, label in tqdm.tqdm(dataiter):
                 img = img.to(self.args.device)
@@ -744,13 +759,14 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     torch.device(self.nap_device))
                 predicted = predicted.cpu().numpy()
                 for i in range(neuron_on_off_pattern.shape[0]):
+                    counter += 1
                     # if count_class_[predicted[i]] < minimum:
                     if heatmap[0].numel():
                         heatmap[0] += neuron_on_off_pattern[i]
                     else:
                         heatmap[0] = neuron_on_off_pattern[i]
                     # count_class_[predicted[i]] += 1
-
+        print(counter)
         dataiter = iter(valid_loader)
         with torch.no_grad():
             for img, label in tqdm.tqdm(dataiter):
@@ -762,12 +778,14 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     torch.device(self.nap_device))
                 predicted = predicted.cpu().numpy()
                 for i in range(neuron_on_off_pattern.shape[0]):
+                    counter2 += 1
                     # if count_class_valid[predicted[i]] < minimum:
                     if heatmap_valid[0].numel():
                         heatmap_valid[0] += neuron_on_off_pattern[i]
                     else:
                         heatmap_valid[0] = neuron_on_off_pattern[i]
                     # count_class_valid[predicted[i]] += 1
+        print(counter2)
         import seaborn as sns
         ax_labels = []
         shapes.reverse()
@@ -797,7 +815,13 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 diffs_sum += diff
             else:
                 diffs_sum = diff
-        print(f"diffsum max {diffs_sum.max()}")
+        if not test:
+            self.argmax = diffs_sum.argmax()
+            self.argmin = diffs_sum.argmin()
+        acc_max = float((heatmap[0][self.argmax] + counter2 - heatmap_valid[0][self.argmax]))/(counter + counter2)
+        acc_min = float((heatmap_valid[0][self.argmin] + counter - heatmap[0][self.argmin])) / (counter + counter2)
+        print(f"acc max = {acc_max} acc min = {acc_min}")
+        # print(f"diffsum max {diffs_sum.max()}")
         _ = sns.heatmap(
             diffs_sum.flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0, 1).cpu())
         title = self.model_name + "_" + self.train_dataset_name + "_vs_" + self.valid_dataset_name
@@ -807,10 +831,11 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         plt.ylabel("neuron_row_num")
         plt.tight_layout()
         plt.xticks(rotation=90)
-        plt.savefig(os.path.join("results/article_plots/heatmaps", title))
+        # plt.savefig(os.path.join("results/article_plots/heatmaps", title))
         plt.close()
+        return acc_max, acc_min
 
-    def _draw_train_heatmaps(self, loader, nap_params=None):
+    def _draw_train_heatmaps(self, loader, nap_params=None, test=False):
         count_class = self._count_classes(loader)
         minimum = min(count_class.values())
         heatmap = dict()
@@ -818,7 +843,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         for i in range(len(count_class)):
             heatmap[i] = torch.Tensor()
             count_class_[i] = 0
-
+        all_sum = 0
+        all_samples = 0
+        keys = set(heatmap.keys())
+        keys2 = set(heatmap.keys())
         dataiter = iter(loader)
         with torch.no_grad():
             for img, label in tqdm.tqdm(dataiter):
@@ -832,13 +860,26 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 label_np = label.cpu().numpy()
 
                 for i in range(neuron_on_off_pattern.shape[0]):
+                    # print(label_np)
                     if count_class_[label_np[i]] < minimum:
                         if heatmap[label_np[i]].numel():
                             heatmap[label_np[i]] += neuron_on_off_pattern[i]
                         else:
                             heatmap[label_np[i]] = neuron_on_off_pattern[i]
-                        count_class_[label_np[i]] += 1
+                        if test:
+                            if neuron_on_off_pattern[i][self.arg[label_np[i]]]:
+                                correct = 1
+                                for k2 in keys:
+                                    if [label_np[i]] != k2 and neuron_on_off_pattern[i][self.arg[label_np[k2]]]:
+                                        correct = 0
+                                        break
+                                all_sum += correct
+                                # all_sum += diffs_sum.max()
+                                all_samples += 1
 
+                        count_class_[label_np[i]] += 1
+        if test:
+            print(f" acc {float(all_sum) / float(all_samples)}")
         # draw_activations(intermediate_values, shapes)
         import seaborn as sns
         ax_labels = []
@@ -851,17 +892,17 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 label = str(i) + "." + str(j)
                 ax_labels.append(label)
 
-        keys = set(heatmap.keys())
-        keys2 = set(heatmap.keys())
+
+        self.arg = np.ones(len(keys), dtype=np.int) * -1
         for k in keys:
-            print(count_class_[k])
-            print(heatmap[k].max())
-            print(heatmap[k].min())
-            print(heatmap[k].float().mean())
-            print(heatmap[k].sum())
-            print(heatmap[k].numel())
-            print(heatmap[k].shape)
-            print(shapes_np)
+            # print(count_class_[k])
+            # print(heatmap[k].max())
+            # print(heatmap[k].min())
+            # print(heatmap[k].float().mean())
+            # print(heatmap[k].sum())
+            # print(heatmap[k].numel())
+            # print(heatmap[k].shape)
+            # print(shapes_np)
 
             _ = sns.heatmap(
                 heatmap[k].flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0,
@@ -873,7 +914,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             plt.ylabel("neuron_row_num")
             plt.tight_layout()
             plt.xticks(rotation=90)
-            plt.savefig(os.path.join("results/article_plots/heatmaps", title))
+            # plt.savefig(title)
+            # plt.savefig(os.path.join("results/article_plots/heatmaps", title))
+            # plt.show()
             plt.close()
             keys2.pop()
             diffs_sum = torch.Tensor([])
@@ -885,7 +928,15 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                         diffs_sum += diff
                     else:
                         diffs_sum = diff
-            print(f"diffsum max {diffs_sum.max()}")
+            if not test:
+                i = 0
+                while self.arg[k] == -1:
+                    s = diffs_sum.argsort(descending=True)[i]
+                    if not s in self.arg:
+                        self.arg[k] = s
+                    i += 1
+
+            # print(f"diffsum max {diffs_sum.max()}  allsum {all_sum} all_samples {all_samples} len {len(keys)} count {count_class_[k]} acc {float(all_sum)/float(all_samples)}" )
             _ = sns.heatmap(
                 diffs_sum.flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0,
                                                                                                                1).cpu())
@@ -896,8 +947,11 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             plt.ylabel("neuron_row_num")
             plt.tight_layout()
             plt.xticks(rotation=90)
-            plt.savefig(os.path.join("results/article_plots/heatmaps", title))
+            # plt.savefig(os.path.join("results/article_plots/heatmaps", title))
+            # plt.savefig(title)
             plt.close()
+
+            # print(all_sum/all_samples)
             # for k2 in keys2:
             #     diff = heatmap[k] - heatmap[k2]
             #     _ = sns.heatmap(diff.flip(0).reshape((int(shapes_np.sum() / shapes_np.min()), shapes_np.min())).transpose(0, 1).cpu())
@@ -1005,19 +1059,19 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
         if train:
             for i in range(len(self.monitored_layers_shapes)):
-                fname = "results/distances/" + "traindistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_" + str(
+                fname = "results/distances/redo/" + "q_" + str(self.nap_params["1"]["quantile"]) + "_traindistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_" + str(
                     i) + ".csv"
                 pd.DataFrame({"hamming_distance": test_distances[:, i]}).to_csv(fname)
         else:
             for i in range(len(self.monitored_layers_shapes)):
-                fname = "results/distances/" + "testdistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_vs_" + self.valid_dataset_name + "_" + str(
+                fname = "results/distances/redo/" + "q_" + str(self.nap_params["1"]["quantile"]) +  "_testdistances_model" + self.model_name + "_dataset_" + self.train_dataset_name + "_vs_" + self.valid_dataset_name + "_" + str(
                     i) + ".csv"
 
                 pd.DataFrame({"hamming_distance": test_distances[:, i]}).to_csv(fname)
 
     def _generate_execution_times(self):
         import time
-        n_times = 100
+        n_times = 1000
         trim_sizes = np.arange(100, 4001, 300)[::-1]
         sizes_len = len(trim_sizes)
         net_pass_times = np.ones(n_times)
@@ -1036,23 +1090,38 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
 
             print(len(self.monitor.known_patterns_set[0][0]))
-            self.monitor.make_forest()
+            for i in range(n_times):
+                start_time = time.time()
+                outputs, intermediate_values, _ = self.base_model.forward_nap(
+                    x, nap_params=self.nap_params)
+                _, predicted = torch.max(outputs.data, 1)
+                lvl = self.monitor.compute_hamming_distance(intermediate_values,
+                                                            np.zeros(1), omit=False, ignore_minor_values=False)
+
+                _ = np.where(lvl > np.zeros(lvl.shape), 1, 0)
+                exec_times[i] = time.time() - start_time
+
+        exec_times = exec_times.mean()
+        np.savez(
+            "results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name,
+            exec_times=exec_times)
+            # self.monitor.make_forest()
             # for size_id, size in enumerate(trim_sizes):
             # self.monitor.trim_class_zero(size)
 
-            for i, (image, label) in enumerate(self.known_loader):
-                start_time = time.time()
-                outputs, intermediate_values, _ = self.base_model.forward_nap(
-                    image.cuda(), nap_params=self.nap_params)
-                _, predicted = torch.max(outputs.data, 1)
-                lvl = self.monitor.compute_hamming_distance(intermediate_values,
-                                                            label.numpy(), omit=False, ignore_minor_values=False,
-                                                            tree=False)
-                lvl_tree = self.monitor.compute_hamming_distance(intermediate_values,
-                                                                 label.numpy(), omit=False, ignore_minor_values=False,
-                                                                 tree=True)
-                print((lvl - lvl_tree).sum())
-                exec_times[i] = time.time() - start_time
+            # for i, (image, label) in enumerate(self.known_loader):
+            #     start_time = time.time()
+            #     outputs, intermediate_values, _ = self.base_model.forward_nap(
+            #         image.cuda(), nap_params=self.nap_params)
+            #     _, predicted = torch.max(outputs.data, 1)
+            #     lvl = self.monitor.compute_hamming_distance(intermediate_values,
+            #                                                 label.numpy(), omit=False, ignore_minor_values=False,
+            #                                                 tree=False)
+            #     lvl_tree = self.monitor.compute_hamming_distance(intermediate_values,
+            #                                                      label.numpy(), omit=False, ignore_minor_values=False,
+            #                                                      tree=True)
+            #     print((lvl - lvl_tree).sum())
+            #     exec_times[i] = time.time() - start_time
         #             self.base_model.forward(x)
         #             net_pass_times[i] = time.time() - start_time
         #             start_time = time.time()
@@ -1100,10 +1169,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         # avg_compute_hamming = compute_hamming_times.mean(axis=1)
         # avg_compute_hamming_and = compute_hamming_and_times.mean(axis=1)
         # avg_compute_hamming_full_net = compute_hamming_full_net_times.mean(axis=1)
-        exec_times = exec_times.mean()
-        np.savez("execution_times_" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name,
-                 exec_times=exec_times)
-        exit(0)
+        # exec_times = exec_times.mean()
+        # np.savez("execution_times_" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name,
+        #          exec_times=exec_times)
+        # exit(0)
         # print(avg_net_pass)
         # print(avg_nap_net_pass)
         # print(avg_compute_hamming)
