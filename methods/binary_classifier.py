@@ -53,7 +53,7 @@ class BinaryClassifier(ProbabilityThreshold):
         print("Preparing training D1+D2 (H)")
         print("Mixture size: %s" % colored('%d' % len(dataset), 'green'))
         import global_vars as Global
-
+        self.train_dataset_name = dataset.name
         # 80%, 20% for local train+test
         train_ds, valid_ds = dataset.split_dataset(0.8)
 
@@ -112,7 +112,8 @@ class BinaryClassifier(ProbabilityThreshold):
             for key, value in iter(model_train_config.items()):  # model_train_config.iteritems():
                 print('Overriding config.%s' % key)
                 config.__setattr__(key, value)
-
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
         return config
 
     def propose_H(self, dataset):

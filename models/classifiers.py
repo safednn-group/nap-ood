@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import models.newvgg as VGG
 import models.nap_resnet as Resnet
 # import torchvision.models.resnet as Resnet
-
+import torchvision.models.vgg
 
 
 class MNIST_VGG(nn.Module):
@@ -63,7 +63,35 @@ class MNIST_VGG(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
-    
+
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
     def output_size(self):
         return torch.LongTensor([1, 10])
 
@@ -86,9 +114,9 @@ class MNIST_Resnet(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 29, 4: 36, 5: 43, 6: 51, 7: 58, 8: 65, 9: 72, 10: 79, 11: 87}
         # Resnet50.
-        self.model = Resnet.ResNet(Resnet.Bottleneck, [2, 3, 5, 2], num_classes=10)
+        self.model = Resnet.ResNet(Resnet.Bottleneck, [2, 3, 5, 2], num_classes=10, relu_indices=self.relu_indices)
 
         # MNIST would have a different sized feature map.
         self.model.avgpool = nn.AdaptiveAvgPool2d((1,1))
@@ -114,6 +142,33 @@ class MNIST_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
 
     def output_size(self):
         return torch.LongTensor([1, 10])
@@ -167,6 +222,34 @@ class CIFAR10_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
 
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
     def output_size(self):
         return torch.LongTensor([1, 10])
 
@@ -189,9 +272,10 @@ class CIFAR10_Resnet(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 28, 4: 36, 5: 43, 6: 50, 7: 57, 8: 65, 9: 72, 10: 79, 11: 86, 12: 93,
+                             13: 100, 14: 108, 15: 115}
         # Resnet50.
-        self.model = Resnet.ResNet(Resnet.Bottleneck, [3, 4, 6, 3], num_classes=10)
+        self.model = Resnet.ResNet(Resnet.Bottleneck, [3, 4, 6, 3], num_classes=10, relu_indices=self.relu_indices)
 
         # Cifar 10 would have a different sized feature map.
         self.model.avgpool = nn.AdaptiveAvgPool2d((1,1))
@@ -217,6 +301,34 @@ class CIFAR10_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
 
     def output_size(self):
         return torch.LongTensor([1, 10])
@@ -270,6 +382,34 @@ class CIFAR100_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
 
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
     def output_size(self):
         return torch.LongTensor([1, 100])
 
@@ -292,9 +432,10 @@ class CIFAR100_Resnet(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 28, 4: 36, 5: 43, 6: 50, 7: 57, 8: 65, 9: 72, 10: 79, 11: 86, 12: 93,
+                             13: 100, 14: 108, 15: 115}
         # Resnet50.
-        self.model = Resnet.ResNet(Resnet.Bottleneck, [3, 4, 6, 3], num_classes=100)
+        self.model = Resnet.ResNet(Resnet.Bottleneck, [3, 4, 6, 3], num_classes=100, relu_indices=self.relu_indices)
 
         # Cifar 100 would have a different sized feature map.
         self.model.avgpool = nn.AdaptiveAvgPool2d((1,1))
@@ -320,6 +461,35 @@ class CIFAR100_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
 
     def output_size(self):
         return torch.LongTensor([1, 100])
@@ -373,6 +543,34 @@ class STL10_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
 
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
     def output_size(self):
         return torch.LongTensor([1, 10])
 
@@ -395,9 +593,10 @@ class STL10_Resnet(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 28, 4: 36, 5: 43, 6: 50, 7: 57, 8: 65, 9: 72, 10: 79, 11: 86, 12: 93,
+                             13: 100, 14: 108, 15: 115}
         # Resnet50.
-        self.model = Resnet.ResNet(Resnet.Bottleneck, [3, 4, 6, 3], num_classes=10)
+        self.model = Resnet.ResNet(Resnet.Bottleneck, [3, 4, 6, 3], num_classes=10, relu_indices=self.relu_indices)
 
         # STL10 would have a different sized feature map.
         self.model.avgpool = nn.AdaptiveAvgPool2d((1,1))
@@ -423,6 +622,34 @@ class STL10_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
 
     def output_size(self):
         return torch.LongTensor([1, 10])
@@ -475,6 +702,34 @@ class TinyImagenet_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
 
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
     def output_size(self):
         return torch.LongTensor([1, 200])
 
@@ -497,9 +752,10 @@ class TinyImagenet_Resnet(nn.Module):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
-
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 28, 4: 36, 5: 43, 6: 50, 7: 57, 8: 65, 9: 72, 10: 79, 11: 86, 12: 93,
+                             13: 100, 14: 108, 15: 115}
         # Resnet50.
-        self.model = Resnet.ResNet(Resnet.Bottleneck, [3, 4, 6, 3], num_classes=200)
+        self.model = Resnet.ResNet(Resnet.Bottleneck, [3, 4, 6, 3], num_classes=200, relu_indices=self.relu_indices)
 
         # TinyImagenet would have a different sized feature map.
         self.model.avgpool = nn.AdaptiveAvgPool2d((1,1))
@@ -525,6 +781,34 @@ class TinyImagenet_Resnet(nn.Module):
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output, intermediate, sizes
+
+    def forward_threshold(self, x, softmax=True, threshold=1e10):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def feature_list(self, x, softmax=True):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output, out_list = self.model.feature_list(x)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output, out_list
+
+    def intermediate_forward(self, x, softmax=True, layer_index=0):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.intermediate_forward(x, layer_index)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
 
     def output_size(self):
         return torch.LongTensor([1, 200])

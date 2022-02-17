@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 from torch.utils.data import DataLoader
 from utils.iterative_trainer import IterativeTrainerConfig, IterativeTrainer
 from utils.logger import Logger
@@ -120,7 +120,7 @@ class ProbabilityThreshold(AbstractMethodInterface):
     def get_H_config(self, dataset, will_train=True):
         print("Preparing training D1+D2 (H)")
         print("Mixture size: %s" % colored('%d' % len(dataset), 'green'))
-
+        self.train_dataset_name = dataset.name
         # 80%, 20% for local train+test
         train_ds, valid_ds = dataset.split_dataset(0.8)
 
@@ -195,6 +195,8 @@ class ProbabilityThreshold(AbstractMethodInterface):
         config.logger = Logger()
         config.max_epoch = 100
 
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
         return config
 
     def train_H(self, dataset):
@@ -276,12 +278,18 @@ class ProbabilityThreshold(AbstractMethodInterface):
         self.H_class.set_eval_direct(False)
         return test_average_acc
 
-    def test_H(self, dataset):
-        dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True, num_workers=self.args.workers,
+    def test_H(self, dataset_):
+
+        dataset = DataLoader(dataset_, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.workers,
                              pin_memory=True)
+
         correct = 0.0
         total_count = 0
         self.H_class.eval()
+        # self._generate_execution_times(dataset)
+        # return 0
+        all_probs = torch.Tensor([])
+        labels = torch.Tensor([])
         with tqdm(total=len(dataset)) as pbar:
             for i, (image, label) in enumerate(dataset):
                 pbar.update()
@@ -289,8 +297,18 @@ class ProbabilityThreshold(AbstractMethodInterface):
                 # Get and prepare data.
                 input, target = image.to(self.args.device), label.to(self.args.device)
 
+
                 prediction = self.H_class(input)
+                if all_probs.numel():
+                    labels = torch.cat((labels, label))
+                    all_probs = torch.cat((all_probs, prediction.squeeze(1)))
+                else:
+                    labels = label
+                    all_probs = prediction.squeeze(1)
+
+
                 classification = self.H_class.classify(prediction)
+
 
                 correct += (classification.detach().view(-1) == target.detach().view(-1).long()).float().view(-1).sum()
                 total_count += len(input)
@@ -309,5 +327,30 @@ class ProbabilityThreshold(AbstractMethodInterface):
                 #     visdom.images(s2.cpu().numpy(), win='out_images')                                    
 
         test_average_acc = correct / total_count
+        labels = labels.cpu()
+        all_probs = all_probs.cpu()
+        all_probs[all_probs != all_probs] = -1
+        auroc = roc_auc_score(labels, all_probs)
+        p, r, _ = precision_recall_curve(labels, all_probs)
+        aupr = auc(r, p)
         print("Final Test average accuracy %s" % (colored('%.4f%%' % (test_average_acc * 100), 'red')))
-        return test_average_acc.item()
+        print(f"Auroc: {auroc} aupr: {aupr}")
+        return test_average_acc.item(), auroc, aupr
+
+    def _generate_execution_times(self, loader):
+        import time
+        import numpy as np
+        n_times = 1000
+        exec_times = np.ones(n_times)
+
+        trainiter = iter(loader)
+        x = trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device)
+        with torch.no_grad():
+            for i in range(n_times):
+                start_time = time.time()
+                prediction = self.H_class(x)
+                _ = self.H_class.classify(prediction)
+                exec_times[i] = time.time() - start_time
+
+        exec_times = exec_times.mean()
+        np.savez("results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)

@@ -42,41 +42,60 @@ if args.exp == 'master':
     Test evaluation
 """
 if args.exp == 'test-eval':
-    d1_tasks = ['STL10']
-    # d1_tasks = ['CIFAR100']
-    d2_tasks = ['UniformNoise', 'NormalNoise']
-    d3_tasks = ['UniformNoise', 'NormalNoise']
 
-    # d2_tasks = ['TinyImagenet', 'STL10']
-    # d3_tasks = ['TinyImagenet', 'STL10']
+
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
+    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
+                'TinyImagenet']
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    d1_tasks = ['MNIST']
+    d2_tasks = ['UniformNoise']
+    d3_tasks = ['NormalNoise']
     method_tasks = [
-        # 'binclass/0',
-        # 'odin/0',
-        # 'reconst_thresh/0', 'reconst_thresh/1',
+        # 'pixelcnn/0',
+        # 'mcdropout/0',
         # 'prob_threshold/0', 'prob_threshold/1',
-        'nap/0',
-        # 'vaeaeknn/1',
-        # 'mseaeknn/1',
+        # 'score_svm/0', 'score_svm/1',
+        # 'logistic_svm/0', 'logistic_svm/1',
+        # 'openmax/0', 'openmax/1',
+        # 'binclass/0', 'binclass/1',
+        # 'deep_ensemble/0', 'deep_ensemble/1',
+        # 'odin/0', 'odin/1',
+        # 'reconst_thresh/0', 'reconst_thresh/1',
+        # 'knn/1', 'knn/2', 'knn/4', 'knn/8',
+        # 'bceaeknn/1', 'vaeaeknn/1', 'mseaeknn/1',
+        # 'bceaeknn/2', 'vaeaeknn/2', 'mseaeknn/2',
+        # 'bceaeknn/4', 'vaeaeknn/4', 'mseaeknn/4',
+        # 'bceaeknn/8', 'vaeaeknn/8', 'mseaeknn/8'
+        'nap/0', 'nap/1',
+        'msad/0', 'msad/1',
+        'mahalanobis/0', 'mahalanobis/1',
+        'grad_norm/0', 'grad_norm/1',
+        'outlier_exposure/0', 'outlier_exposure/1',
+        'energy/0', 'energy/1',
+        'react/0', 'react/1',
+        # 'mahalanobis/0',
+        # 'grad_norm/0',
+        # 'outlier_exposure/0',
+        # 'energy/0',
+        # 'react/0',
     ]
-    # method_tasks = [
-    #     'prob_threshold/0', 'prob_threshold/1', 'mcdropout/0', 'mcdropout/2',
-    #     'pixelcnn/0', 'score_svm/0', 'logistic_svm/0', 'score_svm/1', 'logistic_svm/1', 'openmax/0', 'openmax/1',
-    #     'deep_ensemble/0', 'deep_ensemble/1',
-    #      'knn/1', 'knn/2', 'knn/4', 'knn/8'
-    # ]
 ########################################################
 """
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = ['STL10']
-    # d2_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    # d3_tasks     = ['UniformNoise', 'NormalNoise', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    d1_tasks = ['TinyImagenet', 'MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10']
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
-    method_tasks = ['nap/0']
+    # d1_tasks = [ 'STL10', 'TinyImagenet']
+    # d1_tasks = ['FashionMNIST']
+    # d2_tasks = ['NormalNoise']
+    # d3_tasks = ['UniformNoise']
+    method_tasks = ["nap/1", "nap/0"]
 ########################################################
 """
     Default Evaluation
@@ -108,8 +127,9 @@ if os.path.exists(results_path) and not args.force_run:
 
 
 def has_done_before(method, d1, d2, d3):
-    for m, ds, dm, dt, mid, a1, a2 in results:
-        if m == method and ds == d1 and dm == d2 and dt == d3:
+    # for m, ds, dm, dt, mid, a1, a2 in results:
+    for r in results:
+        if r[0] == method and r[1] == d1 and r[2] == d2 and r[3] == d3:
             return True
     return False
 
@@ -189,7 +209,13 @@ if __name__ == '__main__':
                     valid_mixture = d1_train + d1_valid + d2_valid
 
                     print("Final valid size: %d+%d=%d" % (len(d1_valid), len(d2_valid), len(valid_mixture)))
+                import time
+
+                start_time = time.time()
+
                 train_acc = BT.train_H(valid_mixture)
+                train_acc = 0
+                print("--- %s seconds ---" % (time.time() - start_time))
 
                 for d3 in d3_tasks:
                     args.D3 = d3
@@ -228,17 +254,17 @@ if __name__ == '__main__':
                     d2_test.trim_dataset(final_len)
                     test_mixture = d1_test + d2_test
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
-                    # for it in test_mixture:
-                    #     print(it)
-                    test_acc = BT.test_H(test_mixture)
-                    results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc))
-                    # for name, param in BT.base_model.named_parameters():
-                    #     print(name)
-                    #     print(param.shape)
-                        # print(param)
+                    start_time = time.time()
+                    test_acc, auroc, aupr = BT.test_H(test_mixture)
+                    # test_acc, auroc, aupr = BT.test_H((test_mixture, d1_test, d2_test))
+                    # test_acc = BT.test_H(d2_test)
+                    print("--- %s seconds ---" % (time.time() - start_time))
+                    results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc, auroc, aupr))
+
                     # Take a snapshot after each experiment.
                     torch.save(results, results_path)
 
-    for i, (m, ds, dm, dt, mi, a_train, a_test) in enumerate(results):
-        print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%% %s' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100, mi))
-    save_results_as_csv(results)
+    for i, (m, ds, dm, dt, mi, a_train, a_test, auroc, aupr) in enumerate(results):
+        # print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%% %s' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100, mi))
+        print(f" i: {i} m: {m} ds: {ds} dm: {dm} dt: {dt} mi: {mi} a_train: {a_train} a_test: {a_test} auroc {auroc} aupr {aupr}")
+    save_results_as_csv(results, "all_other_metrics.csv")

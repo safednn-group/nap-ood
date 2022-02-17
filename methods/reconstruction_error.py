@@ -140,7 +140,7 @@ class ReconstructionThreshold(ProbabilityThreshold):
 
         # 80%, 20% for local train+test
         train_ds, valid_ds = dataset.split_dataset(0.8)
-
+        self.train_dataset_name = self.args.D1
         if self.args.D1 in Global.mirror_augment:
             print(colored("Mirror augmenting %s"%self.args.D1, 'green'))
             new_train_ds = train_ds + MirroredDataset(train_ds)
@@ -203,4 +203,6 @@ class ReconstructionThreshold(ProbabilityThreshold):
         config.logger = Logger()
         config.max_epoch = 100
 
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
         return config

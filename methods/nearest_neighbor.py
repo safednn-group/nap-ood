@@ -56,7 +56,7 @@ class KNNSVM(ScoreSVM):
         self.default_model = 1
 
     def method_identifier(self):
-        output = "KNNSVM/%d"%self.default_model
+        output = "KNNSVM%d"%self.default_model
         return output
 
     def propose_H(self, dataset):
@@ -65,6 +65,7 @@ class KNNSVM(ScoreSVM):
             self.base_model.base_data = None
             self.base_model = None
 
+        self.train_dataset_name = dataset.name
         if dataset.name in Global.mirror_augment:
             print(colored("Mirror augmenting %s"%dataset.name, 'green'))
             new_train_ds = dataset + MirroredDataset(dataset)
@@ -82,6 +83,8 @@ class KNNSVM(ScoreSVM):
         # self.base_data = torch.cat([x.view(1, -1) for x,_ in dataset])
         self.base_model = KNNModel(self.base_data, k=self.default_model).to(self.args.device)
         self.base_model.eval()
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
 
 class AEKNNModel(nn.Module):
     """
@@ -127,7 +130,7 @@ class AEKNNSVM(ScoreSVM):
         self.default_model = 1
 
     def method_identifier(self):
-        output = "AEKNNSVM/%d"%self.default_model
+        output = "AEKNNSVM%d"%self.default_model
         return output
 
     def propose_H(self, dataset):
@@ -155,7 +158,7 @@ class AEKNNSVM(ScoreSVM):
         print(colored('Loading H1 model from %s'%best_h_path, 'red'))
         base_model.load_state_dict(torch.load(best_h_path))
         base_model.eval()
-
+        self.train_dataset_name = self.args.D1
         if dataset.name in Global.mirror_augment:
             print(colored("Mirror augmenting %s"%dataset.name, 'green'))
             new_train_ds = dataset + MirroredDataset(dataset)
@@ -181,19 +184,24 @@ class AEKNNSVM(ScoreSVM):
         # self.base_data = torch.cat([x.view(1, -1) for x,_ in dataset])
         self.base_model = AEKNNModel(base_model, self.base_data, k=self.default_model).to(self.args.device)
         self.base_model.eval()
+        self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else ("Resnet" if self.add_identifier.find("Resnet") >= 0 else "")
+        self.add_identifier = ""
 
 """
     Actual implementation in AEKNNSVM.
 """
 class BCEKNNSVM(AEKNNSVM):
     def method_identifier(self):
-        output = "BCEKNNSVM/%d"%self.default_model
+        # output = "BCEKNNSVM/%d"%self.default_model
+        output = "BCEKNNSVM%d"%self.default_model
         return output
 class MSEKNNSVM(AEKNNSVM):
     def method_identifier(self):
-        output = "MSEKNNSVM/%d"%self.default_model
+        # output = "MSEKNNSVM/%d"%self.default_model
+        output = "MSEKNNSVM%d"%self.default_model
         return output
 class VAEKNNSVM(AEKNNSVM):
     def method_identifier(self):
-        output = "VAEKNNSVM/%d"%self.default_model
+        # output = "VAEKNNSVM/%d"%self.default_model
+        output = "VAEKNNSVM%d"%self.default_model
         return output

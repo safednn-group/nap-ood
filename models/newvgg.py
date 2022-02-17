@@ -34,6 +34,7 @@ class VGG(nn.Module):
                          nn.AdaptiveMaxPool2d(4)]
         self.avgpools = [nn.Identity(), nn.AdaptiveAvgPool2d(1), nn.AdaptiveAvgPool2d(2), nn.AdaptiveAvgPool2d(3),
                          nn.AdaptiveAvgPool2d(4)]
+        self.pools = { "avg": self.avgpools, "max": self.maxpools }
         self.classifier = nn.Sequential(
             nn.Linear(512 * 7 * 7, 4096),
             nn.ReLU(True),
@@ -53,26 +54,86 @@ class VGG(nn.Module):
         x = self.classifier(x)
         return x
 
+    def forward_threshold(self, x, threshold=1e10):
+        x = self.features(x)
+        # x = self.avgpool(x)
+        x = x.clamp(max=threshold)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
+        return x
+
     def forward_nap(self, x, nap_params=None):
         self.classifier.eval()
+        self.features.eval()
         layer_counter = 0
-        for name, layer in self.features.named_children():
+        prev = torch.Tensor([])
+        shapes = []
+        new_nap_params = dict()
+        zero_tensor = torch.zeros(1, device="cuda")
+        for k in nap_params.copy():
+            new_nap_params[self.relu_indices[int(k)]] = nap_params.get(k)
+
+        for _, layer in self.features.named_children():
             x = layer.forward(x)
-            if layer_counter == self.relu_indices[nap_params[0]]:
-                intermediate = torch.flatten(self.maxpools[nap_params[1]](x), 1)
-                intermediate = torch.tensor(np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(),
-                                                                                              nap_params[2]), intermediate.cpu(),
-                                                     0))
+            if layer_counter in new_nap_params:
+                intermediate = torch.flatten(self.pools[new_nap_params[layer_counter]["pool_type"]][new_nap_params[layer_counter]["pool_size"]](x), 1)
+                intermediate = torch.tensor(np.where(
+                    intermediate.cpu().numpy() > np.expand_dims(np.quantile(intermediate.cpu().numpy(),
+                                                                new_nap_params[layer_counter]["quantile"], axis=1), 1),
+                    intermediate.cpu(), 0))
+                # intermediate = torch.where(intermediate > torch.quantile(intermediate, new_nap_params[layer_counter]["quantile"], dim=1).unsqueeze(1), intermediate, zero_tensor)
+                # for i in range(intermediate.shape[0]):
+                #     intermediate[i] = torch.tensor(np.where(intermediate[i].cpu().numpy() > np.quantile(intermediate[i].cpu().numpy(), new_nap_params[layer_counter]["quantile"]), intermediate[i].cpu(), 0))
+                #     # intermediate[i] = torch.where(intermediate[i] > torch.quantile(intermediate[i], new_nap_params[layer_counter]["quantile"]), intermediate[i], zero_tensor)
+                shapes.append(intermediate.shape[-1])
+                if prev.numel():
+                    intermediate = torch.cat((intermediate, prev), dim=1)
+                prev = intermediate
             layer_counter += 1
 
         x = torch.flatten(x, 1)
-        for name, layer in self.classifier.named_children():
+        for _, layer in self.classifier.named_children():
             x = layer.forward(x)
-            if layer_counter == self.relu_indices[nap_params[0]]:
-                intermediate = torch.tensor(np.where(x.cpu().numpy() > np.quantile(x.cpu().numpy(), nap_params[2]), x.cpu(),
-                                                     0))
+            if layer_counter in new_nap_params:
+                intermediate = torch.tensor(np.where(
+                    x.cpu().numpy() > np.expand_dims(np.quantile(x.cpu().numpy(),
+                                                                            new_nap_params[layer_counter]["quantile"],
+                                                                            axis=1), 1),
+                    x.cpu(), 0))
+                # intermediate = torch.where(x > torch.quantile(x, new_nap_params[layer_counter]["quantile"], dim=1).unsqueeze(1), x, zero_tensor)
+                # intermediate = torch.zeros(x.shape, dtype=x.dtype, device=x.device)
+                # for i in range(x.shape[0]):
+                #     intermediate[i] = torch.tensor(np.where(x[i].cpu().numpy() > np.quantile(x[i].cpu().numpy(), new_nap_params[layer_counter]["quantile"]), x[i].cpu(), 0))
+                #     # intermediate[i] = torch.where(x[i] > torch.quantile(x[i], new_nap_params[layer_counter]["quantile"]), x[i], zero_tensor)
+                shapes.append(intermediate.shape[-1])
+                if prev.numel():
+                    intermediate = torch.cat((intermediate, prev), dim=1)
+                prev = intermediate
             layer_counter += 1
-        return x, intermediate, [intermediate.shape[-1]]
+        shapes.reverse()
+        return x, prev, shapes
+
+    def feature_list(self, x):
+        out_list = []
+        counter = 0
+        for _, layer in self.features.named_children():
+            x = layer.forward(x)
+            if counter in self.relu_indices.values():
+                out_list.append(x)
+            counter += 1
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
+        return x, out_list
+
+    def intermediate_forward(self, x, layer_index):
+        counter = 0
+        for _, layer in self.features.named_children():
+            x = layer.forward(x)
+            if counter == self.relu_indices[layer_index]:
+                return x
+            counter += 1
+
+
 
     def _initialize_weights(self):
         for m in self.modules():

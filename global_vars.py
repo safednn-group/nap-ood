@@ -127,6 +127,13 @@ import methods.reconstruction_error as RE
 import methods.pixelcnn as PCNN
 import methods.openmax as OM
 import methods.nap.nap as NAP
+import methods.mahalanobis_original.integrated as M
+import methods.react.integrated as ReAct
+import methods.energy.integrated as Energy
+import methods.outlier_exposure.integrated as OE
+import methods.ntom.integrated as NTOM
+import methods.grad_norm.integrated as GN
+import methods.msad.integrated as MSAD
 
 all_methods = {
     'prob_threshold': BT.ProbabilityThreshold,
@@ -143,7 +150,14 @@ all_methods = {
     'reconst_thresh': RE.ReconstructionThreshold,
     'pixelcnn': PCNN.PixelCNN,
     'openmax': OM.OpenMax,
-    'nap': NAP.NeuronActivationPatterns
+    'nap': NAP.NeuronActivationPatterns,
+    'mahalanobis': M.Mahalanobis,
+    'react': ReAct.ReAct,
+    'energy': Energy.Energy,
+    'outlier_exposure': OE.OutlierExposure,
+    'ntom': NTOM.NTOM,
+    'grad_norm': GN.GradNorm,
+    'msad': MSAD.MSAD
 }
 
 ##################################################################

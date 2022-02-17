@@ -106,5 +106,12 @@ venv.bak/
 workspace/
 
 .idea
-data
 datasets.tar
+matplotlib*
+results/article_plots
+/all_other_metrics.csv
+/aurocexp.csv
+/aurocexp_all12.csv
+/aurocexp_all34.csv
+/best_confs.txt
+/results_auroc.pth
