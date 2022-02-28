@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from sklearn.neighbors import BallTree
 from copy import deepcopy
-
+# import methods.nap.cuda_tree.nonrecursive_cython as bt
 
 class BaseMonitor(object):
     def __init__(self, class_count, device, layers_shapes, neurons_to_monitor):
@@ -132,6 +132,7 @@ class FullNetMonitor(BaseMonitor):
     def __init__(self, class_count, device, layers_shapes, neurons_to_monitor=None):
         super().__init__(class_count, device, layers_shapes, neurons_to_monitor)
         self.forest = dict()
+
         self.known_patterns_set = dict()
         self.known_patterns_tensor = dict()
         for i in range(class_count):
@@ -144,66 +145,85 @@ class FullNetMonitor(BaseMonitor):
     def compute_hamming_distance(self, neuron_values, class_id, omit=False, ignore_minor_values=False,
                                  monitored_class=None, tree=False):
 
-        monitored_class = monitored_class if monitored_class else class_id
+        # monitored_class = monitored_class if monitored_class else class_id
         mat_torch = torch.zeros(neuron_values.shape, device=neuron_values.device)
         neuron_on_off_pattern = neuron_values.gt(mat_torch).type(torch.uint8).to(torch.device(self.device))
         distance = []
-        if omit:
-            if ignore_minor_values:
-                for i in range(neuron_on_off_pattern.shape[0]):
-                    full_net_distances = []
-                    offset = 0
-                    for shape_id, shape in enumerate(self.layers_shapes):
-                        lvl = ((self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
-                                                                                    offset:offset + shape])
-                               & neuron_on_off_pattern[i, offset:offset + shape])[:,
-                              self.neurons_to_monitor[monitored_class[i]]].sum(
-                            dim=1).min()  # todo neurons to monitor full net
-                        offset += shape
-                        full_net_distances.append(lvl.item())
-                    distance.append(full_net_distances)
-            else:
-                for i in range(neuron_on_off_pattern.shape[0]):
-                    full_net_distances = []
-                    offset = 0
-                    for shape_id, shape in enumerate(self.layers_shapes):
-                        lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
-                                                                                   offset:offset + shape])[:,
-                              self.neurons_to_monitor[monitored_class[i]]].sum(dim=1).min()
-                        offset += shape
-                        full_net_distances.append(lvl.item())
-                    distance.append(full_net_distances)
-        else:
-            if ignore_minor_values:
-                r = range(neuron_on_off_pattern.shape[0])
-                for i in r:
-                    full_net_distances = []
-                    offset = 0
-                    for shape_id, shape in enumerate(self.layers_shapes):
-                        lvl = ((self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
-                                                                                    offset:offset + shape])
-                               & neuron_on_off_pattern[i, offset:offset + shape]).sum(dim=1).min()
-                        offset += shape
-                        full_net_distances.append(lvl.item())
-                    distance.append(full_net_distances)
-            else:
-                for i in range(neuron_on_off_pattern.shape[0]):
-                    full_net_distances = []
-                    offset = 0
-                    for shape_id, shape in enumerate(self.layers_shapes):
-                        if tree:
-                            lvl = self.forest[class_id[i]][shape_id].query(np.reshape(neuron_on_off_pattern.cpu()[i, offset:offset + shape], (1, -1)))[0] * shape
-                        else:
-                            lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
-                                                                                       offset:offset + shape]).sum(
-                                dim=1).min()
-                        offset += shape
-                        full_net_distances.append(lvl.item())
-                    distance.append(full_net_distances)
-        if type(distance) == list:
-            distance = np.array(distance)
-        else:
-            distance = distance.values.cpu().numpy()
+        # if omit:
+        #     if ignore_minor_values:
+        #         for i in range(neuron_on_off_pattern.shape[0]):
+        #             full_net_distances = []
+        #             offset = 0
+        #             for shape_id, shape in enumerate(self.layers_shapes):
+        #                 lvl = ((self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+        #                                                                             offset:offset + shape])
+        #                        & neuron_on_off_pattern[i, offset:offset + shape])[:,
+        #                       self.neurons_to_monitor[monitored_class[i]]].sum(
+        #                     dim=1).min()  # todo neurons to monitor full net
+        #                 offset += shape
+        #                 full_net_distances.append(lvl.item())
+        #             distance.append(full_net_distances)
+        #     else:
+        #         for i in range(neuron_on_off_pattern.shape[0]):
+        #             full_net_distances = []
+        #             offset = 0
+        #             for shape_id, shape in enumerate(self.layers_shapes):
+        #                 lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+        #                                                                            offset:offset + shape])[:,
+        #                       self.neurons_to_monitor[monitored_class[i]]].sum(dim=1).min()
+        #                 offset += shape
+        #                 full_net_distances.append(lvl.item())
+        #             distance.append(full_net_distances)
+        # else:
+        #     if ignore_minor_values:
+        #         r = range(neuron_on_off_pattern.shape[0])
+        #         for i in r:
+        #             full_net_distances = []
+        #             offset = 0
+        #             for shape_id, shape in enumerate(self.layers_shapes):
+        #                 lvl = ((self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+        #                                                                             offset:offset + shape])
+        #                        & neuron_on_off_pattern[i, offset:offset + shape]).sum(dim=1).min()
+        #                 offset += shape
+        #                 full_net_distances.append(lvl.item())
+        #             distance.append(full_net_distances)
+        #     else:
+        #         for i in range(neuron_on_off_pattern.shape[0]):
+        #             full_net_distances = []
+        #             offset = 0
+        #             for shape_id, shape in enumerate(self.layers_shapes):
+        #                 if tree:
+        #                     tmp = np.zeros((1, 256))
+        #                     lvl = self.forest[class_id[i]][shape_id].query(tmp)
+        #                     lvl = self.forest[class_id[i]][shape_id].query(np.reshape(neuron_on_off_pattern.cpu()[i, offset:offset + shape], (1, -1)))[0]
+        #                 else:
+        #                     lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+        #                                                                                offset:offset + shape]).sum(
+        #                         dim=1).min()
+        #                 offset += shape
+        #                 full_net_distances.append(lvl.item())
+        #             distance.append(full_net_distances)
+        for i in range(neuron_on_off_pattern.shape[0]):
+            full_net_distances = []
+            offset = 0
+            for shape_id, shape in enumerate(self.layers_shapes):
+                # if tree:
+                #     tmp = np.zeros((1, 256))
+                #     lvl = self.forest[class_id[i]][shape_id].query(tmp)
+                #     lvl = self.forest[class_id[i]][shape_id].query(
+                #         np.reshape(neuron_on_off_pattern.cpu()[i, offset:offset + shape], (1, -1)))[0]
+                # else:
+                lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+                                                                           offset:offset + shape]).sum(
+                    dim=1).min()
+                offset += shape
+                full_net_distances.append(lvl.item())
+            distance.append(full_net_distances)
+        distance = np.array(distance)
+        # if type(distance) == list:
+        #     distance = np.array(distance)
+        # else:
+        #     distance = distance.values.cpu().numpy()
         return distance
 
     def add_neuron_pattern(self, neuron_values, label):
@@ -247,11 +267,11 @@ class FullNetMonitor(BaseMonitor):
             #             example_id]
             #     self.known_patterns_dict_cd[label[example_id]] += 1
 
-    def make_forest(self):
-        for i in range(self.class_count):
-            self.forest[i] = dict()
-            for j in range(len(self.known_patterns_tensor[i])):
-                self.forest[i][j] = BallTree(self.known_patterns_tensor[i][j].cpu(), metric='hamming')
+    # def make_forest(self):
+    #     for i in range(self.class_count):
+    #         self.forest[i] = dict()
+    #         for j in range(len(self.known_patterns_tensor[i])):
+    #             self.forest[i][j] = bt.BallTree(self.known_patterns_tensor[i][j].cpu())
         #         del self.known_patterns_tensor[i][j]
         #         del self.known_patterns_set[i][j]
         #     del self.known_patterns_tensor[i]

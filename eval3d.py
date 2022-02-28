@@ -49,8 +49,8 @@ if args.exp == 'test-eval':
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    d1_tasks = ['MNIST']
-    d2_tasks = ['UniformNoise']
+    d1_tasks = ['FashionMNIST']
+    d2_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100',]
     d3_tasks = ['NormalNoise']
     method_tasks = [
         # 'pixelcnn/0',
@@ -68,13 +68,7 @@ if args.exp == 'test-eval':
         # 'bceaeknn/2', 'vaeaeknn/2', 'mseaeknn/2',
         # 'bceaeknn/4', 'vaeaeknn/4', 'mseaeknn/4',
         # 'bceaeknn/8', 'vaeaeknn/8', 'mseaeknn/8'
-        'nap/0', 'nap/1',
-        'msad/0', 'msad/1',
-        'mahalanobis/0', 'mahalanobis/1',
-        'grad_norm/0', 'grad_norm/1',
-        'outlier_exposure/0', 'outlier_exposure/1',
-        'energy/0', 'energy/1',
-        'react/0', 'react/1',
+        'nap/0'
         # 'mahalanobis/0',
         # 'grad_norm/0',
         # 'outlier_exposure/0',
@@ -86,16 +80,16 @@ if args.exp == 'test-eval':
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = ['TinyImagenet', 'MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10']
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     # d1_tasks = [ 'STL10', 'TinyImagenet']
     # d1_tasks = ['FashionMNIST']
-    # d2_tasks = ['NormalNoise']
-    # d3_tasks = ['UniformNoise']
-    method_tasks = ["nap/1", "nap/0"]
+    d2_tasks = ['NormalNoise']
+    d3_tasks = ['UniformNoise']
+    method_tasks = ["nap/0"]
 ########################################################
 """
     Default Evaluation

@@ -81,14 +81,14 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.known_loader = DataLoader(dataset.datasets[0], batch_size=self.args.batch_size, shuffle=True,
                                        num_workers=self.args.workers,
                                        pin_memory=True)
-        self.known_loader_parent = DataLoader(dataset.datasets[0].parent_dataset, batch_size=self.args.batch_size, shuffle=True,
+        self.known_loader_parent = DataLoader(dataset.datasets[0].parent_dataset, batch_size=1, shuffle=True,
                                        num_workers=self.args.workers,
                                        pin_memory=True)
         self.unknown_loader = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
                                          num_workers=self.args.workers,
                                          pin_memory=True)
 
-        self.unknown_loader_ = DataLoader(dataset.datasets[1], batch_size=1, shuffle=True,
+        self.unknown_loader_ = DataLoader(dataset.datasets[1], batch_size=self.args.batch_size, shuffle=True,
                                           num_workers=self.args.workers,
                                           pin_memory=True)
 
@@ -391,7 +391,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 self.monitor.set_neurons_to_monitor(neurons_to_monitor)
 
             self._draw_train_vs_valid_heatmaps(self.known_loader, self.unknown_loader, self.nap_params)
-            # self._draw_train_heatmaps(self.train_loader, self.nap_params)
+            self._draw_train_heatmaps(self.train_loader, self.nap_params)
             return 0
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
             self._generate_test_distances(loader=self.known_loader, train=True)
@@ -808,7 +808,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 diff = heatmap[k]
             # _ = sns.heatmap(diff.reshape((shapes_np.min(), int(shapes_np.sum() / shapes_np.min()))).cpu())
             # title = "VGG_MNIST_class" + str(k) + "_vs_" + self.valid_dataset_name
-            # plt.show()
+            # # plt.show()
             # plt.savefig(os.path.join("results/article_plots/heatmaps", title))
             # plt.close()
             if diffs_sum.numel():
@@ -827,11 +827,11 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         title = self.model_name + "_" + self.train_dataset_name + "_vs_" + self.valid_dataset_name
         # plt.show()
         plt.xticks(np.arange(len(ax_labels)), ax_labels)
-        plt.xlabel("layer_num.part")
-        plt.ylabel("neuron_row_num")
+        plt.xlabel("numer_warstwy.część")
+        plt.ylabel("numer neuronu")
         plt.tight_layout()
         plt.xticks(rotation=90)
-        # plt.savefig(os.path.join("results/article_plots/heatmaps", title))
+        plt.savefig(os.path.join("results/article_plots/heatmaps", title))
         plt.close()
         return acc_max, acc_min
 
@@ -910,12 +910,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             title = self.model_name + "_" + self.train_dataset_name + "_class" + str(k)
             # plt.show()
             plt.xticks(np.arange(len(ax_labels)), ax_labels)
-            plt.xlabel("layer_num.part")
-            plt.ylabel("neuron_row_num")
+            plt.xlabel("numer_warstwy.część")
+            plt.ylabel("numer neuronu")
             plt.tight_layout()
             plt.xticks(rotation=90)
             # plt.savefig(title)
-            # plt.savefig(os.path.join("results/article_plots/heatmaps", title))
+            plt.savefig(os.path.join("results/article_plots/heatmaps", title))
             # plt.show()
             plt.close()
             keys2.pop()
@@ -943,11 +943,11 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             title = self.model_name + "_" + self.train_dataset_name + "_class" + str(k) + "_diffsum"
             # plt.show()
             plt.xticks(np.arange(len(ax_labels)), ax_labels)
-            plt.xlabel("layer_num.part")
-            plt.ylabel("neuron_row_num")
+            plt.xlabel("numer_warstwy.część")
+            plt.ylabel("numer neuronu")
             plt.tight_layout()
             plt.xticks(rotation=90)
-            # plt.savefig(os.path.join("results/article_plots/heatmaps", title))
+            plt.savefig(os.path.join("results/article_plots/heatmaps", title))
             # plt.savefig(title)
             plt.close()
 
@@ -1071,6 +1071,21 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
     def _generate_execution_times(self):
         import time
+        layers_n = 0
+        if self.train_dataset_name not in  ["MNIST", "FashionMNIST"]:
+            if self.model_name == "Resnet":
+                layers_n = 16
+            else:
+                layers_n = 15
+        else:
+            if self.model_name == "Resnet":
+                layers_n = 12
+            else:
+                layers_n = 9
+        import random
+        layers = random.sample(range(0, layers_n), layers_n - 7)
+        # for l in layers:
+        #     self.nap_params.pop(str(l))
         n_times = 1000
         trim_sizes = np.arange(100, 4001, 300)[::-1]
         sizes_len = len(trim_sizes)
@@ -1081,6 +1096,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         compute_hamming_full_net_times = np.ones((sizes_len, n_times))
         compute_hamming_and_full_net_times = np.ones((sizes_len, n_times))
         exec_times = np.ones(n_times)
+        exec_times_tree = np.ones(n_times)
         trainiter = iter(self.train_loader)
         x = trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device)
         with torch.no_grad():
@@ -1088,23 +1104,42 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                           layers_shapes=self.monitored_layers_shapes)
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
-
+            # self.monitor.make_forest()
             print(len(self.monitor.known_patterns_set[0][0]))
-            for i in range(n_times):
+            for i, (x, y) in enumerate(self.known_loader_parent):
+                if i >= n_times:
+                    break
+                x, y = x.to(self.args.device), y.to(self.args.device)
                 start_time = time.time()
                 outputs, intermediate_values, _ = self.base_model.forward_nap(
                     x, nap_params=self.nap_params)
                 _, predicted = torch.max(outputs.data, 1)
-                lvl = self.monitor.compute_hamming_distance(intermediate_values,
-                                                            np.zeros(1), omit=False, ignore_minor_values=False)
 
-                _ = np.where(lvl > np.zeros(lvl.shape), 1, 0)
+                lvl = self.monitor.compute_hamming_distance(intermediate_values,
+                                                            y.cpu().numpy(), omit=False, ignore_minor_values=False)
+                classification = \
+                stats.mode(np.where(lvl <= 8, 0, 1),
+                           axis=1)[0]
                 exec_times[i] = time.time() - start_time
+                # start_time = time.time()
+                #
+                # lvl_tree = self.monitor.compute_hamming_distance(intermediate_values,
+                #                                             y.cpu().numpy(), omit=False, ignore_minor_values=False, tree=True)
+                # exec_times_tree[i] = time.time() - start_time
+                # print((lvl - lvl_tree).sum())
+                # _ = np.where(lvl > np.zeros(lvl.shape), 1, 0)
+
 
         exec_times = exec_times.mean()
+        # exec_times_tree = exec_times_tree.mean()
+        print(exec_times)
+        # print(exec_times_tree)
         np.savez(
-            "results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name,
+            "results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name + "_tensors",
             exec_times=exec_times)
+        # np.savez(
+        #     "results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name + "_tree",
+        #     exec_times=exec_times_tree)
             # self.monitor.make_forest()
             # for size_id, size in enumerate(trim_sizes):
             # self.monitor.trim_class_zero(size)
