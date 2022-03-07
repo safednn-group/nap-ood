@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 import math
+
+
+from numpy.ma.core import choose
 from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 import torch
 from pylatex import Document, Section, Figure, NoEscape, Subsection, NewPage, SubFigure, PageStyle
@@ -36,7 +39,7 @@ layers_shapes = {
         'STL10': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
         'TinyImagenet': [4096, 4096, 512, 512, 512, 512, 512, 512, 256, 256, 256, 128, 128, 64, 64],
     },
-    "Resnet":{
+    "Resnet": {
         'MNIST': [2048, 2048, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 256, 256],
         'FashionMNIST': [2048, 2048, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 256, 256],
         'CIFAR10': [2048, 2048, 2048, 1024, 1024, 1024, 1024, 1024, 1024, 512, 512, 512, 512, 256, 256, 256],
@@ -69,35 +72,20 @@ def save_results_as_csv(results, filename="results.csv"):
     df.to_csv(filename)
 
 
-def show_values_on_bars(axs, ):
-    def _show_on_single_plot(ax):
-        for p in ax.patches:
-            _x = p.get_x() + p.get_width() / 2
-            _y = p.get_y() + p.get_height()
-            value = '{:.4f}'.format(p.get_height())
-            ax.text(_x, _y + 0.05, value, ha="center", rotation=90)
-
-    if isinstance(axs, np.ndarray):
-        for idx, ax in np.ndenumerate(axs):
-            _show_on_single_plot(ax)
-    else:
-        _show_on_single_plot(axs)
-
-
-def draw(filename="results.csv", metric="acc"):
+def draw(filename="results.csv", metric="acc", label="Mean test accuracy"):
     df = pd.read_csv(filename, index_col=0)
     # df = df[df["ds"] != "TinyImagenet"]
     # df = df[df["ds"] == "STL10"]
     print(df)
-    plot_order = df.groupby(["m"])[metric].mean().sort_values()
+    plot_order = df.groupby(["method"])[metric].mean().sort_values()
     print(plot_order.index)
     print(type(plot_order))
     g = sns.catplot(
         data=df, kind="bar",
-        x="m", y=metric, palette="dark", alpha=.6, order=plot_order.index
+        x="method", y=metric, palette="dark", alpha=.6, order=plot_order.index
     )
     g.despine(left=True)
-    g.set_axis_labels("", metric)
+    g.set_axis_labels("Metoda", label)
     show_values_on_bars(g.ax)
     plt.xticks(rotation=90)
     plt.tight_layout()
@@ -191,45 +179,80 @@ def draw_hamming_distances():
     # plt.show()
     # print(frame)
 
+
 def draw_hamming_distances_layerwise():
-    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
+    d1_tasks = ["FashionMNIST"]
     nap_cfg_path = "nap_cfgs/full_nets.json"
     import json
     with open(nap_cfg_path) as cf:
         nap_cfg = json.load(cf)
     for d1 in d1_tasks:
-        for model in ["VGG", "Resnet"]:
+        for model in ["VGG"]:
             for layer in range(len(layers_shapes[model][d1])):
-                train_file_pattern = "*traindistances_model_" + model + "_dataset_" + d1 + "_" + str(layer) +".csv"
-                test_file_pattern = "*testdistances_model_"  + model + "_dataset_" + d1 + "*" + str(layer) + ".csv"
-                train_files = glob.glob(os.path.join("results/distances", train_file_pattern))
-                test_files = glob.glob(os.path.join("results/distances", test_file_pattern))
+                train_file_pattern = "q_0.3_traindistances_model" + model + "_dataset_" + d1 + "_" + str(layer) + ".csv"
+                test_file_pattern = "q_0.3_testdistances_model" + model + "_dataset_" + d1 + "*" + str(layer) + ".csv"
+                train_files = glob.glob(os.path.join("results/distances/redo", train_file_pattern))
+                test_files = glob.glob(os.path.join("results/distances/redo", test_file_pattern))
                 frame = pd.read_csv(train_files[0], index_col=0)
 
                 print(len(frame.index))
                 print(len(frame.sample(10)))
                 for filename in test_files:
                     df = pd.read_csv(filename, index_col=0)
-                    frame_train_sampled = frame.sample(len(df.index))
+                    if len(df.index) > len(frame.index):
+                        print(filename)
+                        print(len(df.index))
+                        print(train_files[0])
+                        print(len(frame.index))
+                        frame_train_sampled = frame
+                        df = df.sample(len(frame.index))
+                    else:
+                        frame_train_sampled = frame.sample(len(df.index))
                     print(frame_train_sampled["hamming_distance"].mean())
                     print(len(frame_train_sampled.index))
                     print(len(df.index))
-                    split = filename.split(".")[0].split("_")[1:]
+                    split = filename.split("_")[1:]
                     title = "".join(split)
-                    title = "compared" + title
+                    split = title.split(".")[:-1]
+                    title = "".join(split)
+                    title1 = "compared" + title
+                    title = title1.split("dataset")[-1]
+                    l = title[-1]
+                    d2 = title[:-1].split("vs")[1]
+                    title = title[:-1] + " layer no. " + l
+
                     plt.figure()
-                    _ = plt.hist(frame_train_sampled, bins=int(df["hamming_distance"].max() / 4), alpha=0.7, label='train')
-                    _ = plt.hist(df, bins=int(df["hamming_distance"].max() / 4), alpha=0.7, label='test')
-                    plt.legend(loc='lower right')
+                    # _ = plt.hist(frame_train_sampled, bins=int(df["hamming_distance"].max() / 4) + 1, alpha=0.7, label='train')
+                    # _ = plt.hist(df, bins=int(df["hamming_distance"].max() / 4) + 1, alpha=0.7, label='test')
+                    m = max(df["hamming_distance"].max(), frame_train_sampled["hamming_distance"].max())
+                    if df["hamming_distance"].max() < 20:
+                        bins = int(m)
+                    elif df["hamming_distance"].max() < 40:
+                        bins = int(m / 2)
+                    elif df["hamming_distance"].max() < 80:
+                        bins = int(m / 3)
+                    else:
+                        bins = int(m / 4)
+
+                    (_, bins1, _) = plt.hist(frame_train_sampled, bins=bins, alpha=0.7, label='znany rozkład')
+                    (_, bins2, _) = plt.hist(df, bins=bins, alpha=0.7, label='nieznany rozkład')
+
+                    plt.legend(loc='upper right')
                     threshold, acc = find_threshold(frame_train_sampled, df)
+                    threshold += 1
                     plt.axvline(threshold, color='k', linestyle='dashed', linewidth=1)
                     min_ylim, max_ylim = plt.ylim()
-                    plt.text(threshold * 1.1, max_ylim * 0.9, f'Threshold: {threshold}, Accuracy: {acc}')
-                    plt.xlabel(f'Vector length: {layers_shapes[model][d1][layer]}, {(1 - nap_cfg[model][d1][str(layer)]["quantile"]):.1f}% highest values considered')
-                    plt.title(title)
-                    plt.show()
-                    # plt.savefig(os.path.join("results/distances/plots", title))
+                    plt.text(5, max_ylim * 0.7, f'Próg: {threshold}, celność: {acc:.3f}')
+                    # plt.xlabel(f'Pattern length: {layers_shapes[model][d1][layer]}, p = { int(nap_cfg[model][d1][str(layer)]["quantile"] * 100)} (activation function percentile parameter)')
+                    plt.ylabel(f'Liczba próbek')
+                    # plt.xlabel(f'Hamming distance from the nearest known (training) pattern ')
+                    plt.xlabel(f'Odległość Hamminga do najbliższej znanej próbki treningowej')
+                    # plt.title(title)
+                    # plt.show()
+                    # plt.tight_layout()
+                    plt.savefig(os.path.join("results/distances/plots/redo", title1))
                     plt.close()
+
 
 def fix_vgg_results():
     all_files = glob.glob(os.path.join("results/article_plots", "VGG*"))
@@ -269,10 +292,14 @@ def find_threshold(df_known, df_unknown):
     return best_threshold, best_correct_count / (len(df_unknown.index) + len(df_known.index))
 
 
-def draw_article_plots(ds, dv=None):
+def draw_article_plots(ds, dv=None, model="VGG", q=0.3):
     plt.close()
-    all_files = glob.glob(os.path.join("results/article_plots", ("VGG" + ds + "*")))
+    all_files = glob.glob(os.path.join("results/article_plots", (model + ds + "*otherlayers.csv")))
     li = []
+    nap_cfg_path = "nap_cfgs/full_nets.json"
+    import json
+    with open(nap_cfg_path) as cf:
+        nap_cfg = json.load(cf)
     for filename in all_files:
         if ds == "CIFAR10":
             if filename.split('/')[2][10] != '0':
@@ -284,29 +311,41 @@ def draw_article_plots(ds, dv=None):
 
     frame = pd.concat(li, axis=0, ignore_index=True)
     if dv:
-        grouped = frame.groupby(["quantile", "layer", "pool", "dv"])[
+        frame = frame[frame["pool_type"] == nap_cfg[model][ds]["1"]["pool_type"]]
+        # frame = frame[frame["quantile"] != 0.1]
+        # frame = frame[frame["quantile"] != 0.5]
+        # frame = frame[~np.isclose(frame["quantile"],  0.7)]
+        frame = frame[frame["quantile"] == q]
+
+        grouped = frame.groupby(["quantile", "layer", "pool_type", "dv"])[
             "valid_acc", "test_acc", "threshold"].mean().sort_values("valid_acc")
-        grouped = grouped.xs(dv, level="dv").tail(20)
+        grouped = grouped.xs(dv, level="dv")
+
         title = "VGG_" + ds + "_vs_" + dv
     else:
-        grouped = frame.groupby(["quantile", "layer", "pool"])[
-            "valid_acc", "test_acc", "threshold"].mean().sort_values("valid_acc").tail(20)
+        grouped = frame.groupby(["quantile", "layer", "pool_type"])[
+            "valid_acc", "test_acc", "threshold"].mean().sort_values("valid_acc")
         title = "VGG_" + ds
     figure, axes = plt.subplots()
     x = np.arange(len(grouped.index))
-    v = axes.bar(x - 0.2, grouped["valid_acc"].values, 0.4)
-    t = axes.bar(x + 0.2, grouped["test_acc"].values, 0.4)
+    v = axes.bar(x - 0.2, grouped["valid_acc"].values, 0.4, label="cel. walid.")
+    t = axes.bar(x + 0.2, grouped["test_acc"].values, 0.4, label="śr. cel. test.")
+
     show_values_on_bars(axes)
-    quantile_formatter = lambda x: '(' + '{:.2f}'.format(x[0]) + ', ' + str(x[1]) + ', ' + str(x[2]) + ')'
-    # quantile_formatter = lambda x: '(' + '{:.2f}'.format(x[0]) + ', ' + str(x[1]) + ')'
+    # quantile_formatter = lambda x: '(' + 'p - {}'.format(int(x[0] * 100)) + ', ' + str(x[1]) + ', ' + str(x[2]) + ')'
+    quantile_formatter = lambda x: 'Layer: ' + str(x[1])
     # quantile_formatter = lambda x: '(' + '{:.2f}'.format(x) + ')'
     plt.xticks(x, grouped.index, rotation=90)
+
     axes.set_xticklabels([quantile_formatter(eval(x.get_text())) for x in axes.get_xticklabels()])
 
-    plt.title(title)
-
+    # plt.title(title)
+    # plt.xticks([])
+    plt.xlabel("Konfiguracje NAP'owe")
+    plt.ylabel("Uśredniona celność")
+    plt.legend(loc='lower right')
     plt.tight_layout()
-    # plt.show()
+    plt.show()
     # plt.savefig(os.path.join("results/article_plots/plots", title))
 
 
@@ -323,7 +362,7 @@ def load_distance(filename):
 def generate_latex(fname, width, *args, **kwargs):
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', 'CIFAR100', 'TinyImagenet']
 
-    # d1_tasks = ['MNIST', 'CIFAR100', 'STL10']
+    d1_tasks = ['FashionMNIST']
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
     geometry_options = {"right": "2cm", "left": "2cm"}
@@ -375,34 +414,39 @@ def generate_latex(fname, width, *args, **kwargs):
     with doc.create(
             Section(
                 'Wykresy konfiguracji zagregowane po wszystkich datasetach walidacyjnych (20 najlepszych wyników)')):
-        for d1 in d1_tasks:
-            plot = Figure(position='h')
-            draw_article_plots(d1)
-            plot.add_plot(width=NoEscape(width), *args, **kwargs)
-            plot.add_caption('X - konfiguracje; Y - valid_accuracy (niebieski), test_accuracy (pomaranczowy).')
-            doc.append(plot)
-            doc.append(NewPage())
+        for model in ["VGG"]:
+            for d1 in d1_tasks:
+                plot = Figure(position='h')
+                draw_article_plots(d1, model=model)
+                plot.add_plot(width=NoEscape(width), *args, **kwargs)
+                plot.add_caption('X - konfiguracje; Y - valid_accuracy (niebieski), test_accuracy (pomaranczowy).')
+                doc.append(plot)
+                doc.append(NewPage())
 
     with doc.create(Section('Wykresy konfiguracji (20 najlepszych wyników)')):
-        for d1 in d1_tasks:
-            for d2 in d2_tasks:
-                if d2 in d2_compatiblity[d1]:
-                    plot = Figure(position='h')
-                    draw_article_plots(d1, d2)
-                    plot.add_plot(width=NoEscape(width), *args, **kwargs)
-                    plot.add_caption('X - konfiguracje; Y - valid_accuracy (niebieski), test_accuracy (pomaranczowy).')
-                    doc.append(plot)
-                    doc.append(NewPage())
+        for model in ["VGG"]:
+            for d1 in d1_tasks:
+                for d2 in d2_tasks:
+                    if d2 in d2_compatiblity[d1]:
+                        plot = Figure(position='h')
+                        draw_article_plots(d1, d2, model=model)
+                        plot.add_plot(width=NoEscape(width), *args, **kwargs)
+                        plot.add_caption(
+                            'X - konfiguracje; Y - valid_accuracy (niebieski), test_accuracy (pomaranczowy).')
+                        doc.append(plot)
+                        doc.append(NewPage())
 
-    with doc.create(Section('Wykresy dystansów wzorcow aktywacji')):
-        all_files = glob.glob(os.path.join("results/distances/plots", "compared*"))
-        for filename in sorted(all_files):
-            plot = Figure(position='h')
-            load_distance(filename)
-            plot.add_plot(width=NoEscape(width), *args, **kwargs)
-            plot.add_caption('X - dystans; Y - liczba powtorzen.')
-            doc.append(plot)
-            doc.append(NewPage())
+    # with doc.create(Section('Wykresy dystansów wzorcow aktywacji')):
+    #     all_files = glob.glob(os.path.join("results/distances/plots/redo", "compared*datasetFashionMNIST*"))
+    #     print("a")
+    #     print(len(all_files))
+    #     for filename in sorted(all_files):
+    #         plot = Figure(position='h')
+    #         load_distance(filename)
+    #         plot.add_plot(width=NoEscape(width), *args, **kwargs)
+    #         plot.add_caption('X - dystans; Y - liczba powtorzen.')
+    #         doc.append(plot)
+    #         doc.append(NewPage())
 
     doc.generate_pdf(clean_tex=False)
 
@@ -591,7 +635,7 @@ def full_net_plot():
                 'TinyImagenet']
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
                 'TinyImagenet']
-    d1_tasks = ['MNIST', 'STL10', 'FashionMNIST', 'CIFAR100' ]
+    d1_tasks = ['MNIST', 'STL10', 'FashionMNIST', 'CIFAR100']
     # d2_tasks = ['NormalNoise']
     # d3_tasks = ['UniformNoise']
     types = [2]
@@ -714,40 +758,43 @@ def execution_times_plot():
 
 
 def compare_exec_times_all_methods():
-    d1_tasks = ['TinyImagenet']
-
+    # d1_tasks = ['MNIST']
+    d1_tasks = ['MNIST', "FashionMNIST", "CIFAR10", "CIFAR100", "STL10", "TinyImagenet"]
+    data = []
     for d1 in d1_tasks:
-        data = []
+
         file_pattern = "*" + d1 + '*.npz'
         files = glob.glob(os.path.join("results/article_plots/execution_times", file_pattern))
         for file in files:
             if d1 == "CIFAR10":
-                if file.split('/')[-1].split("_")[2][7] == '0':
-                    print(file)
+                print(file)
+                if file.split('/')[-1].split("_")[2] == "CIFAR100":
+
                     continue
             method = file.split("/")[-1].split("_")[0]
             model = file.split("/")[-1].split("_")[1]
             exec_time = np.load(file)["exec_times"]
             data.append((method, model, d1, exec_time.item()))
-        df = pd.DataFrame(data, columns=["method", "model", "dataset", "exec_time"])
-        print(df)
-        # _ = sns.catplot(x="method", y="exec_time", kind="box", data=df)
-        # plt.show()
-        grouped = df.groupby(["method", "model"])[
-            "exec_time"].mean().sort_values(ascending=True)
-        figure, axes = plt.subplots()
-        x = np.arange(len(grouped.index))
-        v = axes.bar(x, grouped.values)
-        show_values_on_bars(axes)
-        plt.xticks(x, grouped.index, rotation=90)
-        plt.tight_layout()
-        plt.title(d1)
-        # plt.show()
-        plt.savefig("results/article_plots/execution_times/plots/" + d1)
+    df = pd.DataFrame(data, columns=["method", "model", "dataset", "exec_time"])
+    print(df)
+    # _ = sns.catplot(x="method", y="exec_time", kind="box", data=df)
+    # plt.show()
+    grouped = df.groupby(["method", "model"])[
+        "exec_time"].mean().sort_values(ascending=True)
+    figure, axes = plt.subplots()
+    x = np.arange(len(grouped.index))
+    v = axes.bar(x, grouped.values)
+    show_values_on_bars(axes)
+    plt.xticks(x, grouped.index, rotation=90)
+    plt.xlabel("Method, architecture")
+    plt.ylabel("time (s)")
+    plt.tight_layout()
+    plt.title("Mean execution time per one sample")
+    plt.show()
+    # plt.savefig("results/article_plots/execution_times/plots/" + d1)
 
 
 def auroc():
-
     d1_tasks = ['MNIST', 'FashionMNIST', 'STL10', "CIFAR100"]
 
     d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
@@ -788,7 +835,8 @@ def auroc():
                         for d3 in d3_tasks:
                             if d2 != d3 and d3 in d2_compatiblity[d1]:
 
-                                file_pattern = model_name + '_' + d1 + '_' + d2 + '_' + d3 + "_" + str(layer) + "_" + pool_type + ".csv"
+                                file_pattern = model_name + '_' + d1 + '_' + d2 + '_' + d3 + "_" + str(
+                                    layer) + "_" + pool_type + ".csv"
                                 files = glob.glob(
                                     os.path.join("results/article_plots/full_nets/fixed", file_pattern))
 
@@ -803,7 +851,6 @@ def auroc():
                                     # print(df)
                         # print(f"{model_name} {d1} vs {d2} layer {layer}")
                         frame = pd.concat(frames, axis=0, ignore_index=True)
-
 
                         score = roc_auc_score(frame["label"], frame["distance"])
                         acc = frame["correct"].sum() / len(frame.index)
@@ -827,9 +874,10 @@ def auroc():
                 aupr_sum += best_aupr
                 acc_sum += best_acc
                 counter += 1
-                print(f"{model_name} {d1} vs {d2} best auroc layer {best_auroc_layer} pt {best_auroc_pool_type} auroc {best_auroc}"
-                      f" best aupr layer {best_aupr_layer} aupr {best_aupr} pt {best_aupr_pool_type} "
-                      f" best acc layer {best_acc_layer} acc {best_acc} pt {best_acc_pool_type}")
+                print(
+                    f"{model_name} {d1} vs {d2} best auroc layer {best_auroc_layer} pt {best_auroc_pool_type} auroc {best_auroc}"
+                    f" best aupr layer {best_aupr_layer} aupr {best_aupr} pt {best_aupr_pool_type} "
+                    f" best acc layer {best_acc_layer} acc {best_acc} pt {best_acc_pool_type}")
 
         # counter += 1
         # scores += score
@@ -933,7 +981,7 @@ def fixed():
                 'TinyImagenet']
     types = [0, 1, 2, 3]
     n_votes = [3, 5, 7, 9]
-    th_factors = [0.1, 0.7]
+    th_factors = [0.1]
     data = []
     for model_name in ["VGG", "Resnet"]:
         for type in types:
@@ -982,7 +1030,8 @@ def fixed():
 
                                         chosen_ids = choose_layers_and_pool_type(thresholds=np_thresholds,
                                                                                  accuracies=np_accuracies, type=type,
-                                                                                 votes=votes, thresholds_factor=tf, model=model_name, dt=d1)
+                                                                                 votes=votes, thresholds_factor=tf,
+                                                                                 model=model_name, dt=d1)
                                         # for (chosen_layer, chosen_pool_type) in chosen_ids:
                                         #     print(chosen_layer, chosen_pool_type)
                                         distances_1 = np.zeros((rows, len(chosen_ids)))
@@ -992,14 +1041,21 @@ def fixed():
                                         labels[int(rows / 2):] = 1
                                         for i in range(rows):
                                             correct_votes = 0
-                                            for vote_id, (chosen_layer, chosen_pool_type, add_factor, multiplier) in enumerate(chosen_ids):
-                                                scaled_th = (df_thresholds[chosen_pool_type]["threshold"][chosen_layer] + add_factor) * multiplier
-                                                distances_1[i, vote_id] = (frames[chosen_pool_type][str(chosen_layer)]["distance"][i] + add_factor) * multiplier
+                                            for vote_id, (
+                                            chosen_layer, chosen_pool_type, add_factor, multiplier) in enumerate(
+                                                    chosen_ids):
+                                                scaled_th = (df_thresholds[chosen_pool_type]["threshold"][
+                                                                 chosen_layer] + add_factor) * multiplier
+                                                distances_1[i, vote_id] = (frames[chosen_pool_type][str(chosen_layer)][
+                                                                               "distance"][i] + add_factor) * multiplier
                                                 distances_2[i, vote_id] = (frames[chosen_pool_type][str(chosen_layer)][
-                                                                               "distance"][i] + add_factor) * multiplier - scaled_th
+                                                                               "distance"][
+                                                                               i] + add_factor) * multiplier - scaled_th
                                                 distances_3[i, vote_id] = (frames[chosen_pool_type][str(chosen_layer)][
-                                                                               "distance"][i] + add_factor) * multiplier / scaled_th
-                                                correct_votes += frames[chosen_pool_type][str(chosen_layer)]["correct"][i]
+                                                                               "distance"][
+                                                                               i] + add_factor) * multiplier / scaled_th
+                                                correct_votes += frames[chosen_pool_type][str(chosen_layer)]["correct"][
+                                                    i]
                                             correct_count += (correct_votes > (len(chosen_ids) / 2))
                                         distances_1 = distances_1.sum(axis=1)
                                         distances_2 = distances_2.sum(axis=1)
@@ -1031,21 +1087,27 @@ def fixed():
                                         agg_acc3 += acc3
                                         agg_auroc += auroc_score_1
                                         agg_aupr += aupr_1
-                                        data.append((model_name, d1, d2, d3, type, votes, tf, auroc_score_1, aupr_1, acc, acc2, acc3, auroc_score_2, aupr_2, auroc_score_3, aupr_3))
+                                        data.append((
+                                                    model_name, d1, d2, d3, type, votes, tf, auroc_score_1, aupr_1, acc,
+                                                    acc2, acc3, auroc_score_2, aupr_2, auroc_score_3, aupr_3))
                                         counter += 1
 
                         # print(f"{model_name}  {d1} - type {type}, votes {votes}, thfactor {tf} Aggregated accuracy: {agg_acc / counter}")
                         print(
                             f"{model_name}  {d1} - type {type}, votes {votes}, thfactor {tf} Aggregated auroc: {agg_auroc / counter}"
                             f"Aggregated aupr: {agg_aupr / counter} acc: {agg_acc / counter} acc2: {agg_acc2 / counter} acc3: {agg_acc3 / counter}")
-    pd.DataFrame(data, columns=["model", "d1", "d2", "d3", "type", "votes", "tf", "auroc1", "aupr1", "acc", "acc2", "acc3", "auroc2", "aupr2", "auroc3", "aupr3"]).to_csv("hamming_redoall.csv")
+    pd.DataFrame(data,
+                 columns=["model", "d1", "d2", "d3", "type", "votes", "tf", "auroc1", "aupr1", "acc", "acc2", "acc3",
+                          "auroc2", "aupr2", "auroc3", "aupr3"]).to_csv("hamming_redoall.csv")
+
 
 def choose_best_auroc(model="Resnet"):
-    # results1 = pd.read_csv("hammingvgg_aurocexp.csv", index_col=0)
-    results1 = pd.read_csv("hamming_redo.csv", index_col=0)
-    results2 = pd.read_csv("hamming_aurocexp.csv", index_col=0)
-    results = pd.concat([results1, results2], axis=0, ignore_index=True)
-    grouped = results.groupby(["type", "votes", "tf"])["auroc1", "aupr1", "acc", "auroc2", "aupr2", "auroc3", "aupr3"].mean()
+    results = pd.read_csv("hamming_redoall.csv", index_col=0)
+    # results1 = pd.read_csv("hamming_redo.csv", index_col=0)
+    # results2 = pd.read_csv("hamming_aurocexp.csv", index_col=0)
+    # results = pd.concat([results1, results2], axis=0, ignore_index=True)
+    grouped = results.groupby(["type", "votes", "tf"])[
+        "auroc1", "aupr1", "acc", "acc2", "acc3" , "auroc2", "aupr2", "auroc3", "aupr3"].mean()
     # print(grouped.sort_values("acc").tail(10))
 
     # print(grouped.sort_values("auroc3").tail(3))
@@ -1053,7 +1115,7 @@ def choose_best_auroc(model="Resnet"):
     # print(grouped.sort_values("aupr3").tail(3))
     results = results[results["model"] == model]
     # results = results[results["d1"] == "FashionMNIST"]
-    grouped = results.groupby(["type", "votes", "tf"])[["acc", "auroc3", "auroc1",  "auroc2",]].mean()
+    grouped = results.groupby(["type", "votes", "tf"])[["acc", "acc2", "acc3" , "auroc3", "auroc1", "auroc2", ]].mean()
     # grouped = grouped[grouped["acc"] > 0.823]
     # grouped = grouped[grouped["auroc3"] > 0.884]
     # grouped = grouped[grouped["aupr3"] > 0.879]
@@ -1073,12 +1135,150 @@ def choose_best_auroc(model="Resnet"):
     #             print(grouped.sort_values("auroc3").tail(3))
     #             print(grouped.sort_values("aupr3").tail(3))
 
-def nap_model_to_method(x):
-    if x == "VGG":
-        return "nap/0"
-    return "nap/1"
 
+def nap_model_to_method(x, start=0):
+    if x == "VGG":
+        return "nap/" + str(start)
+    return "nap/" + str(start + 1)
+
+
+
+def add_method_name_column(fname=None, df=None):
+    names = {
+        "nap/0": "ActivationPatterns_acc_9_1/VGG",
+        "nap/1": "ActivationPatterns_acc_9_1/Res",
+        "nap/2": "ActivationPatterns_acc_9_3/VGG",
+        "nap/3": "ActivationPatterns_acc_9_3/Res",
+        "nap/4": "ActivationPatterns_thresh_5_1/VGG",
+        "nap/5": "ActivationPatterns_thresh_5_1/Res",
+        "nap/6": "ActivationPatterns_thresh_5_3/VGG",
+        "nap/7": "ActivationPatterns_thresh_5_3/Res",
+        "outlier_exposure/0": "OutlierExposure/VGG",
+        "outlier_exposure/1": "OutlierExposure/Res",
+        "grad_norm/0": "GradNorm/VGG",
+        "grad_norm/1": "GradNorm/Res",
+        "react/0": "ReAct/VGG",
+        "react/1": "ReAct/Res",
+        "energy/0": "Energy/VGG",
+        "energy/1": "Energy/Res",
+        "mahalanobis/0": "Mahalanobis/VGG",
+        "mahalanobis/1": "Mahalanobis/Res",
+        "msad/0": "MeanShiftedAD/VGG",
+        "msad/1": "MeanShiftedAD/Res",
+        "odin/0": "ODIN/VGG",
+        "odin/1": "ODIN/Res",
+        "score_svm/0": "ScoreSVM/VGG",
+        "score_svm/1": "ScoreSVM/Res",
+        "logistic_svm/0": "Log.SVM/VGG",
+        "logistic_svm/1": "Log.SVM/Res",
+        "reconst_thresh/0": "AEThre./BCE",
+        "reconst_thresh/1": "AEThre./MSE",
+        "mcdropout/0": "MC-Dropout",
+        "knn/1": "1-NNSVM",
+        "knn/2": "2-NNSVM",
+        "knn/4": "4-NNSVM",
+        "knn/8": "8-NNSVM",
+        "bceaeknn/1": "1-BNNSVM",
+        "bceaeknn/2": "2-BNNSVM",
+        "bceaeknn/4": "4-BNNSVM",
+        "bceaeknn/8": "8-BNNSVM",
+        "mseaeknn/1": "1-MNNSVM",
+        "mseaeknn/2": "2-MNNSVM",
+        "mseaeknn/4": "4-MNNSVM",
+        "mseaeknn/8": "8-MNNSVM",
+        "vaeaeknn/1": "1-VNNSVM",
+        "vaeaeknn/2": "2-VNNSVM",
+        "vaeaeknn/4": "4-VNNSVM",
+        "vaeaeknn/8": "8-VNNSVM",
+        "deep_ensemble/0": "DeepEns./VGG",
+        "deep_ensemble/1": "DeepEns./Res",
+        "prob_threshold/0": "PbThresh/VGG",
+        "prob_threshold/1": "PbThresh/Res",
+        "binclass/0": "BinClass/VGG",
+        "binclass/1": "BinClass/Res",
+        "openmax/0": "OpenMax/VGG",
+        "openmax/1": "OpenMax/Res",
+        "pixelcnn/0": "PixelCNN++"
+    }
+    if not isinstance(df, pd.DataFrame):
+        df = pd.read_csv(fname, index_col=0)
+    df['method'] = df.apply(lambda row: names[row.m], axis=1)
+    df.to_csv(fname)
+
+
+def show_values_on_bars(axs, ):
+    def _show_on_single_plot(ax):
+        for p in ax.patches:
+            _x = p.get_x() + p.get_width() / 2
+            _y = p.get_y() + p.get_height()
+            value = '{:.3f}'.format(p.get_height())
+            ax.text(_x, _y + 0.01, value, ha="center", rotation=90)
+
+    if isinstance(axs, np.ndarray):
+        for idx, ax in np.ndenumerate(axs):
+            _show_on_single_plot(ax)
+    else:
+        _show_on_single_plot(axs)
+
+def configuration_experiment():
+    d1_tasks = ['MNIST', 'FashionMNIST', 'STL10', 'CIFAR100', "CIFAR10", "TinyImagenet"]
+    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
+                'TinyImagenet']
+    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'STL10', 'CIFAR100',
+                'TinyImagenet']
+    for model_name in ["VGG", "Resnet"]:
+        counter = 0
+        acc_sum = 0
+        auroc_sum = 0
+        acc_sum2 = 0
+        auroc_sum2 = 0
+        b_acc_sum = 0
+        b_auroc_sum = 0
+        b_c = 0
+
+        for d1 in d1_tasks:
+            d1_counter = 0
+            d1_acc_sum = 0
+            d1_auroc_sum = 0
+            frames = []
+            for d2 in d2_tasks:
+                if d2 in d2_compatiblity[d1]:
+
+                    for d3 in d3_tasks:
+                        if d2 != d3 and d3 in d2_compatiblity[d1]:
+                            file_pattern = model_name + d1 + d2 + d3 + "*otherlayers*"
+                            files = glob.glob(
+                                os.path.join("results/article_plots", file_pattern))
+                            for file in files:
+                                df = pd.read_csv(file, index_col=0)
+                                b_acc_sum += df["test_acc"].max()
+                                b_auroc_sum += df["auroc"].max()
+                                b_c += 1
+                                frames.append(df)
+            frame = pd.concat(frames, axis=0, ignore_index=True)
+            grouped = frame.groupby(["model", "ds", "layer", "pool_type", "quantile"])[
+                ["test_acc", "auroc", "aupr"]].mean()
+            grouped2 = frame.groupby(["model", "ds", "dv", "layer", "pool_type", "quantile"])[
+                ["test_acc", "auroc", "aupr"]].mean()
+            acc_sum += grouped.sort_values("test_acc").tail(1)["test_acc"].values.item()
+            auroc_sum += grouped.sort_values("auroc").tail(1)["auroc"].values.item()
+            acc_sum2 += grouped2.sort_values("test_acc").tail(1)["test_acc"].values.item()
+            auroc_sum2 += grouped2.sort_values("auroc").tail(1)["auroc"].values.item()
+            counter += 1
+            d1_acc_sum += grouped.sort_values("test_acc").tail(1)["test_acc"].values.item()
+            d1_auroc_sum += grouped.sort_values("auroc").tail(1)["auroc"].values.item()
+            d1_counter += 1
+            # print(f" {model_name} {d1} max_test_acc: {d1_acc_sum/d1_counter} auroc {d1_auroc_sum/d1_counter} l {grouped.sort_values('test_acc').tail(1)}")
+
+        print(f" {model_name} bmax_test_acc: {b_acc_sum / b_c} b2max_test_acc: {acc_sum2 / counter} b3max_test_acc: {acc_sum / counter}"
+              f"  bauroc {b_auroc_sum / b_c} b2auroc {auroc_sum2 / counter} b3auroc {auroc_sum / counter} ")
 if __name__ == "__main__":
+
+    # from methods.nap.cuda_tree.nonrecursive_cython import BallTree
+    # data = np.array([[1,1,1,1,1,1], [1,1,1,0,0,0], [0,0,0,1,1,1], [0,0,0,0,0,0]])
+    # b = BallTree(data)
+    # print(b.query([[0,1,1,0,1,0]]))
+    # exit(0)
     # draw_boxplots()
     # results = pd.read_csv("results/results_working_methods.csv", index_col=0)
     # results2 = pd.read_csv("results/results_fixed_methods.csv", index_col=0)
@@ -1090,42 +1290,100 @@ if __name__ == "__main__":
     # df.to_csv("nap_confirm2.csv")
     # fixed()
     # exit(0)
-    df = pd.read_csv("allmethods_auroc2.csv", index_col=0)
-    df2 = pd.read_csv("hamming_redo4.csv", index_col=0)
-    df2 = df2[df2["tf"] == 0.1]
-    df2 = df2[df2["votes"] == 9]
-    df2 = df2[df2["type"] == 2]
-    df2.model = df2.model.apply(lambda x: nap_model_to_method(x))
-    df2.drop(["type", "votes", "tf", "auroc1", "aupr1", "auroc3", "aupr3", "acc", "acc3"], inplace=True, axis=1)
+    # df = pd.read_csv("allmethods_auroc2.csv", index_col=0)
+    # df2 = pd.read_csv("hamming_redoall.csv", index_col=0)
+    # df3 = df2.copy()
+    # df2 = df2[df2["tf"] == 0.1]
+    # df2 = df2[df2["votes"] == 9]
+    # df2 = df2[df2["type"] == 2]
+    # df2_3 = df2.copy()
+    # df2.drop(["type", "votes", "tf", "auroc1", "aupr1", "auroc3", "aupr3", "aupr2", "acc3", "acc"], inplace=True, axis=1)
+    # df2.model = df2.model.apply(lambda x: nap_model_to_method(x))
+    # df2.rename(
+    #     columns={"model": "m", "auroc2": "auroc", "acc2": "acc", "d1": "ds", "d2": "dv", "d3": "dt"},
+    #     inplace=True)
+    # add_method_name_column(df=df2)
+    # df2_3.model = df2_3.model.apply(lambda x: nap_model_to_method(x, 2))
+    # df2_3.drop(["type", "votes", "tf", "auroc1", "aupr1", "auroc3", "aupr3", "aupr2", "acc3", "acc2"], inplace=True, axis=1)
+    # df2_3.rename(
+    #     columns={"model": "m", "auroc2": "auroc", "d1": "ds", "d2": "dv", "d3": "dt"},
+    #     inplace=True)
+    # add_method_name_column(df=df2_3)
+    #
+    # df3 = df3[df3["tf"] == 0.1]
+    # df3 = df3[df3["votes"] == 5]
+    # df3 = df3[df3["type"] == 3]
+    # df3_3 = df3.copy()
+    # df3.drop(["type", "votes", "tf", "auroc1", "aupr1", "auroc3", "aupr3", "aupr2", "acc3", "acc"], inplace=True, axis=1)
+    # df3.model = df3.model.apply(lambda x: nap_model_to_method(x, 4))
+    # df3.rename(
+    #     columns={"model": "m", "auroc2": "auroc", "acc2": "acc", "d1": "ds", "d2": "dv", "d3": "dt"},
+    #     inplace=True)
+    # add_method_name_column(df=df3)
+    # df3_3.model = df3_3.model.apply(lambda x: nap_model_to_method(x, 6))
+    # df3_3.drop(["type", "votes", "tf", "auroc1", "aupr1", "auroc3", "aupr3", "aupr2", "acc3", "acc2"], inplace=True, axis=1)
+    # df3_3.rename(
+    #     columns={"model": "m", "auroc2": "auroc", "d1": "ds", "d2": "dv", "d3": "dt"},
+    #     inplace=True)
+    # add_method_name_column(df=df3_3)
+
+
+    # df2.model = df2.model.apply(lambda x: nap_model_to_method(x))
+    # df2.drop(["type", "votes", "tf", "auroc1", "aupr1", "auroc3", "aupr3", "acc", "acc3"], inplace=True, axis=1)
     # print(df2)
-    df2.rename(columns={"model": "m", "auroc2": "auroc", "aupr2": "aupr", "acc2": "acc", "d1": "ds", "d2": "dv", "d3": "dt"}, inplace=True)
+    # df2.rename(columns={"model": "m", "auroc2": "auroc", "aupr2": "aupr", "acc2": "acc", "d1": "ds", "d2": "dv", "d3": "dt"}, inplace=True)
     # print(df2)
-    d = pd.concat([df, df2], axis=0, ignore_index=True)
+    # d = pd.concat([df, df2, df3, df2_3], axis=0, ignore_index=True)
     # d = d.loc[:, ~d.columns.str.contains('^Unnamed')]
     # d = d.drop(["method", "a"], axis=1)
     # d.loc[d["m"] == "grad_norm/1", "auroc"] = 1 - d[d["m"] == "grad_norm/1"]["auroc"]
     # d.loc[d["m"] == "grad_norm/0", "auroc"] = 1 - d[d["m"] == "grad_norm/0"]["auroc"]
-    d.to_csv("allmethods_auroc.csv")
-    # draw("nap_confirm2.csv", "auroc")
-    # draw("nap_confirm2.csv", "aupr")
-    # draw("nap_confirm2.csv", "acc")
-    # draw("allmethods_auroc2.csv", "auroc")
-    # draw("allmethods_auroc2.csv", "aupr")
-    # draw("allmethods_auroc2.csv", "acc")
+    # d = d[d["m"] != "nap/3"]
+    # d = d[d["m"] != "nap/4"]
+    # d.to_csv("allmethods_auroc_twonaps.csv")
 
-    draw("allmethods_auroc.csv")
-    draw("allmethods_auroc.csv", "auroc")
-    draw("allmethods_auroc.csv", "aupr")
+    # add_method_name_column("allmethods_auroc.csv")
 
-    # draw_hamming_distances()
-    # draw_article_plots()
-    # generate_latex('matplotlib_ex-dpir', r'1\textwidth', dpi=100)
-    # generate_latex_heatmaps('matplotlib_ex-heatmaps', r'1\textwidth', dpi=100)
+
+
+    # draw("allmethods_auroc_twonaps.csv", "acc", "Mean test accuracy")
+
+
+
+
+    # draw_article_plots("FashionMNIST", model="VGG", q=0.9)
+    # generate_latex('matplotlib_ex-redo', r'1\textwidth', dpi=100)
+    # generate_latex_heatmaps('matplotlib_ex-heatmaps-redo', r'1\textwidth', dpi=100)
     # fix_vgg_results()
     # full_net_plot()
 
-    # auroc()
+    # choose_best_auroc()
+    # choose_best_auroc("VGG")
     # execution_times_plot()
     # compare_exec_times_all_methods()
-    # results = torch.load("results_auroc.pth")
+    # results = torch.load("workspace/experiments/simple-eval/results.pth")
+    # df = pd.DataFrame(results, columns=["m", "ds", "dv", "dt", "method", "a", "acc", "auroc", "aupr"])
+    # df = df.drop(["method", "a"], axis=1)
+    # df = pd.read_csv("single_neuron_exp.csv", index_col=0)
+    # d2 = df[df["m"] == "nap/1"]
+    # print(d2["acc"].mean())
+    # print(d2["auroc"].mean())
+    # d2 = df[df["m"] == "nap/0"]
+    # print(d2["acc"].mean())
+    # print(d2["auroc"].mean())
+    # df.to_csv("single_neuron_exp.csv")
     # print(results)
+    plt.rcParams.update({'font.size': 12})
+    # # draw_hamming_distances_layerwise()
+    #
+    # draw_article_plots("FashionMNIST", "MNIST", "VGG")
+    # draw_article_plots("FashionMNIST", "NormalNoise", "VGG")
+    # draw_article_plots("FashionMNIST", "NormalNoise", "VGG", q=0.9)
+    # draw_article_plots("FashionMNIST", "MNIST", "VGG", q=0.9)
+
+    # draw_article_plots("FashionMNIST", model="VGG")
+    # draw("allmethods_auroc_twonaps2.csv", "acc", label="Uśredniona celność testowa")
+    # draw("allmethods_auroc_onenap.csv", "auroc", label="Uśredniona metryka AUROC")
+
+    # compare_exec_times_all_methods()
+    configuration_experiment()

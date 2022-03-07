@@ -389,6 +389,7 @@ class Mahalanobis(AbstractMethodInterface):
             exec_times[t] = time.time() - start_time
 
         exec_times = exec_times.mean()
+        print(exec_times)
         np.savez(
             "results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name,
             exec_times=exec_times)

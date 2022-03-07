@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from sklearn.neighbors import BallTree
 from copy import deepcopy
-# import methods.nap.cuda_tree.nonrecursive_cython as bt
+import methods.nap.cuda_tree.nonrecursive_cython as bt
 
 class BaseMonitor(object):
     def __init__(self, class_count, device, layers_shapes, neurons_to_monitor):
@@ -207,15 +207,13 @@ class FullNetMonitor(BaseMonitor):
             full_net_distances = []
             offset = 0
             for shape_id, shape in enumerate(self.layers_shapes):
-                # if tree:
-                #     tmp = np.zeros((1, 256))
-                #     lvl = self.forest[class_id[i]][shape_id].query(tmp)
-                #     lvl = self.forest[class_id[i]][shape_id].query(
-                #         np.reshape(neuron_on_off_pattern.cpu()[i, offset:offset + shape], (1, -1)))[0]
-                # else:
-                lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
-                                                                           offset:offset + shape]).sum(
-                    dim=1).min()
+                if tree:
+                    lvl = self.forest[class_id[i]][shape_id].query(
+                        np.reshape(neuron_on_off_pattern.cpu()[i, offset:offset + shape], (1, -1)))[0]
+                else:
+                    lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+                                                                               offset:offset + shape]).sum(
+                        dim=1).min()
                 offset += shape
                 full_net_distances.append(lvl.item())
             distance.append(full_net_distances)
