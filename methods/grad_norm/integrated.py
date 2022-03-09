@@ -123,8 +123,6 @@ class GradNorm(AbstractMethodInterface):
             labels = np.array([])
             dataset_iter = DataLoader(dataset, batch_size=1, shuffle=False,
                                       num_workers=self.args.workers, pin_memory=True)
-            self._generate_execution_times(dataset_iter)
-            return 0, 0, 0
             counter = 0
             for i, (image, label) in enumerate(dataset_iter):
                 pbar.update()
@@ -156,8 +154,6 @@ class GradNorm(AbstractMethodInterface):
             aupr = auc(r, p)
             print("Final Test average accuracy %s" % (
                 colored('%.4f%%' % (correct / labels.shape[0] * 100), 'red')))
-            print(f"Auroc: {1 - auroc} aupr: {aupr}")
-            print(counter)
         return correct / labels.shape[0], 1 - auroc, aupr
 
 
@@ -223,7 +219,6 @@ class GradNorm(AbstractMethodInterface):
                 best_threshold = cut_threshold
             self.threshold = best_threshold
             acc = best_correct_count / (scores_known.shape[0] * 2)
-            print(f"Best th: {best_threshold} acc: {acc}")
             return acc
 
     def _generate_execution_times(self, loader):

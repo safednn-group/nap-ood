@@ -129,8 +129,6 @@ class ReAct(AbstractMethodInterface):
                 labels = np.array([])
                 dataset_iter = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                                           num_workers=self.args.workers, pin_memory=True)
-                self._generate_execution_times(dataset_iter)
-                return 0, 0, 0
                 counter = 0
                 for i, (image, label) in enumerate(dataset_iter):
                     pbar.update()
@@ -153,8 +151,6 @@ class ReAct(AbstractMethodInterface):
                 aupr = auc(r, p)
                 print("Final Test average accuracy %s" % (
                     colored('%.4f%%' % (correct / labels.shape[0] * 100), 'red')))
-                print(f"Auroc: {auroc} aupr: {aupr}")
-                print(counter)
         return correct / labels.shape[0], auroc, aupr
 
     def _cosine_annealing(self, step, total_steps, lr_max, lr_min):
@@ -291,7 +287,6 @@ class ReAct(AbstractMethodInterface):
                 loss_avg += float(loss.data)
 
         self._test_loss = loss_avg / self.train_dataset_length
-        print(f"correct {correct} len: {self.train_dataset_length}")
         self._test_accuracy = correct / self.train_dataset_length
 
     def _find_threshold(self):
@@ -338,7 +333,6 @@ class ReAct(AbstractMethodInterface):
             best_threshold = cut_threshold
         self.threshold = best_threshold
         acc = best_correct_count / (scores_known.shape[0] * 2)
-        print(f"Best th: {best_threshold} acc: {acc}")
         return acc
 
     def _get_energy_score(self, logits, temperature=1):

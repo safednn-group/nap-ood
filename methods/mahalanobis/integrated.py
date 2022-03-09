@@ -9,8 +9,8 @@ from termcolor import colored
 from torch.utils.data.dataloader import DataLoader
 import torch
 import os
-import methods.mahalanobis_original.lib_generation as lib_generation
-import methods.mahalanobis_original.lib_regression as lib_regression
+import methods.mahalanobis.lib_generation as lib_generation
+import methods.mahalanobis.lib_regression as lib_regression
 from torch.autograd import Variable
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
@@ -118,18 +118,16 @@ class Mahalanobis(AbstractMethodInterface):
                           self.best_magnitude]))
 
     def test_H(self, dataset):
-        print(f"testh best coef: {self.best_lr.coef_} inter: {self.best_lr.intercept_}")
+
         dataset = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                              num_workers=self.args.workers, pin_memory=True)
 
-        self._generate_execution_times(dataset)
-        return 0, 0, 0
         for i in range(self.num_output):
             M_in = lib_generation.get_Mahalanobis_score(self.base_model, dataset, self.class_count,
                                                         self.workspace_dir + "/test_H", \
                                                         True, self.sample_mean, self.precision, i, self.best_magnitude)
             M_in = np.asarray(M_in, dtype=np.float32)
-            print(M_in.shape)
+
             if i == 0:
                 Mahalanobis_test = M_in.reshape((M_in.shape[0], -1))
             else:
@@ -138,9 +136,6 @@ class Mahalanobis(AbstractMethodInterface):
             Mahalanobis_test = np.asarray(Mahalanobis_test, dtype=np.float32)
 
         correct = 0.0
-        total_count = 0
-        # self._generate_execution_times(dataset)
-        # return 0
         labels = np.zeros((Mahalanobis_test.shape[0]))
         labels[int(Mahalanobis_test.shape[0] / 2):] = 1
 
@@ -151,7 +146,7 @@ class Mahalanobis(AbstractMethodInterface):
         p, r, _ = precision_recall_curve(labels, y_pred)
         aupr = auc(r, p)
         print("Final Test average accuracy %s" % (colored('%.4f%%' % (correct / labels.shape[0] * 100), 'red')))
-        print(f"Auroc: {auroc} aupr: {aupr}")
+
         return correct / labels.shape[0], auroc, aupr
 
     def _tune_hyperparameters(self):
@@ -171,7 +166,6 @@ class Mahalanobis(AbstractMethodInterface):
             feature_list[count] = out.size(1)
             count += 1
 
-        print('get sample mean and covariance')
         self.sample_mean, self.precision = self._sample_estimator(feature_list)
         m_list = [0.0, 0.01, 0.005, 0.002, 0.0014, 0.001, 0.0005]
         for magnitude in m_list:
@@ -221,8 +215,6 @@ class Mahalanobis(AbstractMethodInterface):
             if best_tnr < results['TMP']['TNR']:
                 best_tnr = results['TMP']['TNR']
                 self.best_lr = lr
-                print(lr.coef_)
-                print(lr.intercept_)
                 self.best_magnitude = float(score.split("_")[1])
 
     def _sample_estimator(self, feature_list):
@@ -350,15 +342,6 @@ class Mahalanobis(AbstractMethodInterface):
 
                 gradient = torch.ge(data.grad.data, 0)
                 gradient = (gradient.float() - 0.5) * 2
-                # if net_type == 'densenet':
-                #     gradient.index_copy_(1, torch.LongTensor([0]).cuda(), gradient.index_select(1, torch.LongTensor([0]).cuda()) / (63.0/255.0))
-                #     gradient.index_copy_(1, torch.LongTensor([1]).cuda(), gradient.index_select(1, torch.LongTensor([1]).cuda()) / (62.1/255.0))
-                #     gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (66.7/255.0))
-                # elif net_type == 'resnet':
-                #
-                #     gradient.index_copy_(1, torch.LongTensor([0]).cuda(), gradient.index_select(1, torch.LongTensor([0]).cuda()) / (0.2023))
-                #     gradient.index_copy_(1, torch.LongTensor([1]).cuda(), gradient.index_select(1, torch.LongTensor([1]).cuda()) / (0.1994))
-                #     gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).cuda()) / (0.2010))
                 tempInputs = torch.add(data.data, -self.best_magnitude, gradient)
 
                 with torch.no_grad():

@@ -76,10 +76,6 @@ class MSAD(AbstractMethodInterface):
         return output
 
     def get_H_config(self, dataset, mirror):
-        # if self.args.D1 in Global.mirror_augment and mirror:
-        #     print(colored("Mirror augmenting %s" % self.args.D1, 'green'))
-        #     new_train_ds = dataset + MirroredDataset(dataset)
-        #     dataset = new_train_ds
 
         dataset2 = copy.deepcopy(dataset)
         dataset2.transform = Transform()
@@ -148,8 +144,6 @@ class MSAD(AbstractMethodInterface):
                 dataset_iter = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
                                           num_workers=self.args.workers, pin_memory=True)
 
-                self._generate_execution_times(dataset_iter, train_feature_space)
-                return 0, 0, 0
                 counter = 0
                 for i, (image, label) in enumerate(dataset_iter):
                     pbar.update()
@@ -172,8 +166,6 @@ class MSAD(AbstractMethodInterface):
                 aupr = auc(r, p)
                 print("Final Test average accuracy %s" % (
                     colored('%.4f%%' % (correct / labels.shape[0] * 100), 'red')))
-                print(f"Auroc: {auroc} aupr: {aupr}")
-                print(counter)
         return correct / labels.shape[0], auroc, aupr
 
     def _fine_tune_model(self, epochs):
@@ -229,30 +221,6 @@ class MSAD(AbstractMethodInterface):
         scores_known, _ = get_score(self.base_model, self.args.device, self.train_loader_clean, self.known_loader)
         scores_unknown, _ = get_score(self.base_model, self.args.device, self.train_loader_clean, self.unknown_loader)
 
-        # with torch.no_grad():
-        #     for i, (image, label) in enumerate(self.known_loader):
-        #
-        #         # Get and prepare data.
-        #         input, target = image.to(self.args.device), label.to(self.args.device)
-        #         logits = self.base_model(input)
-        #         smax = F.softmax(logits, dim=1).cpu().numpy()
-        #         scores = -np.max(smax, axis=1)
-        #         if scores_known.size:
-        #             scores_known = np.concatenate((scores_known, scores))
-        #         else:
-        #             scores_known = scores
-        #
-        #     for i, (image, label) in enumerate(self.unknown_loader):
-        #         # Get and prepare data.
-        #         input, target = image.to(self.args.device), label.to(self.args.device)
-        #         logits = self.base_model(input)
-        #         smax = F.softmax(logits, dim=1).cpu().numpy()
-        #         scores = -np.max(smax, axis=1)
-        #         if scores_unknown.size:
-        #             scores_unknown = np.concatenate((scores_unknown, scores))
-        #         else:
-        #             scores_unknown = scores
-
         min = np.max([scores_unknown.min(), scores_known.min()])
         max = np.min([scores_unknown.max(), scores_known.max()])
         cut_threshold = np.quantile(scores_known, .95)
@@ -272,7 +240,6 @@ class MSAD(AbstractMethodInterface):
             best_threshold = cut_threshold
         self.threshold = best_threshold
         acc = best_correct_count / (scores_known.shape[0] * 2)
-        print(f"Best th: {best_threshold} acc: {acc}")
         return acc
 
     def _generate_execution_times(self, loader, train_feature_space):

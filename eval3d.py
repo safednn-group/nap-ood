@@ -6,7 +6,7 @@ import torch
 
 from utils.args import args
 import global_vars as Global
-from plot import save_results_as_csv
+
 
 #########################################################
 """
@@ -86,7 +86,7 @@ if args.exp == 'simple-eval':
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     # d1_tasks = [ 'STL10', 'TinyImagenet']
-    # d1_tasks = ['FashionMNIST']
+    d1_tasks = ['FashionMNIST']
     d2_tasks = ['NormalNoise']
     d3_tasks = ['UniformNoise']
     method_tasks = ["nap/0"]
@@ -208,7 +208,6 @@ if __name__ == '__main__':
                 start_time = time.time()
 
                 train_acc = BT.train_H(valid_mixture)
-                train_acc = 0
                 print("--- %s seconds ---" % (time.time() - start_time))
 
                 for d3 in d3_tasks:
@@ -250,8 +249,6 @@ if __name__ == '__main__':
                     print("Final test size: %d+%d=%d" % (len(d1_test), len(d2_test), len(test_mixture)))
                     start_time = time.time()
                     test_acc, auroc, aupr = BT.test_H(test_mixture)
-                    # test_acc, auroc, aupr = BT.test_H((test_mixture, d1_test, d2_test))
-                    # test_acc = BT.test_H(d2_test)
                     print("--- %s seconds ---" % (time.time() - start_time))
                     results.append((method, d1, d2, d3, BT.method_identifier(), train_acc, test_acc, auroc, aupr))
 
@@ -261,4 +258,4 @@ if __name__ == '__main__':
     for i, (m, ds, dm, dt, mi, a_train, a_test, auroc, aupr) in enumerate(results):
         # print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%% %s' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100, mi))
         print(f" i: {i} m: {m} ds: {ds} dm: {dm} dt: {dt} mi: {mi} a_train: {a_train} a_test: {a_test} auroc {auroc} aupr {aupr}")
-    save_results_as_csv(results, "all_other_metrics.csv")
+

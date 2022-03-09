@@ -93,11 +93,7 @@ class Bottleneck(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
-        self.maxpools = [nn.Identity(), nn.AdaptiveMaxPool2d(1), nn.AdaptiveMaxPool2d(2), nn.AdaptiveMaxPool2d(3),
-                         nn.AdaptiveMaxPool2d(4)]
-        self.avgpools = [nn.Identity(), nn.AdaptiveAvgPool2d(1), nn.AdaptiveAvgPool2d(2), nn.AdaptiveAvgPool2d(3),
-                         nn.AdaptiveAvgPool2d(4)]
-        self.pools = {"avg": self.avgpools, "max": self.maxpools}
+
 
 
     def forward(self, x):
@@ -122,61 +118,6 @@ class Bottleneck(nn.Module):
 
         return out
 
-    def forward_nap(self, x, nap_params, counter_):
-        prev = torch.Tensor([])
-        shapes = []
-        identity = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        counter = str(counter_)
-        if str(counter) in nap_params:
-            intermediate = torch.flatten(
-                self.pools[nap_params[counter]["pool_type"]][nap_params[counter]["pool_size"]](
-                    x), 1)
-            intermediate = torch.tensor(np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(), nap_params[counter]["quantile"]),intermediate.cpu(),0))
-            # intermediate = torch.where( intermediate > torch.quantile(intermediate, nap_params[counter]["quantile"]), intermediate, 0)
-            shapes.append(intermediate.shape[-1])
-            prev = intermediate
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-        counter = str(counter_ + 1)
-        if counter in nap_params:
-            intermediate = torch.flatten(
-                self.pools[nap_params[counter]["pool_type"]][nap_params[counter]["pool_size"]](
-                    x), 1)
-            intermediate = torch.tensor(np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(), nap_params[counter]["quantile"]),intermediate.cpu(),0))
-            # intermediate = torch.where( intermediate > torch.quantile(intermediate, nap_params[counter]["quantile"]), intermediate, 0)
-
-            shapes.append(intermediate.shape[-1])
-            if prev.numel():
-                intermediate = torch.cat((intermediate, prev), dim=1)
-            prev = intermediate
-
-        out = self.conv3(out)
-        out = self.bn3(out)
-
-        if self.downsample is not None:
-            identity = self.downsample(x)
-
-        out += identity
-        out = self.relu(out)
-        counter = str(counter_ + 2)
-        if counter in nap_params:
-            intermediate = torch.flatten(
-                self.pools[nap_params[counter]["pool_type"]][nap_params[counter]["pool_size"]](
-                    x), 1)
-            intermediate = torch.tensor(np.where(intermediate.cpu().numpy() > np.quantile(intermediate.cpu().numpy(), nap_params[counter]["quantile"]),intermediate.cpu(),0))
-            # intermediate = torch.where( intermediate > torch.quantile(intermediate, nap_params[counter]["quantile"]), intermediate, 0)
-
-            shapes.append(intermediate.shape[-1])
-            if prev.numel():
-                intermediate = torch.cat((intermediate, prev), dim=1)
-            prev = intermediate
-        return out, prev, shapes
 
 class ResNet(nn.Module):
 
@@ -325,12 +266,6 @@ class ResNet(nn.Module):
                 #                                                 nap_params[layer_counter_str]["quantile"], axis=1), 1),
                 #     intermediate.cpu(), 0))
                 intermediate = torch.where(intermediate > torch.quantile(intermediate, nap_params[layer_counter_str]["quantile"], dim=1).unsqueeze(1), intermediate, zero_tensor)
-                # for i in range(intermediate.shape[0]):
-                #     intermediate[i] = torch.tensor(np.where(
-                #         intermediate[i].cpu().numpy() > np.quantile(intermediate[i].cpu().numpy(),
-                #                                                  nap_params[layer_counter_str]["quantile"]),
-                #         intermediate[i].cpu(), 0))
-                #     # intermediate[i] = torch.where(intermediate[i] > torch.quantile(intermediate[i], nap_params[layer_counter_str]["quantile"]), intermediate[i], zero_tensor)
                 shapes.append(intermediate.shape[-1])
                 if prev.numel():
                     intermediate = torch.cat((intermediate, prev), dim=1)

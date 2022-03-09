@@ -1,6 +1,4 @@
-
-# Author: Jake Vanderplas <vanderplas@astro.washington.edu>
-# License: BSD
+# This code is a BallTree Numba version translated from cython code included here: https://github.com/jakevdp/pyTree
 
 """
 =========
@@ -189,28 +187,12 @@ for a given ``n_samples`` and ``leaf_size``.
 
 import numpy as np
 import torch
-from numba import cuda
 import numba
-# print(numba.__version__)
-import traceback
-import warnings
-import sys
-
-import os
-
-# os.environ['NUMBA_ENABLE_CUDASIM'] = "1"
-
-
-def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
-
-    log = file if hasattr(file,'write') else sys.stderr
-    traceback.print_stack(file=log)
-    log.write(warnings.formatwarning(message, category, filename, lineno, line))
-
-warnings.showwarning = warn_with_traceback
 
 ######################################################################
 infinity = np.inf
+
+
 # utility functions: fast max, min, and absolute value
 #
 @numba.njit
@@ -221,12 +203,14 @@ def dmax(x, y):
     else:
         return y
 
+
 @numba.njit
 def dmax_(x, y):
     if x >= y:
         return x
     else:
         return y
+
 
 @numba.njit
 # @cuda.jit('int64(int64, int64)', device=True, debug=True, opt=False)
@@ -235,6 +219,7 @@ def dmin(x, y):
         return x
     else:
         return y
+
 
 @numba.njit
 # @cuda.jit('int64(int64)', device=True, debug=True, opt=False)
@@ -245,25 +230,17 @@ def dabs(x):
         return -x
 
 
-######################################################################
-# distance functions
-#  These implement the Minkowski p-distance given by
-#    dist = sum((x - y) ** p) ** (1 / p)
-#  To compare distances, the raising to the (1 / p) is not necessary
-#  therefore, for speed, we also define a function dist_p() given by
-#    dist_p = sum((x - y) ** p)
-#  there are also functions dist_from_dist_p() and dist_p_from_dist()
-#  which convert between these forms.
-
 def hamming_(a, b):
     sum = 0
     for i in range(a.shape[0]):
         sum += a[i] ^ b[i]
     return sum
 
+
 # wrap = cuda.jit('int64(int64[:], int64[:])', device=True, debug=True, opt=False)
 wrap = numba.njit
 dist = wrap(hamming_)
+
 
 @numba.njit
 def dist_(a, b):
@@ -272,75 +249,20 @@ def dist_(a, b):
         sum += a[i] ^ b[i]
     return sum
 
-######################################################################
-# NodeInfo struct
-#  used to keep track of node information.
-#  there is also a centroid for each node: this is kept in a separate
-#  array for efficiency.  This is a hybrid of the "Array of Structures"
-#  and "Structure of Arrays" styles.
-# cdef struct NodeInfo:
-#     ITYPE_t idx_start
-#     ITYPE_t idx_end
-#     ITYPE_t is_leaf
-#     DTYPE_t radius
-#
-#
-# ######################################################################
-# # stack struct
-# #  This is used to keep track of the recursion stack in Node_query
-# cdef struct stack_item:
-#     ITYPE_t i_node
-#     DTYPE_t dist_LB
-#
-#
-# cdef struct stack:
-#     int n
-#     stack_item* heap
-#     int size
-#
-#
-# @cython.profile(False)
-# cdef inline void stack_create(stack* self, int size):
-#     self.size = size
-#     self.heap = <stack_item*> stdlib.malloc(sizeof(stack_item) * size)
-#     self.n = 0
-#
-#
-# @cython.profile(False)
-# cdef inline void stack_destroy(stack* self):
-#     stdlib.free(self.heap)
-
-
-# @cuda.jit('int64[:](int64[:], int64)', device=True)
-# def stack_resize(stack_info, new_size): #todo cuda
-#     #print "resize", self.n, new_size
-#     if new_size < stack_info[1]:
-#         raise ValueError("new_size smaller than current")
-#
-#     stack_info[0] = new_size
-#     # self.size = new_size
-#     return cuda.device_array(new_size, np.int64)
 
 @numba.njit
 # @cuda.jit('void(int64[:], int64, int64[:])', device=True, debug=True, opt=False)
-def stack_push(s, item, stack_info): #todo cuda
-    # print(stack_info)
+def stack_push(s, item, stack_info):
     if stack_info[1] >= stack_info[0]:
-
         raise ValueError("resize")
-        # s = stack_resize(stack_info, 2 * stack_info[0] + 1)
-        # stack_info[0] = 2 * stack_info[0] + 1
 
     s[stack_info[1]] = item
     stack_info[1] = stack_info[1] + 1
 
 
-
 @numba.njit
 # @cuda.jit('int64(int64[:], int64[:])', device=True, debug=True, opt=False)
-def stack_pop(s, stack_info): #todo cuda
-    # print("pop \r")
-    # print(stack_info)
+def stack_pop(s, stack_info):
     if stack_info[1] == 0:
         raise ValueError("popping empty stack")
 
@@ -422,24 +344,7 @@ class BallTree(object):
         >>> print dist  # distances to 3 closest neighbors
         [ 0.          0.19662693  0.29473397]
     """
-    # cdef readonly np.ndarray data
-    # cdef np.ndarray idx_array
-    # cdef np.ndarray node_centroid_arr
-    # cdef np.ndarray node_info_arr
-    # cdef DTYPE_t p
-    # cdef ITYPE_t leaf_size
-    # cdef ITYPE_t n_levels
-    # cdef ITYPE_t n_nodes
 
-    # def __cinit__(self):
-    #     """
-    #     initialize all arrays to empty.  This will prevent memory errors
-    #     in rare cases where __init__ is not called
-    #     """
-    #     self.data = np.empty((0,0), dtype=DTYPE)
-    #     self.idx_array = np.empty(0, dtype=ITYPE)
-    #     self.node_centroid_arr = np.empty((0,0), dtype=DTYPE)
-    #     self.node_info_arr = np.empty(0, dtype='c')
 
     def __init__(self, X, leaf_size=20, p=2):
         self.data = np.asarray(X, dtype=np.int64, order='C')
@@ -463,7 +368,7 @@ class BallTree(object):
 
         # determine number of levels in the ball tree, and from this
         # the number of nodes in the ball tree
-        self.n_levels = int(np.log2(max(1, (n_samples - 1)/self.leaf_size)) + 1)
+        self.n_levels = int(np.log2(max(1, (n_samples - 1) / self.leaf_size)) + 1)
         self.n_nodes = (2 ** self.n_levels) - 1
 
         self.idx_array = np.arange(n_samples, dtype=np.int64)
@@ -472,18 +377,18 @@ class BallTree(object):
                                           dtype=np.int64, order='C')
 
         self.node_info_arr_start = np.zeros(self.n_nodes,
-                                      dtype=np.int64, order='C')
+                                            dtype=np.int64, order='C')
 
         self.node_info_arr_end = np.zeros(self.n_nodes,
-                                      dtype=np.int64, order='C')
+                                          dtype=np.int64, order='C')
 
         self.node_info_arr_isleaf = np.zeros(self.n_nodes,
-                                      dtype=np.int64, order='C')
+                                             dtype=np.int64, order='C')
 
         self.node_info_arr_radius = np.zeros(self.n_nodes,
-                                      dtype=np.int64, order='C')
+                                             dtype=np.int64, order='C')
         build_tree_(self.data, self.idx_array, self.node_centroid_arr, self.node_info_arr_start, self.node_info_arr_end,
-                    self.node_info_arr_isleaf, self.node_info_arr_radius, p, n_samples, n_features, self.n_nodes )
+                    self.node_info_arr_isleaf, self.node_info_arr_radius, p, n_samples, n_features, self.n_nodes)
 
     def __reduce__(self):
         """
@@ -517,7 +422,7 @@ class BallTree(object):
         self.n_levels = state[6]
         self.n_nodes = state[7]
 
-    def query(self, X, k=1, return_distance=True, threadsperblock=64): #todo cuda
+    def query(self, X, k=1, return_distance=True, threadsperblock=64):  # todo cuda
         """
         query(X, k=1, return_distance=True)
 
@@ -580,89 +485,27 @@ class BallTree(object):
 
         n_neighbors = k
         distances = np.zeros((X.shape[0] * n_neighbors),
-                                             dtype=np.int64)
+                             dtype=np.int64)
         idx_array = np.zeros((X.shape[0] * n_neighbors),
-                                             dtype=np.int64)
+                             dtype=np.int64)
 
         distances[:] = np.iinfo(distances.dtype).max
 
-        # cdef DTYPE_t* dist_ptr = <DTYPE_t*> distances.data
-        # cdef ITYPE_t* idx_ptr = <ITYPE_t*> idx_array.data
-        #
-        # cdef stack node_stack
-        # cdef struct stack_item:
-        #     ITYPE_t i_node
-        #     DTYPE_t dist_LB
-        #
-        #
-        # cdef struct stack:
-        #     int n
-        #     stack_item* heap
-        #     int size
-        #
-        #
-        # @cython.profile(False)
-        # cdef inline void stack_create(stack* self, int size):
-        #     self.size = size
-        #     self.heap = <stack_item*> stdlib.malloc(sizeof(stack_item) * size)
-        #     self.n = 0
-        stack_nodes = np.zeros(2*self.n_levels + 1, dtype=np.int64)
-        stack_dists = np.zeros(2*self.n_levels + 1, dtype=np.int64)
+        stack_nodes = np.zeros(2 * self.n_levels + 1, dtype=np.int64)
+        stack_dists = np.zeros(2 * self.n_levels + 1, dtype=np.int64)
         n = X.shape[0]
         blockspergrid = 64
         stack_info = np.zeros(2, dtype=np.int64)
-        stack_info[0] = 2*self.n_levels + 1
+        stack_info[0] = 2 * self.n_levels + 1
         stack_info[1] = 0
         stack_info_2 = np.zeros(2, dtype=np.int64)
-        stack_info_2[0] = 2*self.n_levels + 1
+        stack_info_2[0] = 2 * self.n_levels + 1
         stack_info_2[1] = 0
 
-        # print(type(X))
-        # print(X.shape)
-        # print(type(n_neighbors))
-        # print(type(distances))
-        # print(distances.shape)
-        # print(type(idx_array))
-        # print(idx_array.shape)
-        # print(type(stack_info))
-        # print(stack_info.shape)
-        # print(type(stack_nodes))
-        # print(stack_nodes.shape)
-        # print(type(stack_dists))
-        # print(stack_dists.shape)
-        # print(type(self.data))
-        # print(self.data.shape)
-        # print(type(self.idx_array))
-        # print(self.idx_array.shape)
-        # print(type(self.node_info_arr_start))
-        # print(self.node_info_arr_end.shape)
-        # print(type(self.node_info_arr_radius))
-        # print(self.node_info_arr_isleaf.shape)
-        # print(type(self.node_info_arr_isleaf))
-        # print(self.node_info_arr_radius.shape)
-        # print(type(self.node_centroid_arr))
-        # print(self.node_centroid_arr.shape)
-        # print(type(self.node_info_arr_end))
-        # print(self.node_info_arr_start.shape)
-        # print(type(self.p))
-        #
-        # print(type(self.data.shape[1]))
-
         query_(X, n_neighbors, distances, idx_array, stack_info, stack_info_2, stack_nodes,
-                                               stack_dists, self.data, self.idx_array, self.node_centroid_arr,
-                                               self.node_info_arr_start, self.node_info_arr_end,
-                                                self.node_info_arr_isleaf, self.node_info_arr_radius, self.p, self.data.shape[1])
-        # stack_create(&node_stack, self.n_levels + 1)
-
-        # for Xi in X:
-        #     self.query_one_(<DTYPE_t*>Xi.data, n_neighbors,
-        #                     dist_ptr, idx_ptr, &node_stack)
-        #
-        #
-        #     dist_ptr += n_neighbors
-        #     idx_ptr += n_neighbors
-
-        # stack_destroy(&node_stack)
+               stack_dists, self.data, self.idx_array, self.node_centroid_arr,
+               self.node_info_arr_start, self.node_info_arr_end,
+               self.node_info_arr_isleaf, self.node_info_arr_radius, self.p, self.data.shape[1])
 
         # deflatten results
         if return_distance:
@@ -671,13 +514,12 @@ class BallTree(object):
         else:
             return idx_array.reshape((orig_shape[:-1]) + (k,))
 
+
 ######################################################################
-# calc_dist_LB
-# calc_dist_p_LB
 #  This calculates the lower-bound distance between a point and a node
 @numba.njit
 # @cuda.jit('int64(int64[:], int64[:], int64)', device=True, debug=True, opt=False)
-def calc_dist_LB(pt, centroid, radius): #todo cuda
+def calc_dist_LB(pt, centroid, radius):
     d = dist(pt, centroid) - radius
     ret = dmax(0, d)
     return ret
@@ -693,6 +535,7 @@ def calc_dist_LB(pt, centroid, radius): #todo cuda
 # @cuda.jit('int64(int64[:], int64)', device=True, debug=True, opt=False)
 def heapqueue_largest(queue, queue_size):
     return queue[queue_size - 1]
+
 
 @numba.njit
 # @cuda.jit('void(int64, int64, int64[:], int64[:], int64)', device=True, debug=True, opt=False)
@@ -729,75 +572,49 @@ def heapqueue_insert(val, i_val, queue, idx_array, queue_size):
     idx_array[i_mid] = i_val
 
 
-
-
 @numba.njit
 # @cuda.jit('void(int64[:], int64, int64, int64[:], int64[:], int64[:], int64[:], int64[:], int64[:], int64[:, :], int64[:],'
 #           ' int64[:, :], int64[:], int64[:], int64[:], int64[:], int64, int64)', device=True, debug=True, opt=False)
 def query_one_(pt, outer_i, k, near_set_dist, near_set_indx, stack_info, stack_info_2, stack_nodes, stack_dists, data,
                tree_idx_array, node_centroid_arr, node_info_arr_start, node_info_arr_stop, node_info_arr_isleaf,
-                node_info_arr_radius, p, n_features): #todo cuda
-    # cdef DTYPE_t* data = <DTYPE_t*> self.data.data
-    # cdef ITYPE_t* idx_array = <ITYPE_t*> self.idx_array.data
-    # cdef DTYPE_t* node_centroid_arr = <DTYPE_t*>self.node_centroid_arr.data
-    # cdef NodeInfo* node_info_arr = <NodeInfo*> self.node_info_arr.data
-    # cdef NodeInfo* node_info = node_info_arr
-    #
-    # cdef DTYPE_t p = self.p
-    # cdef ITYPE_t n_features = self.data.shape[1]
+               node_info_arr_radius, p, n_features):  # todo cuda
 
-    # cdef DTYPE_t dist_pt, dist_LB, dist_LB_1, dist_LB_2
-    # cdef ITYPE_t i, i1, i2, i_node
-
-    # cdef stack_item item
-
-    # item.i_node = 0
     dist_LB = calc_dist_LB(pt, node_centroid_arr[0],
-                                    node_info_arr_radius[0])
-    # print(pt)
-    # print(node_centroid_arr)
-    # print(node_info_arr_radius)
+                           node_info_arr_radius[0])
+
     stack_push(stack_nodes, 0, stack_info)
     stack_push(stack_dists, dist_LB, stack_info_2)
 
-    # create pointers to the priority-queue/max-heap functions.
-    # they both can operate on near_set_dist and near_set_idx
-    # cdef DTYPE_t (*heapqueue_largest)(DTYPE_t*, ITYPE_t)
-    # cdef void (*heapqueue_insert)(DTYPE_t, ITYPE_t, DTYPE_t*,
-    #                               ITYPE_t*, ITYPE_t)
-
-
-    while(stack_info[1] > 0):
+    while (stack_info[1] > 0):
         i_node = stack_pop(stack_nodes, stack_info)
         dist_LB = stack_pop(stack_dists, stack_info_2)
 
-        # node_info = node_info_arr + i_node
 
-        #------------------------------------------------------------
+        # ------------------------------------------------------------
         # Case 1: query point is outside node radius
-        if dist_LB >= heapqueue_largest(near_set_dist[outer_i*k:], k):
+        if dist_LB >= heapqueue_largest(near_set_dist[outer_i * k:], k):
             continue
 
-        #------------------------------------------------------------
+        # ------------------------------------------------------------
         # Case 2: this is a leaf node.  Update set of nearby points
         elif node_info_arr_isleaf[i_node]:
             for i in range(node_info_arr_start[i_node], node_info_arr_stop[i_node]):
                 dist_pt = dist(pt, data[tree_idx_array[i]])
 
-                if dist_pt < heapqueue_largest(near_set_dist[outer_i*k:], k):
+                if dist_pt < heapqueue_largest(near_set_dist[outer_i * k:], k):
                     heapqueue_insert(dist_pt, tree_idx_array[i],
-                                     near_set_dist[outer_i*k:], near_set_indx[outer_i*k:], k)
+                                     near_set_dist[outer_i * k:], near_set_indx[outer_i * k:], k)
 
-        #------------------------------------------------------------
+        # ------------------------------------------------------------
         # Case 3: Node is not a leaf.  Recursively query subnodes
         #         starting with the one whose centroid is closest
         else:
             i1 = 2 * i_node + 1
             i2 = i1 + 1
             dist_LB_1 = calc_dist_LB(pt, node_centroid_arr[i1],
-                                         node_info_arr_radius[i1])
+                                     node_info_arr_radius[i1])
             dist_LB_2 = calc_dist_LB(pt, node_centroid_arr[i2],
-                                         node_info_arr_radius[i2])
+                                     node_info_arr_radius[i2])
 
             # append children to stack: last-in-first-out
             if dist_LB_2 <= dist_LB_1:
@@ -813,21 +630,20 @@ def query_one_(pt, outer_i, k, near_set_dist, near_set_indx, stack_info, stack_i
                 stack_push(stack_nodes, i2, stack_info)
                 stack_push(stack_dists, dist_LB_2, stack_info_2)
 
-
                 stack_push(stack_nodes, i1, stack_info)
                 stack_push(stack_dists, dist_LB_1, stack_info_2)
+
 
 @numba.njit
 # @cuda.jit
 def query_(X, n_neighbors, distances, idx_array, stack_info, stack_info_2, stack_nodes, stack_dists, data,
-               tree_idx_array, node_centroid_arr, node_info_arr_start, node_info_arr_stop, node_info_arr_isleaf,
-                node_info_arr_radius, p, n_features):
+           tree_idx_array, node_centroid_arr, node_info_arr_start, node_info_arr_stop, node_info_arr_isleaf,
+           node_info_arr_radius, p, n_features):
     for i, Xi in enumerate(X):
         query_one_(Xi, i, n_neighbors,
-        distances, idx_array, stack_info, stack_info_2, stack_nodes, stack_dists, data,
-               tree_idx_array, node_centroid_arr, node_info_arr_start, node_info_arr_stop, node_info_arr_isleaf,
-                node_info_arr_radius, p, n_features)
-
+                   distances, idx_array, stack_info, stack_info_2, stack_nodes, stack_dists, data,
+                   tree_idx_array, node_centroid_arr, node_info_arr_start, node_info_arr_stop, node_info_arr_isleaf,
+                   node_info_arr_radius, p, n_features)
 
         # dist_ptr += n_neighbors
         # idx_ptr += n_neighbors
@@ -837,17 +653,7 @@ def query_(X, n_neighbors, distances, idx_array, stack_info, stack_info_2, stack
 def build_tree_(data, idx_array, node_centroid_arr, node_info_arr_start, node_info_arr_stop, node_info_arr_isleaf,
                 node_info_arr_radius, p, n_samples, n_features, n_nodes):
 
-
-    # cdef ITYPE_t idx_start, idx_end, n_points
-    # cdef DTYPE_t radius
-    # cdef ITYPE_t i, i_node, i_parent
-    #
-    # cdef DTYPE_t* centroid = node_centroid_arr
-    # cdef NodeInfo* node_info = node_info_arr
-    # cdef NodeInfo* parent_info
-    # cdef DTYPE_t* point
-
-    #------------------------------------------------------------
+    # ------------------------------------------------------------
     # take care of the root node
     node_info_arr_start[0] = 0
     node_info_arr_stop[0] = n_samples
@@ -862,7 +668,7 @@ def build_tree_(data, idx_array, node_centroid_arr, node_info_arr_start, node_in
     for i in range(0, n_samples):
         d = dist_(node_centroid_arr[0], data[idx_array[i], :])
         radius = dmax_(radius,
-                      d)
+                       d)
     node_info_arr_radius[0] = radius
 
     # check if this is a leaf
@@ -884,13 +690,10 @@ def build_tree_(data, idx_array, node_centroid_arr, node_info_arr_start, node_in
                           n_features,
                           n_points)
 
-    #------------------------------------------------------------
+    # ------------------------------------------------------------
     # cycle through all child nodes
     for i_node in range(1, n_nodes):
         i_parent = (i_node - 1) // 2
-        # parent_info = node_info_arr + i_parent
-
-        # node_info = node_info_arr + i_node
 
         if node_info_arr_isleaf[i_parent]:
             raise ValueError("Fatal: parent is a leaf. Memory "
@@ -921,15 +724,15 @@ def build_tree_(data, idx_array, node_centroid_arr, node_info_arr_start, node_in
             raise ValueError("zero-sized node")
 
         elif n_points == 1:
-            #copy this point to centroid
+            # copy this point to centroid
             copy_array(centroid,
                        data[idx_array[idx_start]],
                        n_features)
 
-            #store radius in array
+            # store radius in array
             node_info_arr_radius[i_node] = 0
 
-            #is a leaf
+            # is a leaf
             node_info_arr_isleaf[i_node] = 1
 
         else:
@@ -940,9 +743,8 @@ def build_tree_(data, idx_array, node_centroid_arr, node_info_arr_start, node_in
             # determine Node radius
             radius = 0
             for i in range(idx_start, idx_end):
-
                 radius = dmax_(radius,
-                              dist_(centroid,
+                               dist_(centroid,
                                      data[idx_array[i]]))
             node_info_arr_radius[i_node] = radius
 
@@ -960,19 +762,8 @@ def build_tree_(data, idx_array, node_centroid_arr, node_info_arr_start, node_in
                                   n_points)
 
 
-
-
-
-
 ######################################################################
 # Helper functions for building and querying
-#
-# @cython.profile(False)
-# cdef inline void copy_array(DTYPE_t* x, DTYPE_t* y, ITYPE_t n):
-#     # copy array y into array x
-#     cdef ITYPE_t i
-#     for i from 0 <= i < n:
-#         x[i] = y[i]
 
 @numba.njit
 def copy_array(x, y, n):
@@ -982,7 +773,7 @@ def copy_array(x, y, n):
 
 
 @numba.njit
-def compute_centroid(centroid, data, node_indices,  n_features,  n_points):
+def compute_centroid(centroid, data, node_indices, n_features, n_points):
     # `centroid` points to an array of length n_features
     # `data` points to an array of length n_samples * n_features
     # `node_indices` = idx_array + idx_start
@@ -1000,21 +791,15 @@ def compute_centroid(centroid, data, node_indices,  n_features,  n_points):
             centroid[j] = 0
         else:
             centroid[j] = 1
-        # centroid[j] /= n_points #todo po 50% zer i jedynek?
 
 
 @numba.njit
 def find_split_dim(data, node_indices, n_features, n_points):
-    # this computes the following
-    # j_max = np.argmax(np.max(data, 0) - np.min(data, 0))
-    # cdef DTYPE_t min_val, max_val, val, spread, max_spread
-    # cdef ITYPE_t i, j, j_max
 
     j_min = 0
     min_diff = np.inf
     for j in range(0, n_features):
-        # max_val = data[node_indices[0] * n_features + j]
-        # min_val = max_val
+
         count_zeros = 0
         count_ones = 0
         for i in range(0, n_points):
@@ -1024,9 +809,7 @@ def find_split_dim(data, node_indices, n_features, n_points):
                 count_ones += 1
             else:
                 raise RuntimeError("find split")
-            # val = data[node_indices[i] * n_features + j]
-            # max_val = dmax(max_val, val)
-            # min_val = dmin(min_val, val)
+
         diff = abs(count_zeros - count_ones)
         if diff < min_diff:
             min_diff = diff
@@ -1034,17 +817,13 @@ def find_split_dim(data, node_indices, n_features, n_points):
     return j_min
 
 
-# @cython.profile(False)
-# cdef inline void iswap(ITYPE_t* arr, ITYPE_t i1, ITYPE_t i2):
-#     cdef ITYPE_t tmp = arr[i1]
-#     arr[i1] = arr[i2]
-#     arr[i2] = tmp
 
 @numba.njit
 def iswap(arr, i1, i2):
     tmp = arr[i1]
     arr[i1] = arr[i2]
     arr[i2] = tmp
+
 
 @numba.njit
 def partition_indices(data, node_indices, split_dim, split_index, n_features, n_points):
@@ -1056,8 +835,6 @@ def partition_indices(data, node_indices, split_dim, split_index, n_features, n_
     #   data[node_indices[split_index], split_dim]
     #     <= data[node_indices[split_index:n_points], split_dim]
     # will hold.  The algorithm amounts to a partial quicksort
-    # cdef ITYPE_t left, right, midindex, i
-    # cdef DTYPE_t d1, d2
     left = 0
     right = n_points - 1
     while True:
@@ -1080,9 +857,9 @@ def partition_indices(data, node_indices, split_dim, split_index, n_features, n_
 if __name__ == "__main__":
     from sklearn.neighbors import BallTree as sb
     import time
+
     for known_num in [100, 1000, 10000]:
         for pattern_len in [10, 100, 1000]:
-            # data = np.random.randint(0, 2, (known_num, pattern_len), dtype=np.uint8)
             d = np.array([0] * int(pattern_len * 0.95) + [1] * (pattern_len - int(pattern_len * 0.95)), dtype=np.uint8)
             data_tensor = torch.ones((known_num, pattern_len), device="cuda", dtype=torch.uint8)
             for i in range(known_num):
@@ -1091,7 +868,6 @@ if __name__ == "__main__":
             data = data_tensor.cpu().numpy()
             b = BallTree(data)
             b2 = sb(data)
-            # points = np.random.randint(0, 2, (1, pattern_len), dtype=np.uint8)
             np.random.shuffle(d)
             points_tensor = torch.from_numpy(d).cuda()
             exec_times_numba = np.empty(100)
@@ -1100,27 +876,16 @@ if __name__ == "__main__":
             d = d.reshape((1, -1))
 
             for i in range(100):
-                # b.query(points)
+
                 start_time = time.time()
                 b.query(d)
-                # (data ^ points[0]).sum(axis=1).min()
-                # (data ^ points[1]).sum(axis=1).min()
-                # (data ^ points[2]).sum(axis=1).min()
                 exec_times_numba[i] = time.time() - start_time
             print(f" num: {known_num} len: {pattern_len} numbatime: {exec_times_numba.mean()}")
             for i in range(100):
-
                 start_time = time.time()
                 b2.query(d)
-                # (data ^ points[0]).sum(axis=1).min()
-                # (data ^ points[1]).sum(axis=1).min()
-                # (data ^ points[2]).sum(axis=1).min()
                 exec_times_sklearn[i] = time.time() - start_time
-            # print(b.query(points))
-            # print((data ^ points[0]).sum(axis=1).min())
-            # print((data ^ points[1]).sum(axis=1).min())
-            # print((data ^ points[2]).sum(axis=1).min())
-            # print((data ^ points).sum(axis=2).min(axis=1))
+
             print(f" num: {known_num} len: {pattern_len} sklearntime: {exec_times_sklearn.mean()}")
             for i in range(100):
                 # b.query(points)
@@ -1128,16 +893,7 @@ if __name__ == "__main__":
                 # b.query(points)
                 for j in range(d.shape[0]):
                     (data_tensor ^ points_tensor[j]).sum(dim=1).min()
-                # (data ^ points[1]).sum(axis=1).min()
-                # (data ^ points[2]).sum(axis=1).min()
+
                 exec_times_tensor[i] = time.time() - start_time
             print(f" num: {known_num} len: {pattern_len} tensortime: {exec_times_tensor.mean()}")
-            np.savez(
-                "numba_exec2_" + str(known_num) + "_" + str(pattern_len),
-                exec_times=exec_times_numba)
-            np.savez(
-                "sklearn_exec2_" + str(known_num) + "_" + str(pattern_len),
-                exec_times=exec_times_sklearn)
-            np.savez(
-                "tensor_exec2_" + str(known_num) + "_" + str(pattern_len),
-                exec_times=exec_times_tensor)
+

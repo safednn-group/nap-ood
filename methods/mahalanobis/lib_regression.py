@@ -2,7 +2,7 @@
 from __future__ import print_function
 import numpy as np
 import os
-import methods.mahalanobis_original.calculate_log as callog
+import methods.mahalanobis.calculate_log as callog
 
 from scipy.spatial.distance import pdist, cdist, squareform
 

@@ -109,6 +109,8 @@ workspace/
 datasets.tar
 matplotlib*
 results/article_plots
+results
+attacks
 /all_other_metrics.csv
 /aurocexp.csv
 /aurocexp_all12.csv
