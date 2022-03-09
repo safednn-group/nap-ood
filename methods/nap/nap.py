@@ -170,7 +170,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     score = score.sum(axis=1)
                     if self.nap_cfg["binary_voting"]:
                         classification = stats.mode(
-                                np.where(distance[:, self.chosen_layers] <= self.thresholds[self.chosen_layers], 0, 1),
+                                np.where(distance <= self.thresholds, 0, 1),
                                 axis=1)[0].squeeze()
                     else:
                         classification = (score > 0).astype(np.int)
@@ -218,7 +218,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     if self.nap_cfg["binary_voting"]:
                         classification = stats.mode(
                                 np.where(distance <= self.thresholds, 0, 1),
-                                axis=1)[0]
+                                axis=1)[0].squeeze()
                     else:
                         classification = (score > 0).astype(np.int)
                     compared = classification == label.numpy()
@@ -259,6 +259,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self.nap_params = new_params
             self._get_layers_shapes(self.nap_params)
             self.scaled_thresholds = self.scaled_thresholds[self.chosen_layers]
+            self.thresholds = self.thresholds[self.chosen_layers]
             self.add_factor = self.add_factor[self.chosen_layers]
             self.multiplier = self.multiplier[self.chosen_layers]
             self.monitor = FullNetMonitor(self.class_count, self.nap_device,
