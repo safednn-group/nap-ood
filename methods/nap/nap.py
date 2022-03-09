@@ -243,6 +243,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         with torch.no_grad():
             self._get_layers_shapes(self.nap_params)
             self.linspace = np.linspace(0.1, 0.9, num=n_steps)
+            self.thresholds, self.accuracies = self._generate_thresholds_for_every_configuration()
             scores = self._compute_scores_for_configurations()
             max_score_ids = np.argmax(scores, axis=2)[:, :, np.newaxis]
             self.thresholds = np.take_along_axis(self.thresholds, max_score_ids, axis=2).squeeze()
