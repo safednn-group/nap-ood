@@ -66,10 +66,19 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         with open(self.nap_params_path) as cf:
             cfg = json.load(cf)
             self.nap_params = cfg[self.model_name][self.train_dataset_name]
-        with open(self.nap_cfg_path) as cf:
-            self.nap_cfg = json.load(cf)
+        # with open(self.nap_cfg_path) as cf:
+        #     self.nap_cfg = json.load(cf)
+        self._make_nap_params()
         if hasattr(self.base_model, 'preferred_name'):
             self.add_identifier = self.base_model.preferred_name()
+
+    def _make_nap_params(self):
+        for i in self.base_model.relu_indices:
+            self.nap_params[i] = {
+                "pool_type": "max",
+                "pool_size": 1,
+                "quantile": 0.5
+            }
 
     def method_identifier(self):
         output = "NeuronActivationPatterns"
@@ -124,8 +133,9 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             acc = self._compute_valid_acc(dataset)
             with open(h_path + ".nap_state", 'wb') as f:
                 if self.nap_cfg["store_monitor"]:
-                    pickle.dump([self.monitor, self.nap_params, self.scaled_thresholds, self.thresholds, self.chosen_layers,
-                                 self.add_factor, self.multiplier, acc], f, protocol=-1)
+                    pickle.dump(
+                        [self.monitor, self.nap_params, self.scaled_thresholds, self.thresholds, self.chosen_layers,
+                         self.add_factor, self.multiplier, acc], f, protocol=-1)
                 else:
                     pickle.dump(
                         [False, self.nap_params, self.scaled_thresholds, self.thresholds, self.chosen_layers,
@@ -133,7 +143,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             return acc
         else:
             with open(h_path + ".nap_state", 'rb') as f:
-                self.monitor, self.nap_params, self.scaled_thresholds, self.thresholds, self.chosen_layers,\
+                self.monitor, self.nap_params, self.scaled_thresholds, self.thresholds, self.chosen_layers, \
                 self.add_factor, self.multiplier, acc = pickle.load(f)
                 if not self.monitor:
                     self.monitor = FullNetMonitor(self.class_count, self.nap_device,
@@ -164,14 +174,15 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
                     _, predicted = torch.max(outputs.data, 1)
                     distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                                     predicted.cpu().detach().numpy(), tree=self.nap_cfg["use_tree"])
+                                                                     predicted.cpu().detach().numpy(),
+                                                                     tree=self.nap_cfg["use_tree"])
                     score = (distance[:, :] + self.add_factor) * self.multiplier - self.scaled_thresholds
 
                     score = score.sum(axis=1)
                     if self.nap_cfg["binary_voting"]:
                         classification = stats.mode(
-                                np.where(distance <= self.thresholds, 0, 1),
-                                axis=1)[0].squeeze()
+                            np.where(distance <= self.thresholds, 0, 1),
+                            axis=1)[0].squeeze()
                     else:
                         classification = (score > 0).astype(np.int)
                     compared = classification == label.numpy()
@@ -212,13 +223,14 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
                     _, predicted = torch.max(outputs.data, 1)
                     distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                                     predicted.cpu().detach().numpy(), tree=self.nap_cfg["use_tree"])
+                                                                     predicted.cpu().detach().numpy(),
+                                                                     tree=self.nap_cfg["use_tree"])
                     score = (distance[:, :] + self.add_factor) * self.multiplier - self.scaled_thresholds
                     score = score.sum(axis=1)
                     if self.nap_cfg["binary_voting"]:
                         classification = stats.mode(
-                                np.where(distance <= self.thresholds, 0, 1),
-                                axis=1)[0].squeeze()
+                            np.where(distance <= self.thresholds, 0, 1),
+                            axis=1)[0].squeeze()
                     else:
                         classification = (score > 0).astype(np.int)
                     compared = classification == label.numpy()
@@ -279,7 +291,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     self.nap_params[k]["quantile"] = q
                     self.nap_params[k]["pool_type"] = pool_type
                 counter += 1
-                print(colored(f"Evaluating NAP configuration no.{counter} out of {2*len(self.linspace)}", 'red'))
+                print(colored(f"Evaluating NAP configuration no.{counter} out of {2 * len(self.linspace)}", 'red'))
                 self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                               layers_shapes=self.monitored_layers_shapes)
                 self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
@@ -345,7 +357,8 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=nap_params)
             _, predicted = torch.max(outputs.data, 1)
             distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                             predicted.cpu().detach().numpy(), tree=self.nap_cfg["use_tree"])
+                                                             predicted.cpu().detach().numpy(),
+                                                             tree=self.nap_cfg["use_tree"])
 
             if hamming_distance.size:
                 hamming_distance = np.concatenate((hamming_distance, distance))
@@ -426,4 +439,3 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
             monitor.add_neuron_pattern(intermediate_values, label.cpu().numpy())
         monitor.cut_duplicates()
-
