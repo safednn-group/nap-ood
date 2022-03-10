@@ -38,8 +38,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.train_dataset_name = ""
         self.model_name = ""
         self.nap_cfg = None
-        self.nap_cfg_path = "nap_cfgs/strategies.json"
-        self.nap_params_path = "nap_cfgs/full_nets.json"
+        self.nap_cfg_path = "methods/nap/cfg/strategies.json"
         self.nap_device = "cuda"
 
     def propose_H(self, dataset, mirror=True):
@@ -63,16 +62,17 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.add_identifier = self.base_model.__class__.__name__
         self.train_dataset_name = dataset.name
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else "Resnet"
-        with open(self.nap_params_path) as cf:
-            cfg = json.load(cf)
-            self.nap_params = cfg[self.model_name][self.train_dataset_name]
-        # with open(self.nap_cfg_path) as cf:
-        #     self.nap_cfg = json.load(cf)
+        # with open(self.nap_params_path) as cf:
+        #     cfg = json.load(cf)
+        #     self.nap_params = cfg[self.model_name][self.train_dataset_name]
+        with open(self.nap_cfg_path) as cf:
+            self.nap_cfg = json.load(cf)
         self._make_nap_params()
         if hasattr(self.base_model, 'preferred_name'):
             self.add_identifier = self.base_model.preferred_name()
 
     def _make_nap_params(self):
+        self.nap_params = dict()
         for i in self.base_model.relu_indices:
             self.nap_params[i] = {
                 "pool_type": "max",
