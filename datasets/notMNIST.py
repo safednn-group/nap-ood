@@ -8,6 +8,7 @@ from PIL import Image
 from termcolor import colored
 import torchvision.transforms as transforms
 from datasets import SubDataset, AbstractDomainInterface
+import requests
 
 
 """
@@ -107,11 +108,14 @@ class NotMNISTParent(data.Dataset):
         if not os.path.exists(os.path.join(self.root, self.raw_folder, 'notMNIST_small.mat')):
             for url in self.urls:
                 print('Downloading ' + url)
-                data = urllib.request.urlopen(url)
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+                data = requests.get(url, headers=headers)
                 filename = url.rpartition('/')[2]
                 file_path = os.path.join(self.root, self.raw_folder, filename)
                 with open(file_path, 'wb') as f:
-                    f.write(data.read())
+                    for chunk in data.iter_content(1024):
+                        f.write(chunk)
 
         # process and save as torch files
         print('Processing...')
