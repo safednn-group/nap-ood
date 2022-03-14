@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-import time
-
 import numpy as np
 import tqdm
 from torch.autograd import Variable
@@ -14,17 +12,14 @@ from termcolor import colored
 from torch.utils.data.dataloader import DataLoader
 import torch
 import os
-import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 
 from methods import AbstractMethodInterface
-import torch.nn as nn
 
 class GradNorm(AbstractMethodInterface):
     def __init__(self, args):
         super(GradNorm, self).__init__()
         self.base_model = None
-        self.H_class = None
         self.args = args
         self.class_count = 0
         self.default_model = 0
@@ -32,10 +27,7 @@ class GradNorm(AbstractMethodInterface):
         self.known_loader = None
         self.unknown_loader = None
         self.train_loader = None
-        self.train_dataset_name = ""
-        self.valid_dataset_name = ""
-        self.test_dataset_name = ""
-        self.train_dataset_length = 0
+
         self.seed = 1
         self.model_name = ""
         self.workspace_dir = "workspace/grad_norm"
@@ -47,7 +39,6 @@ class GradNorm(AbstractMethodInterface):
         h_path = get_ref_model_path(self.args, config.model.__class__.__name__, dataset.name)
         self.best_h_path = os.path.join(h_path, 'model.best.pth')
 
-        # trainer = IterativeTrainer(config, self.args)
 
         if not os.path.isfile(self.best_h_path):
             raise NotImplementedError("Please use model_setup to pretrain the networks first!")
@@ -59,7 +50,6 @@ class GradNorm(AbstractMethodInterface):
         self.base_model.eval()
         self.class_count = self.base_model.output_size()[1].item()
         self.add_identifier = self.base_model.__class__.__name__
-        self.train_dataset_name = dataset.name
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else "Resnet"
         if hasattr(self.base_model, 'preferred_name'):
             self.add_identifier = self.base_model.preferred_name()
@@ -78,8 +68,6 @@ class GradNorm(AbstractMethodInterface):
 
         self.train_loader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.workers,
                                        pin_memory=True, shuffle=True)
-        self.train_dataset_length = len(dataset)
-        self.input_shape = iter(dataset).__next__()[0].shape
         # Set up the model
         model = Global.get_ref_classifier(self.args.D1)[self.default_model]().to(self.args.device)
         # model.forward()
@@ -93,7 +81,6 @@ class GradNorm(AbstractMethodInterface):
 
         config.name = '_%s[%s](%s->%s)' % (self.__class__.__name__, base_model_name, self.args.D1, self.args.D2)
         config.train_loader = self.train_loader
-        config.visualize = not self.args.no_visualize
         config.model = model
         config.logger = Logger()
         return config
@@ -106,10 +93,8 @@ class GradNorm(AbstractMethodInterface):
                                          num_workers=self.args.workers,
                                          pin_memory=True)
 
-        self.valid_dataset_name = dataset.datasets[1].name
-        self.valid_dataset_length = len(dataset.datasets[0])
         self.base_model.eval()
-        _ = self._find_threshold()
+        return self._find_threshold()
 
 
 
@@ -251,4 +236,4 @@ class GradNorm(AbstractMethodInterface):
             exec_times[i] = time.time() - start_time
 
         exec_times = exec_times.mean()
-        np.savez("results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)
+        print(exec_times)

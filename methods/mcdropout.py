@@ -106,7 +106,6 @@ class MCDropout(ProbabilityThreshold):
         config.classification = True
         config.cast_float_label = True
         config.stochastic_gradient = True
-        config.visualize = not self.args.no_visualize  
         config.model = model
         config.optim = optim.Adagrad(model.H.parameters(), lr=1e-1, weight_decay=0)
         config.scheduler = optim.lr_scheduler.ReduceLROnPlateau(config.optim, patience=10, threshold=1e-1, min_lr=1e-8, factor=0.1, verbose=True)

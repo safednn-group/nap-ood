@@ -9,8 +9,6 @@ import torch
 import torch.nn.functional as F
 
 
-# from visdom import Visdom
-
 class IterativeTrainerConfig(object):
     pass
 
@@ -20,8 +18,6 @@ class IterativeTrainer(object):
         self.config = config
         self.args = args
         self.device = args.device
-        # if config.visualize:
-        #     self.visdom = Visdom(ipv6=False, env='(%s)-%s:%s'%(args.hostname, args.experiment_id, config.name))
         # Set the default behaviours if not set.
         defaults = {
             'classification': False,
@@ -29,7 +25,6 @@ class IterativeTrainer(object):
             'autoencoder_target': False,
             'autoencoder_class': False,
             'stochastic_gradient': True,
-            'visualize': True,
             'sigmoid_viz': True,
         }
         for key, value in iter(defaults.items()):
@@ -46,7 +41,6 @@ class IterativeTrainer(object):
         print("Doing %s" % colored(phase, 'green'))
 
         model = self.config.model
-        visualize = self.config.visualize
         criterion = self.config.criterion
         optimizer = self.config.optim
         logger = self.config.logger
@@ -149,18 +143,7 @@ class IterativeTrainer(object):
 
                     pbar.set_description(message)
 
-                    if visualize and i % 20 == 0 and (timeit.default_timer() - last_viz_update > 5):
-                        # we don't want to update too quickly. visdom breaks!
-                        logger.visualize_epoch('%s_loss' % phase_name, self.visdom)
-                        self.visdom.images(image.numpy(), win='in_images')
-                        if self.config.autoencoder_target and prediction.size(1) in [1, 3]:
-                            viz_ten = None
-                            if self.config.sigmoid_viz:
-                                viz_ten = F.sigmoid(prediction).cpu().detach().numpy()
-                            else:
-                                viz_ten = prediction.cpu().detach().numpy()
-                            self.visdom.images(viz_ten, win='out_images')
-                        last_viz_update = timeit.default_timer()
+
 
                 if backward and not stochastic:
                     optimizer.step()

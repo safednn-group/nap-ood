@@ -99,7 +99,6 @@ class BinaryClassifier(ProbabilityThreshold):
         config.classification = True
         config.cast_float_label = True
         config.stochastic_gradient = True
-        config.visualize = not self.args.no_visualize
         config.model = model
         config.logger = Logger()
         config.optim = optim.Adam(model.parameters(), lr=1e-3)
@@ -155,11 +154,6 @@ class BinaryClassifier(ProbabilityThreshold):
                 h_config.logger.log('LRs', lrs, epoch)
                 h_config.logger.get_measure('LRs').legend = ['LR%d' % i for i in range(len(lrs))]
 
-                if h_config.visualize:
-                    # Show the average losses for all the phases in one figure.
-                    h_config.logger.visualize_average_keys('.*_loss', 'Average Loss', trainer.visdom)
-                    h_config.logger.visualize_average_keys('.*_accuracy', 'Average Accuracy', trainer.visdom)
-                    h_config.logger.visualize_average('LRs', trainer.visdom)
 
                 test_average_acc = h_config.logger.get_measure('test_accuracy').mean_epoch()
 
@@ -177,8 +171,6 @@ class BinaryClassifier(ProbabilityThreshold):
 
             torch.save({'finished': True}, done_path)
 
-            if h_config.visualize:
-                trainer.visdom.save([trainer.visdom.env])
 
         # Load the best model.
         print(colored('Loading H model from %s' % h_path, 'red'))

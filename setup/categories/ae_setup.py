@@ -59,7 +59,6 @@ def get_ae_config(args, model, dataset, BCE_Loss):
     config.cast_float_label = False
     config.autoencoder_target = True
     config.stochastic_gradient = True
-    config.visualize = not args.no_visualize
     config.sigmoid_viz = BCE_Loss
     config.model = model
     config.logger = Logger()
@@ -115,7 +114,6 @@ def get_vae_config(args, model, dataset):
     config.cast_float_label = False
     config.autoencoder_target = True
     config.stochastic_gradient = True
-    config.visualize = not args.no_visualize
     config.sigmoid_viz = False
     config.model = model
     config.logger = Logger()
@@ -172,12 +170,6 @@ def train_autoencoder(args, model, dataset, BCE_Loss):
 
             config.scheduler.step(train_loss)
 
-            if config.visualize:
-                # Show the average losses for all the phases in one figure.
-                config.logger.visualize_average_keys('.*_loss', 'Average Loss', trainer.visdom)
-                config.logger.visualize_average_keys('.*_accuracy', 'Average Accuracy', trainer.visdom)
-                config.logger.visualize_average('LRs', trainer.visdom)
-
             # Save the logger for future reference.
             torch.save(config.logger.measures, os.path.join(home_path, 'logger.pth'))
 
@@ -194,8 +186,6 @@ def train_autoencoder(args, model, dataset, BCE_Loss):
         torch.save({'finished':True}, hbest_path+".done")
         torch.save(config.model.state_dict(), hlast_path)
 
-        if config.visualize:
-            trainer.visdom.save([trainer.visdom.env])
     else:
         print("Skipping %s"%(colored(home_path, 'yellow')))
 
@@ -228,11 +218,6 @@ def train_variational_autoencoder(args, model, dataset):
 
             config.scheduler.step(train_loss)
 
-            if config.visualize:
-                # Show the average losses for all the phases in one figure.
-                config.logger.visualize_average_keys('.*_loss', 'Average Loss', trainer.visdom)
-                config.logger.visualize_average_keys('.*_accuracy', 'Average Accuracy', trainer.visdom)
-                config.logger.visualize_average('LRs', trainer.visdom)
 
             # Save the logger for future reference.
             torch.save(config.logger.measures, os.path.join(home_path, 'logger.pth'))
@@ -250,7 +235,5 @@ def train_variational_autoencoder(args, model, dataset):
         torch.save({'finished':True}, hbest_path+".done")
         torch.save(config.model.state_dict(), hlast_path)
 
-        if config.visualize:
-            trainer.visdom.save([trainer.visdom.env])
     else:
         print("Skipping %s"%(colored(home_path, 'yellow')))

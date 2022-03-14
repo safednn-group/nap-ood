@@ -23,9 +23,7 @@ class ReAct(AbstractMethodInterface):
     def __init__(self, args):
         super(ReAct, self).__init__()
         self.base_model = None
-        self.H_class = None
         self.args = args
-        self.class_count = 0
         self.default_model = 0
         self.add_identifier = ""
         self.known_loader = None
@@ -56,7 +54,6 @@ class ReAct(AbstractMethodInterface):
 
         self.base_model = config.model
         self.base_model.eval()
-        self.class_count = self.base_model.output_size()[1].item()
         self.add_identifier = self.base_model.__class__.__name__
         self.train_dataset_name = dataset.name
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else "Resnet"
@@ -78,7 +75,6 @@ class ReAct(AbstractMethodInterface):
         self.train_loader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.workers,
                                        pin_memory=True, shuffle=True)
         self.train_dataset_length = len(dataset)
-        self.input_shape = iter(dataset).__next__()[0].shape
         # Set up the model
         model = Global.get_ref_classifier(self.args.D1)[self.default_model]().to(self.args.device)
         # model.forward()
@@ -92,7 +88,6 @@ class ReAct(AbstractMethodInterface):
 
         config.name = '_%s[%s](%s->%s)' % (self.__class__.__name__, base_model_name, self.args.D1, self.args.D2)
         config.train_loader = self.train_loader
-        config.visualize = not self.args.no_visualize
         config.model = model
         config.logger = Logger()
         return config
@@ -109,14 +104,8 @@ class ReAct(AbstractMethodInterface):
         self.valid_dataset_length = len(dataset.datasets[0])
         epochs = 10
         self._fine_tune_model(epochs=epochs)
-        _ = self._find_threshold()
+        return self._find_threshold()
 
-        model_path = os.path.join(os.path.join(self.workspace_dir,
-                                               self.train_dataset_name + '_' + self.valid_dataset_name + '_' + self.model_name + '_s' + str(
-                                                   self.seed) + '_epoch_' + str(epochs - 1) + '.pt'))
-        if os.path.exists(model_path):
-            self.base_model.load_state_dict(torch.load(model_path))
-            return
 
     def test_H(self, dataset):
         self.base_model.eval()
@@ -280,7 +269,6 @@ class ReAct(AbstractMethodInterface):
 
                 # accuracy
                 pred = output.data.max(1)[1]
-                # print(f"data {data.shape} output: {output.shape} pred: {pred.shape} targetL {target.shape} f {target.data} f {pred.eq(target.data).sum()}")
                 correct += pred.eq(target.data).sum().item()
 
                 # test loss average
@@ -357,4 +345,4 @@ class ReAct(AbstractMethodInterface):
                 exec_times[i] = time.time() - start_time
 
         exec_times = exec_times.mean()
-        np.savez("results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)
+        print(exec_times)

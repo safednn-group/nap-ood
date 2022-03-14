@@ -165,7 +165,6 @@ class ODIN(ProbabilityThreshold):
         config.classification = True
         config.cast_float_label = True
         config.stochastic_gradient = True
-        config.visualize = not self.args.no_visualize  
         config.model = model
         config.optim = optim.Adagrad(model.H.parameters(), lr=1e-2, weight_decay=0)
         config.scheduler = optim.lr_scheduler.ReduceLROnPlateau(config.optim, patience=5, threshold=1e-1, min_lr=1e-8, factor=0.1, verbose=True)
@@ -236,14 +235,7 @@ class ODIN(ProbabilityThreshold):
                         if hasattr(h_config.model, 'H') and hasattr(h_config.model.H, 'threshold'):
                             h_config.logger.log('threshold', h_config.model.H.threshold.cpu().numpy(), epoch-1)
                             h_config.logger.get_measure('threshold').legend = ['threshold']
-                            if h_config.visualize:
-                                h_config.logger.get_measure('threshold').visualize_all_epochs(trainer.visdom)
 
-                        if h_config.visualize:
-                            # Show the average losses for all the phases in one figure.
-                            h_config.logger.visualize_average_keys('.*_loss', 'Average Loss', trainer.visdom)
-                            h_config.logger.visualize_average_keys('.*_accuracy', 'Average Accuracy', trainer.visdom)
-                            h_config.logger.visualize_average('LRs', trainer.visdom)
 
                         test_average_acc = h_config.logger.get_measure('test_accuracy').mean_epoch()
 

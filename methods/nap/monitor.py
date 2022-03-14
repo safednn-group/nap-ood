@@ -1,8 +1,7 @@
-import sys
+
 import torch
 import numpy as np
 import methods.nap.numba_balltree.ball_tree as bt
-import sklearn.neighbors as sn
 
 
 class FullNetMonitor(object):
@@ -93,7 +92,7 @@ class FullNetMonitor(object):
             self.forest[i] = dict()
             for j in range(len(self.known_patterns_tensor[i])):
                 # self.forest[i][j] = bt.BallTree(self.known_patterns_tensor[i][j].cpu())
-                self.forest[i][j] = sn.BallTree(self.known_patterns_tensor[i][j].cpu())
+                self.forest[i][j] = bt.BallTree(self.known_patterns_tensor[i][j].cpu())
 
     def cut_duplicates(self):
         for i in self.known_patterns_tensor:

@@ -4,7 +4,6 @@ import numpy as np
 import os
 import methods.mahalanobis.calculate_log as callog
 
-from scipy.spatial.distance import pdist, cdist, squareform
 
 
 def block_split(X, Y, out, partition):

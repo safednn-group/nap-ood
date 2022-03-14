@@ -91,7 +91,6 @@ class ProbabilityThreshold(AbstractMethodInterface):
         config.model = model
         config.optim = None
         config.autoencoder_target = False
-        config.visualize = False
         config.logger = Logger()
         return config
 
@@ -187,7 +186,6 @@ class ProbabilityThreshold(AbstractMethodInterface):
         config.classification = True
         config.cast_float_label = True
         config.stochastic_gradient = True
-        config.visualize = not self.args.no_visualize
         config.model = model
         config.optim = optim.Adagrad(model.H.parameters(), lr=1e-1, weight_decay=0)
         config.scheduler = optim.lr_scheduler.ReduceLROnPlateau(config.optim, patience=10, threshold=1e-1, min_lr=1e-8,
@@ -240,14 +238,6 @@ class ProbabilityThreshold(AbstractMethodInterface):
                     if hasattr(h_config.model, 'H') and hasattr(h_config.model.H, viz_param):
                         h_config.logger.log(viz_param, getattr(h_config.model.H, viz_param).cpu().numpy(), epoch - 1)
                         h_config.logger.get_measure(viz_param).legend = [viz_param]
-                #         if h_config.visualize:
-                #             h_config.logger.get_measure(viz_param).visualize_all_epochs(trainer.visdom)
-                #
-                # if h_config.visualize:
-                #     # Show the average losses for all the phases in one figure.
-                #     h_config.logger.visualize_average_keys('.*_loss', 'Average Loss', trainer.visdom)
-                #     h_config.logger.visualize_average_keys('.*_accuracy', 'Average Accuracy', trainer.visdom)
-                #     h_config.logger.visualize_average('LRs', trainer.visdom)
 
                 test_average_acc = h_config.logger.get_measure('test_accuracy').mean_epoch()
 
@@ -262,8 +252,6 @@ class ProbabilityThreshold(AbstractMethodInterface):
 
             torch.save({'finished': True}, done_path)
 
-            if h_config.visualize:
-                trainer.visdom.save([trainer.visdom.env])
 
         # Load the best model.
         print(colored('Loading H model from %s' % h_path, 'red'))
@@ -316,15 +304,6 @@ class ProbabilityThreshold(AbstractMethodInterface):
                 message = 'Accuracy %.4f' % (correct / total_count)
                 pbar.set_description(message)
 
-                # c1 = (classification.data.view(-1) == 0)
-                # c1n = c1.nonzero()
-                # if c1n.numel()>0:
-                #     s1 = input.data[c1n.squeeze()]
-                #     visdom.images(s1.cpu().numpy(), win='in_images')                                    
-                # c2n = (1-c1).nonzero()
-                # if c2n.numel()>0:
-                #     s2 = input.data[c2n.squeeze()]
-                #     visdom.images(s2.cpu().numpy(), win='out_images')                                    
 
         test_average_acc = correct / total_count
         labels = labels.cpu()
@@ -353,4 +332,4 @@ class ProbabilityThreshold(AbstractMethodInterface):
                 exec_times[i] = time.time() - start_time
 
         exec_times = exec_times.mean()
-        np.savez("results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)
+        print(exec_times)

@@ -30,8 +30,6 @@ class RTModelWrapper(AbstractModelWrapper):
             print(colored('BCE Loss', 'green'))
         else:
             print(colored('MSE Loss', 'green'))
-        # from visdom import Visdom
-        # self.visdom = Visdom(ipv6=False)
 
     def calculate_loss(self, input, target):
         loss = None
@@ -47,8 +45,6 @@ class RTModelWrapper(AbstractModelWrapper):
         base_output = self.base_model(x).detach()
         loss = self.calculate_loss(base_output, x)
         loss = loss.view(loss.size(0), -1).mean(dim=1, keepdim=True)
-        # self.visdom.images(x.data.cpu().numpy(), win='input')
-        # self.visdom.images(nn.functional.sigmoid(base_output).data.cpu().numpy(), win='output')
         return loss
 
     def wrapper_eval(self, x):
@@ -98,7 +94,6 @@ class ReconstructionThreshold(ProbabilityThreshold):
         config.cast_float_label = False
         config.autoencoder_target = True
         config.stochastic_gradient = True
-        config.visualize = not self.args.no_visualize
         config.sigmoid_viz = self.default_model == 0
         config.model = model
         config.optim = None
@@ -195,8 +190,7 @@ class ReconstructionThreshold(ProbabilityThreshold):
         config.criterion = criterion
         config.classification = True
         config.cast_float_label = True
-        config.stochastic_gradient = True  
-        config.visualize = not self.args.no_visualize  
+        config.stochastic_gradient = True
         config.model = model
         config.optim = optim.Adagrad(model.H.parameters(), lr=1e-1, weight_decay=0)
         config.scheduler = optim.lr_scheduler.ReduceLROnPlateau(config.optim, patience=10, threshold=1e-1, min_lr=1e-8, factor=0.1, verbose=True)

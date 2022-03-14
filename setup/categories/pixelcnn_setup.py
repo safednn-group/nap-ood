@@ -77,7 +77,6 @@ def get_pcnn_config(args, model, dataset):
     config.cast_float_label = False
     config.autoencoder_target = True
     config.stochastic_gradient = True
-    config.visualize = not args.no_visualize
     config.model = model
     config.logger = Logger()
     config.sampler = lambda x: sample(x.model, 32, obs)
@@ -124,13 +123,6 @@ def train_pixelcnn(args, model, dataset):
 
             config.scheduler.step(train_loss)
 
-            if config.visualize:
-                # Show the average losses for all the phases in one figure.
-                config.logger.visualize_average_keys('.*_loss', 'Average Loss', trainer.visdom)
-                config.logger.visualize_average('LRs', trainer.visdom)
-                samples = config.sampler(config)
-                trainer.visdom.images(samples.cpu(), win='sample_images')
-
             # Save the logger for future reference.
             torch.save(config.logger.measures, os.path.join(home_path, 'logger.pth'))
 
@@ -146,8 +138,5 @@ def train_pixelcnn(args, model, dataset):
         
         torch.save({'finished':True}, hbest_path+".done")
         torch.save(config.model.state_dict(), hlast_path)
-
-        if config.visualize:
-            trainer.visdom.save([trainer.visdom.env])
     else:
         print("Skipping %s"%(colored(home_path, 'yellow')))

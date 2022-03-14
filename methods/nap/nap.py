@@ -16,7 +16,6 @@ from datasets import MirroredDataset
 from methods import AbstractMethodInterface
 from methods.nap.monitor import FullNetMonitor
 from utils.iterative_trainer import IterativeTrainerConfig
-from utils.logger import Logger
 from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 
 
@@ -24,7 +23,6 @@ class NeuronActivationPatterns(AbstractMethodInterface):
     def __init__(self, args):
         super(NeuronActivationPatterns, self).__init__()
         self.base_model = None
-        self.H_class = None
         self.args = args
         self.monitor = None
         self.class_count = 0
@@ -35,7 +33,6 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.unknown_loader = None
         self.train_loader = None
         self.nap_params = None
-        self.train_dataset_name = ""
         self.model_name = ""
         self.nap_cfg = None
         self.nap_cfg_path = "methods/nap/cfg/strategies.json"
@@ -48,7 +45,6 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         h_path = get_ref_model_path(self.args, config.model.__class__.__name__, dataset.name)
         best_h_path = path.join(h_path, 'model.best.pth')
 
-        # trainer = IterativeTrainer(config, self.args)
 
         if not path.isfile(best_h_path):
             raise NotImplementedError("Please use model_setup to pretrain the networks first!")
@@ -60,11 +56,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         self.base_model.eval()
         self.class_count = self.base_model.output_size()[1].item()
         self.add_identifier = self.base_model.__class__.__name__
-        self.train_dataset_name = dataset.name
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else "Resnet"
-        # with open(self.nap_params_path) as cf:
-        #     cfg = json.load(cf)
-        #     self.nap_params = cfg[self.model_name][self.train_dataset_name]
         with open(self.nap_cfg_path) as cf:
             self.nap_cfg = json.load(cf)
         self._make_nap_params()
@@ -106,9 +98,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
         config.name = '_%s[%s](%s->%s)' % (self.__class__.__name__, base_model_name, self.args.D1, self.args.D2)
         config.train_loader = self.train_loader
-        config.visualize = not self.args.no_visualize
         config.model = model
-        config.logger = Logger()
         return config
 
     def train_H(self, dataset):
@@ -131,7 +121,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
             self._find_thresolds_for_every_layer()
             acc = self._compute_valid_acc(dataset)
-            with open(h_path + ".nap_state", 'wb') as f:
+            with open(done_path, 'wb') as f:
                 if self.nap_cfg["store_monitor"]:
                     pickle.dump(
                         [self.monitor, self.nap_params, self.scaled_thresholds, self.thresholds, self.chosen_layers,
@@ -142,7 +132,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                          self.add_factor, self.multiplier, acc], f, protocol=-1)
             return acc
         else:
-            with open(h_path + ".nap_state", 'rb') as f:
+            with open(done_path, 'rb') as f:
                 self.monitor, self.nap_params, self.scaled_thresholds, self.thresholds, self.chosen_layers, \
                 self.add_factor, self.multiplier, acc = pickle.load(f)
                 if not self.monitor:
@@ -251,10 +241,10 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         print("Final valid average accuracy %s" % (colored(str(correct / total_count * 100), 'red')))
         return average_acc
 
-    def _find_thresolds_for_every_layer(self, n_steps=5):
+    def _find_thresolds_for_every_layer(self):
         with torch.no_grad():
             self._get_layers_shapes(self.nap_params)
-            self.linspace = np.linspace(0.1, 0.9, num=n_steps)
+            self.linspace = np.linspace(0.1, 0.9, num=self.nap_cfg["steps"])
             self.thresholds, self.accuracies = self._generate_thresholds_for_every_configuration()
             scores = self._compute_scores_for_configurations()
             max_score_ids = np.argmax(scores, axis=2)[:, :, np.newaxis]
@@ -439,3 +429,28 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
             monitor.add_neuron_pattern(intermediate_values, label.cpu().numpy())
         monitor.cut_duplicates()
+
+    def _generate_execution_times(self, loader):
+        import time
+        import numpy as np
+        n_times = 1000
+        exec_times = np.ones(n_times)
+        dummy_threshold = 8
+        dummy_class_id = np.zeros(1)
+        trainiter = iter(loader)
+        x = trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device)
+        with torch.no_grad():
+            for i in range(n_times):
+                start_time = time.time()
+                outputs, intermediate_values, _ = self.base_model.forward_nap(
+                    x, nap_params=self.nap_params)
+                _, predicted = torch.max(outputs.data, 1)
+                lvl = self.monitor.compute_hamming_distance(intermediate_values,
+                                                            dummy_class_id)
+                classification = \
+                    stats.mode(np.where(lvl <= dummy_threshold, 0, 1),
+                               axis=1)[0]
+                exec_times[i] = time.time() - start_time
+
+        exec_times = exec_times.mean()
+        print(exec_times)

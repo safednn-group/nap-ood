@@ -14,7 +14,6 @@ import methods.mahalanobis.lib_regression as lib_regression
 from torch.autograd import Variable
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
-from tqdm import tqdm
 
 from methods import AbstractMethodInterface
 
@@ -23,7 +22,6 @@ class Mahalanobis(AbstractMethodInterface):
     def __init__(self, args):
         super(Mahalanobis, self).__init__()
         self.base_model = None
-        self.H_class = None
         self.args = args
         self.class_count = 0
         self.default_model = 0
@@ -33,8 +31,6 @@ class Mahalanobis(AbstractMethodInterface):
         self.train_loader = None
         self.train_dataset_name = ""
         self.valid_dataset_name = ""
-        self.test_dataset_name = ""
-        self.train_dataset_length = 0
         self.model_name = ""
         self.workspace_dir = "workspace/mahalanobis"
 
@@ -76,7 +72,6 @@ class Mahalanobis(AbstractMethodInterface):
 
         self.train_loader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.workers,
                                        pin_memory=True)
-        self.train_dataset_length = len(dataset)
         self.input_shape = iter(dataset).__next__()[0].shape
         # Set up the model
         model = Global.get_ref_classifier(self.args.D1)[self.default_model]().to(self.args.device)
@@ -91,7 +86,6 @@ class Mahalanobis(AbstractMethodInterface):
 
         config.name = '_%s[%s](%s->%s)' % (self.__class__.__name__, base_model_name, self.args.D1, self.args.D2)
         config.train_loader = self.train_loader
-        config.visualize = not self.args.no_visualize
         config.model = model
         config.logger = Logger()
         return config
@@ -216,6 +210,7 @@ class Mahalanobis(AbstractMethodInterface):
                 best_tnr = results['TMP']['TNR']
                 self.best_lr = lr
                 self.best_magnitude = float(score.split("_")[1])
+        return best_tnr
 
     def _sample_estimator(self, feature_list):
         """
@@ -373,6 +368,3 @@ class Mahalanobis(AbstractMethodInterface):
 
         exec_times = exec_times.mean()
         print(exec_times)
-        np.savez(
-            "results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name,
-            exec_times=exec_times)

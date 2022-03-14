@@ -1,14 +1,12 @@
 from __future__ import print_function
 
 import copy
-import time
 
 import faiss
 import numpy as np
 import tqdm
 
 import global_vars as Global
-from datasets import MirroredDataset
 from utils.iterative_trainer import IterativeTrainerConfig
 from utils.logger import Logger
 from termcolor import colored
@@ -28,9 +26,7 @@ class MSAD(AbstractMethodInterface):
     def __init__(self, args):
         super(MSAD, self).__init__()
         self.base_model = None
-        self.H_class = None
         self.args = args
-        self.class_count = 0
         self.default_model = 0
         self.add_identifier = ""
         self.known_loader = None
@@ -38,9 +34,6 @@ class MSAD(AbstractMethodInterface):
         self.train_loader = None
         self.train_loader_clean = None
         self.train_dataset_name = ""
-        self.valid_dataset_name = ""
-        self.test_dataset_name = ""
-        self.train_dataset_length = 0
         self.seed = 1
         self.model_name = ""
         self.workspace_dir = "workspace/msad"
@@ -62,7 +55,6 @@ class MSAD(AbstractMethodInterface):
 
         self.base_model = config.model
         self.base_model.eval()
-        self.class_count = self.base_model.output_size()[1].item()
         self.add_identifier = self.base_model.__class__.__name__
         self.train_dataset_name = dataset.name
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else "Resnet"
@@ -84,7 +76,6 @@ class MSAD(AbstractMethodInterface):
 
         self.train_loader = DataLoader(dataset2, batch_size=self.args.batch_size, num_workers=self.args.workers,
                                        pin_memory=True, shuffle=True)
-        self.train_dataset_length = len(dataset)
         # Set up the model
         model = Global.get_ref_classifier(self.args.D1)[self.default_model]().to(self.args.device)
         # model.forward()
@@ -98,7 +89,7 @@ class MSAD(AbstractMethodInterface):
 
         config.name = '_%s[%s](%s->%s)' % (self.__class__.__name__, base_model_name, self.args.D1, self.args.D2)
         config.train_loader = self.train_loader
-        config.visualize = not self.args.no_visualize
+
         config.model = model
         config.logger = Logger()
         return config
@@ -112,18 +103,10 @@ class MSAD(AbstractMethodInterface):
                                          num_workers=self.args.workers,
                                          pin_memory=True)
 
-        self.valid_dataset_name = dataset.datasets[1].name
-        self.valid_dataset_length = len(dataset.datasets[0])
         epochs = 20
         self._fine_tune_model(epochs=epochs)
-        _ = self._find_threshold()
+        return self._find_threshold()
 
-        model_path = os.path.join(os.path.join(self.workspace_dir,
-                                               self.train_dataset_name + '_' + self.model_name + '_s' + str(
-                                                   self.seed) + '_epoch_' + str(epochs - 1) + '.pt'))
-        if os.path.exists(model_path):
-            self.base_model.load_state_dict(torch.load(model_path))
-            return
 
     def test_H(self, dataset):
         self.base_model.eval()
@@ -260,7 +243,7 @@ class MSAD(AbstractMethodInterface):
                 exec_times[i] = time.time() - start_time
 
         exec_times = exec_times.mean()
-        np.savez("results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)
+        print(exec_times)
 
 
 def contrastive_loss(out_1, out_2):
@@ -303,19 +286,17 @@ def get_score(model, device, train_loader, test_loader):
             train_feature_space.append(features)
         train_feature_space = torch.cat(train_feature_space, dim=0).contiguous().cpu().numpy()
     test_feature_space = []
-    # test_labels = []
     with torch.no_grad():
         for (imgs, labels) in tqdm.tqdm(test_loader, desc='Test set feature extracting'):
             imgs = imgs.to(device)
             features = model(imgs)
             test_feature_space.append(features)
-            # test_labels.append(labels)
+
         test_feature_space = torch.cat(test_feature_space, dim=0).contiguous().cpu().numpy()
-        # test_labels = torch.cat(test_labels, dim=0).cpu().numpy()
+
 
     distances = knn_score(train_feature_space, test_feature_space)
 
-    # auc = roc_auc_score(test_labels, distances)
 
     return distances, train_feature_space
 

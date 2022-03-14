@@ -20,7 +20,6 @@ class DummyArg(object):
 # The parser object.
 parser = ArgumentParser(description='The OD-test evaluation framework.')
 
-parser.add_argument('--no-visualize', default=False, action='store_true', help='Disable visdom visualization. (default False)')
 
 parser.add_argument('--seed', type=int, default=42, help='Random seed. (default 42)')
 parser.add_argument('--batch-size', type=int, default=128, help='Batch size (default 128)')

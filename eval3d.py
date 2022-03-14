@@ -49,47 +49,24 @@ if args.exp == 'test-eval':
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    d1_tasks = ['FashionMNIST']
-    d2_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100',]
-    d3_tasks = ['NormalNoise']
     method_tasks = [
-        # 'pixelcnn/0',
-        # 'mcdropout/0',
-        # 'prob_threshold/0', 'prob_threshold/1',
-        # 'score_svm/0', 'score_svm/1',
-        # 'logistic_svm/0', 'logistic_svm/1',
-        # 'openmax/0', 'openmax/1',
-        # 'binclass/0', 'binclass/1',
-        # 'deep_ensemble/0', 'deep_ensemble/1',
-        # 'odin/0', 'odin/1',
-        # 'reconst_thresh/0', 'reconst_thresh/1',
-        # 'knn/1', 'knn/2', 'knn/4', 'knn/8',
-        # 'bceaeknn/1', 'vaeaeknn/1', 'mseaeknn/1',
-        # 'bceaeknn/2', 'vaeaeknn/2', 'mseaeknn/2',
-        # 'bceaeknn/4', 'vaeaeknn/4', 'mseaeknn/4',
-        # 'bceaeknn/8', 'vaeaeknn/8', 'mseaeknn/8'
-        'nap/0'
-        # 'mahalanobis/0',
-        # 'grad_norm/0',
-        # 'outlier_exposure/0',
-        # 'energy/0',
-        # 'react/0',
+        'nap/0', 'nap/1',
+        'mahalanobis/0', 'mahalanobis/1',
+        'grad_norm/0', 'grad_norm/1',
+        'outlier_exposure/0', 'outlier_exposure/1',
+        'energy/0', 'energy/1',
+        'react/0', 'react/1',
+        'msad/0', 'msad/1',
     ]
 ########################################################
 """
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
-    d2_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-                'TinyImagenet']
-    d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
-                'TinyImagenet']
-    # d1_tasks = [ 'STL10', 'TinyImagenet']
-    d1_tasks = ['FashionMNIST']
+    d1_tasks = ['MNIST']
     d2_tasks = ['NormalNoise']
     d3_tasks = ['UniformNoise']
-    method_tasks = ["nap/0"]
+    method_tasks = ["prob_threshold/0"]
 ########################################################
 """
     Default Evaluation
@@ -121,7 +98,6 @@ if os.path.exists(results_path) and not args.force_run:
 
 
 def has_done_before(method, d1, d2, d3):
-    # for m, ds, dm, dt, mid, a1, a2 in results:
     for r in results:
         if r[0] == method and r[1] == d1 and r[2] == d2 and r[3] == d3:
             return True
@@ -256,6 +232,5 @@ if __name__ == '__main__':
                     torch.save(results, results_path)
 
     for i, (m, ds, dm, dt, mi, a_train, a_test, auroc, aupr) in enumerate(results):
-        # print('%d\t%s\t%15s\t%-15s\t%.2f%% / %.2f%% %s' % (i, m, '%s-%s' % (ds, dm), dt, a_train * 100, a_test * 100, mi))
-        print(f" i: {i} m: {m} ds: {ds} dm: {dm} dt: {dt} mi: {mi} a_train: {a_train} a_test: {a_test} auroc {auroc} aupr {aupr}")
+        print(f"{i}  {m}  {ds}-{dm}  {dt}  Valid acc: {a_train}  Test acc: {a_test} Test AUROC: {auroc}")
 

@@ -1,21 +1,13 @@
 import os
 import socket
-import sys
-import venv
-import subprocess
 
 # Setup information.
 workspace_name = 'workspace'
-env_name = 'env'
-#requirements = 'setup/requirements.txt'
-requirements = 'requirements.txt'
 
 # Data location mapping.
 datastore = {
         'default':{
             'datasets':{
-                },
-            'visdom':{
                 },
             }
         }
@@ -34,45 +26,6 @@ def setup_workspace():
         print('Creating workspace: {}'.format(workspace_path))
         os.makedirs(workspace_path)
 
-    # # Create the virtual environment if it does not exist.
-    # env_path = os.path.join(workspace_path, env_name)
-    # if not os.path.isdir(env_path):
-    #     print('Creating environment: {}'.format(env_path))
-    #     # virtualenv.create_environment(home_dir=env_path, site_packages=False)
-    #     venv.create(env_dir=env_path)
-    #
-    # # Activate the environment.
-    # print('Activating virtual environment.')
-    # activate_script = os.path.join(env_path, 'bin', 'activate_this.py')
-    #
-    # # activate on windows
-    # if not os.path.exists(activate_script):
-    #     activate_script = os.path.join(env_path, 'Scripts', 'activate.bat')
-    #
-    # subprocess.call(activate_script)
-    #
-    # with open(activate_script) as f:
-    #     code = compile(f.read(), activate_script, 'exec')
-    #     exec (code, dict(__file__=activate_script))
-    # # execfile(activate_script, dict(__file__=activate_script))
-    # #exec(compile(open(activate_script, "rb").read(), activate_script, 'exec'), dict(__file__=activate_script))
-    #
-    # if hasattr(sys, 'real_prefix'):
-    #     print('Activation done.')
-    # else:
-    #     print('Activation failed!')
-    #
-    # # Install the requirements.
-    # # Since using the pip API is not working, we are just running bash commands
-    # # through Python's os library.
-    # commands = [
-    #         'python -m pip install --upgrade pip',
-    #         'pip install --upgrade -r {}'.format(requirements)
-    #         ]
-    # print('Installing requirements.')
-    # for command in commands:
-    #     os.system(command)
-    # print('Installed requirements.')
 
     # Set up symlinks and project folders.
     from termcolor import colored
@@ -99,7 +52,6 @@ def setup_workspace():
                 os.system('ln -s "{}" "{}"'.format(value, target_path))
     print('Setting up symlinks finished.')
 
-    #print("""Setup finished.\nRun "source {}/bin/activate" """.format(env_path))
 
 if __name__ == '__main__':
     setup_workspace()

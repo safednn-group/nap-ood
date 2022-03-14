@@ -14,12 +14,7 @@ from torch.utils.data.dataloader import DataLoader
 import torch
 import os
 
-from torch.autograd import Variable
-import torch.backends.cudnn as cudnn
-import torchvision.transforms as trn
-import torchvision.datasets as dset
 import torch.nn.functional as F
-import torch.nn as nn
 from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 
 from methods import AbstractMethodInterface
@@ -29,9 +24,7 @@ class Energy(AbstractMethodInterface):
     def __init__(self, args):
         super(Energy, self).__init__()
         self.base_model = None
-        self.H_class = None
         self.args = args
-        self.class_count = 0
         self.default_model = 0
         self.add_identifier = ""
         self.known_loader = None
@@ -62,7 +55,6 @@ class Energy(AbstractMethodInterface):
 
         self.base_model = config.model
         self.base_model.eval()
-        self.class_count = self.base_model.output_size()[1].item()
         self.add_identifier = self.base_model.__class__.__name__
         self.train_dataset_name = dataset.name
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else "Resnet"
@@ -84,7 +76,6 @@ class Energy(AbstractMethodInterface):
         self.train_loader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.workers,
                                        pin_memory=True, shuffle=True)
         self.train_dataset_length = len(dataset)
-        self.input_shape = iter(dataset).__next__()[0].shape
         # Set up the model
         model = Global.get_ref_classifier(self.args.D1)[self.default_model]().to(self.args.device)
         # model.forward()
@@ -98,7 +89,6 @@ class Energy(AbstractMethodInterface):
 
         config.name = '_%s[%s](%s->%s)' % (self.__class__.__name__, base_model_name, self.args.D1, self.args.D2)
         config.train_loader = self.train_loader
-        config.visualize = not self.args.no_visualize
         config.model = model
         config.logger = Logger()
         return config
@@ -131,7 +121,8 @@ class Energy(AbstractMethodInterface):
                                                '_epoch_' + str(epochs - 1) + '.pt'))
         if os.path.exists(model_path):
             self.base_model.load_state_dict(torch.load(model_path))
-            return
+
+        return best_acc
 
     def test_H(self, dataset):
         self.base_model.eval()
@@ -247,9 +238,6 @@ class Energy(AbstractMethodInterface):
                     100 - 100. * self._test_accuracy,
                 ))
 
-            # # print state with rounded decimals
-            # print({k: round(v, 4) if isinstance(v, float) else v for k, v in state.items()})
-
             print('Epoch {0:3d} | Time {1:5d} | Train Loss {2:.4f} | Test Loss {3:.3f} | Test Error {4:.2f}'.format(
                 (epoch + 1),
                 int(time.time() - begin_epoch),
@@ -306,7 +294,6 @@ class Energy(AbstractMethodInterface):
 
                 # accuracy
                 pred = output.data.max(1)[1]
-                # print(f"data {data.shape} output: {output.shape} pred: {pred.shape} targetL {target.shape} f {target.data} f {pred.eq(target.data).sum()}")
                 correct += pred.eq(target.data).sum().item()
 
                 # test loss average
@@ -383,4 +370,4 @@ class Energy(AbstractMethodInterface):
                 exec_times[i] = time.time() - start_time
 
         exec_times = exec_times.mean()
-        np.savez("results/article_plots/execution_times/" + self.method_identifier() + "_" + self.model_name + "_" + self.train_dataset_name, exec_times=exec_times)
+        print(exec_times)
