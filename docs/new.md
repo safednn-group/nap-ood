@@ -70,7 +70,7 @@ task_list = [
 ]
 ```
 
-Here we commented out every other task, and added a new task that only includes the training of a limited set of architectures. You can track the progress of training in `visdom`.
+Here we commented out every other task, and added a new task that only includes the training of a limited set of architectures.
 
 Now, you can run the evaluation of methods that rely on classifiers with your new architecture. If the index of your architecture in the global variables is `2` running evaluation with `score_svm/2` would execute the ScoreSVM method with your architecture.
 

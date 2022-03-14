@@ -8,20 +8,20 @@ Let's first navigate to the project and activate the environment. If you have no
 
 ```bash
 > cd <root_folder>
-> source workspace/env/bin/activate
+> conda activate py39
 ```
 
 Now the environment is active. Next, we will download the pretrained VGG model for MNIST. You can read more about the pretrained models [here](pretrained.md). If you have already downloaded the pretrained models or have previously trained the model, you can just skip this step.
 
 ```bash
-(env)> wget -r -nH -np --cut-dirs=3 --reject="index.html*" -e robots=off \
+ wget -r -nH -np --cut-dirs=3 --reject="index.html*" -e robots=off \
     http://www.cs.ubc.ca/~shafaei/dataset/odtest/workspace/experiments/model_ref/MNIST_VGG.HClass/MNIST.dataset/base/
 ```
 
 Now you can run the evaluation code.
 
 ```bash
-(env)> python eval3d.py --exp test-eval --no-visualize
+(py39)> python eval3d.py --exp simple-eval
 ```
 
 The program should terminate with the following output:
@@ -32,7 +32,7 @@ The program should terminate with the following output:
 
 The second column is the method and the config. `prob_threshold/0` means the probability threshold method was run with the config `0` which is the VGG architecture (the index of architecture in the `global_vars`). The third column is `D_s - D_v` and the fourth column is `D_t`. The fifth column is `train_error / test_error` for the method. We only use the `test_error` for figures and anlysis.
 
-These results are also saved under `workspace/experiments/test-eval/results.pth` as a simple table that you can use to generate figures.
+These results are also saved under `workspace/experiments/simple-eval/results.pth` as a simple table that you can use to generate figures.
 
 If you have made it this far, it means everything is set up and ready to use. Next we explain what is going on in the script.
 

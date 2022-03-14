@@ -7,8 +7,8 @@ To train all the reference models run the following command:
 
 ```bash
 > cd <root_folder> # Go to the root folder.
-> source workspace/env/bin/activate # Make sure the environment is active.
-(env)> python setup/model_setup.py --exp model_ref --save
+> conda activate py39 # Make sure the environment is active.
+(py39)> python setup/model_setup.py --exp model_ref --save
 ```
 
  **Warning this will take a loooong time to finish.** You can modify the code to train only the components that you care about.

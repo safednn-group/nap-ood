@@ -33,8 +33,6 @@
             - `<method_name>.py` the implementation of each method. All the classes implement the `AbstractMethodInterface`.
     - **workspace** contains every result and output of the framework. You must set up the project for this folder to appear.
         - **datasets** will be where all the downloaded datasets are stored.
-        - **env** will containt the virtual environment within which the code would work.
-        - **visdom** is the default visdom home.
         - **experiments** is the location of all the experiments.
             - **model_ref** is where the reference models will be stored.
             - `<exp-name>` will be the home directory to each experiment.
