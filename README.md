@@ -89,7 +89,7 @@ Keywords:
 
 # What is new?
 
-We have extended the original OD-test by adding 7 new OOD detectors (indices 12-18 on the [list](#List of Implemented Methods)), including NeuronActivationPatterns.
+We have extended the original OD-test by adding 7 new OOD detectors (indices 12-18 on the [list](#list-of-implemented-methods)), including NeuronActivationPatterns.
 AUROC is used to compare the methods alongside accuracy. The results of the extended OD-test are below.
 
 ## Average accuracy

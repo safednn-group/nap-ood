@@ -1,6 +1,6 @@
 # Configuration of NeuronActivationPatterns method
 
-There is a couple of configurable parameters of the method. They are read from this [file](methods/nap/cfg/strategies.json).
+There is a couple of configurable parameters of the method. They are read from this [file](../methods/nap/cfg/strategies.json).
 
 ### store_monitor
 Boolean flag; set to true if you want to pickle and store a monitor containing binary activation patterns after the train_H phase.
