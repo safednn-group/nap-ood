@@ -93,10 +93,10 @@ We have extended the original OD-test by adding 7 new OOD detectors (indices 12-
 AUROC is used to compare the methods alongside accuracy. The results of the extended OD-test are below.
 
 ## Average accuracy
-![Fig2](docs/acc_fig.png)
+![Fig2](docs/final_acc_fig.png)
 
 ## Average AUROC
-![Fig3](docs/auroc_fig.png)
+![Fig3](docs/final_auroc_fig.png)
 
 ## NAP results table
 ![Fig4](docs/nap_table.jpg)
