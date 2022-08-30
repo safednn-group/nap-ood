@@ -1,20 +1,16 @@
-This repository contains patched code of OD-test: A Less Biased Evaluation of Out-of-Distribution (Outlier) Detectors (PyTorch)
+This repository contains the extended version of the OD-test framework for evaluation Out-of-Distribution (OOD) detection methods. This framework was created based on OD-test framework and the paper [A Less Biased Evaluation of Out-of-distribution Sample Detectors](https://arxiv.org/abs/1809.04729)
 released under the MIT License - see LICENSE file. 
 Please refer to Readme_OD-test.md for original readme file of the project. 
 
 URL: https://github.com/ashafaei/OD-test.git
 
-
-# Publication Information
-This repository accompanies the paper:
-
-
-
-Keywords: 
-
-**Bibtex**:
-```bibtex
-```
+# Changelog
+In comparison to the original OD-test, we implemented the following changes:
+ - we migrated the code from Python 2 to Python 3
+ - we replaced virtualenv to conda enviroment and we simplified the setup procedure
+ - we added 6 state-of-the-art OOD detectors
+ - we added a novel OOD detector based on Neuron Activation Patterns
+ - we added new evaluation metric based on Area Under the Receiver Operating Characteristic (AUROC) curve
 
 # Introduction
 > The problem of interest is out-of-distribution (OOD) sample detection. In our paper, we present an evaluation framework called OD-test for methods that address OOD sample detection. We show that the traditional evaluation strategy yields overly-optimistic results, hence the need for more reliable evaluation. In this repository, we implement the OD-test for image recognition problems with deep neural networks. You can replicate all the results of our paper here.
