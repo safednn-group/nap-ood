@@ -152,11 +152,11 @@ all_methods = {
     'openmax': OM.OpenMax,
     'nap': NAP.NeuronActivationPatterns,
     'mahalanobis': M.Mahalanobis,
-    'react': react.ReAct,
+    'react': ReAct.ReAct,
     'energy': Energy.Energy,
     'outlier_exposure': OE.OutlierExposure,
     'grad_norm': GN.GradNorm,
-    'msad': msad.MSAD,
+    'msad': MSAD.MSAD,
     'ashb': ASHB.ASHB
 }
 

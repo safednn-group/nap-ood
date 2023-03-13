@@ -1,7 +1,7 @@
 
 import torch
 import numpy as np
-import methods.nap.numba_balltree.ball_tree as bt
+# import methods.nap.numba_balltree.ball_tree as bt
 
 
 class FullNetMonitor(object):
@@ -18,7 +18,7 @@ class FullNetMonitor(object):
 
         self.known_patterns_set = dict()
         self.known_patterns_tensor = dict()
-        self.forest = dict()
+        # self.forest = dict()
 
         for i in range(class_count):
             self.known_patterns_set[i] = dict()
@@ -46,13 +46,16 @@ class FullNetMonitor(object):
             full_net_distances = []
             offset = 0
             for shape_id, shape in enumerate(self.layers_shapes):
-                if tree:
-                    lvl = self.forest[class_id[i]][shape_id].query(
-                        np.reshape(neuron_on_off_pattern.cpu()[i, offset:offset + shape], (1, -1)))[0]
-                else:
-                    lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
-                                                                               offset:offset + shape]).sum(
-                        dim=1).min()
+                # if tree:
+                #     lvl = self.forest[class_id[i]][shape_id].query(
+                #         np.reshape(neuron_on_off_pattern.cpu()[i, offset:offset + shape], (1, -1)))[0]
+                # else:
+                #     lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+                #                                                                offset:offset + shape]).sum(
+                #         dim=1).min()
+                lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+                                                                           offset:offset + shape]).sum(
+                    dim=1).min()
                 offset += shape
                 full_net_distances.append(lvl.item())
             distance.append(full_net_distances)
@@ -87,12 +90,11 @@ class FullNetMonitor(object):
                     self.known_patterns_set[label[example_id]][shape_id].add(abs_np_slice.tobytes())
                 offset += shape
 
-    def make_forest(self):
-        for i in range(self.class_count):
-            self.forest[i] = dict()
-            for j in range(len(self.known_patterns_tensor[i])):
-                # self.forest[i][j] = bt.BallTree(self.known_patterns_tensor[i][j].cpu())
-                self.forest[i][j] = bt.BallTree(self.known_patterns_tensor[i][j].cpu())
+    # def make_forest(self):
+    #     for i in range(self.class_count):
+    #         self.forest[i] = dict()
+    #         for j in range(len(self.known_patterns_tensor[i])):
+    #             self.forest[i][j] = bt.BallTree(self.known_patterns_tensor[i][j].cpu())
 
     def cut_duplicates(self):
         for i in self.known_patterns_tensor:
