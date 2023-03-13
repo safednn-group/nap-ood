@@ -8,7 +8,7 @@ URL: https://github.com/ashafaei/OD-test.git
 In comparison to the original OD-test, we implemented the following changes:
  - we migrated the code from Python 2 to Python 3
  - we replaced virtualenv to conda enviroment and we simplified the setup procedure
- - we added 6 state-of-the-art OOD detectors
+ - we added 7 state-of-the-art OOD detectors
  - we added a novel OOD detector based on Neuron Activation Patterns
  - we added new evaluation metric based on Area Under the Receiver Operating Characteristic (AUROC) curve
 
