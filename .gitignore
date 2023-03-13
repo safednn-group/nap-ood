@@ -117,3 +117,4 @@ attacks
 /aurocexp_all34.csv
 /best_confs.txt
 /results_auroc.pth
+/methods/nap/numba_balltree/

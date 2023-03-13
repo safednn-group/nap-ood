@@ -82,6 +82,14 @@ class MNIST_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
 
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
@@ -148,6 +156,15 @@ class MNIST_Resnet(nn.Module):
         x = (x - self.offset) * self.multiplier
 
         output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
@@ -240,6 +257,14 @@ class CIFAR10_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
 
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
@@ -307,6 +332,15 @@ class CIFAR10_Resnet(nn.Module):
         x = (x - self.offset) * self.multiplier
 
         output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
@@ -401,6 +435,15 @@ class CIFAR100_VGG(nn.Module):
         return output
 
 
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
@@ -468,6 +511,15 @@ class CIFAR100_Resnet(nn.Module):
         x = (x - self.offset) * self.multiplier
 
         output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
@@ -562,6 +614,15 @@ class STL10_VGG(nn.Module):
         return output
 
 
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
         x = (x - self.offset) * self.multiplier
@@ -628,6 +689,15 @@ class STL10_Resnet(nn.Module):
         x = (x - self.offset) * self.multiplier
 
         output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output
@@ -720,6 +790,15 @@ class TinyImagenet_VGG(nn.Module):
             output = F.log_softmax(output, dim=1)
         return output
 
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
 
     def intermediate_forward(self, x, softmax=True, layer_index=0):
         # Perform late normalization.
@@ -787,6 +866,15 @@ class TinyImagenet_Resnet(nn.Module):
         x = (x - self.offset) * self.multiplier
 
         output = self.model.forward_threshold(x, threshold)
+        if softmax:
+            output = F.log_softmax(output, dim=1)
+        return output
+
+    def forward_binarize(self, x, softmax=True, precentile=0.65):
+        # Perform late normalization.
+        x = (x - self.offset) * self.multiplier
+
+        output = self.model.forward_binarize(x, percentile)
         if softmax:
             output = F.log_softmax(output, dim=1)
         return output

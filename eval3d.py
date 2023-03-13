@@ -30,6 +30,7 @@ if args.exp == 'master':
         'binclass/0', 'binclass/1',
         'deep_ensemble/0', 'deep_ensemble/1',
         'odin/0', 'odin/1',
+        'ashb/0', 'ashb/1',
         'reconst_thresh/0', 'reconst_thresh/1',
         'knn/1', 'knn/2', 'knn/4', 'knn/8',
         'bceaeknn/1', 'vaeaeknn/1', 'mseaeknn/1',
@@ -50,13 +51,7 @@ if args.exp == 'test-eval':
                 'TinyImagenet']
     d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     method_tasks = [
-        'nap/0', 'nap/1',
-        'mahalanobis/0', 'mahalanobis/1',
-        'grad_norm/0', 'grad_norm/1',
-        'outlier_exposure/0', 'outlier_exposure/1',
-        'energy/0', 'energy/1',
-        'react/0', 'react/1',
-        'msad/0', 'msad/1',
+        'ashb/0', 'ashb/1'
     ]
 ########################################################
 """

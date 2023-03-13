@@ -128,11 +128,12 @@ import methods.pixelcnn as PCNN
 import methods.openmax as OM
 import methods.nap.nap as NAP
 import methods.mahalanobis.integrated as M
-import methods.react.integrated as ReAct
-import methods.energy.integrated as Energy
-import methods.outlier_exposure.integrated as OE
-import methods.grad_norm.integrated as GN
-import methods.msad.integrated as MSAD
+import methods.react as ReAct
+import methods.energy as Energy
+import methods.outlier_exposure as OE
+import methods.grad_norm as GN
+import methods.msad as MSAD
+import methods.ashb as ASHB
 
 all_methods = {
     'prob_threshold': BT.ProbabilityThreshold,
@@ -151,11 +152,12 @@ all_methods = {
     'openmax': OM.OpenMax,
     'nap': NAP.NeuronActivationPatterns,
     'mahalanobis': M.Mahalanobis,
-    'react': ReAct.ReAct,
+    'react': react.ReAct,
     'energy': Energy.Energy,
     'outlier_exposure': OE.OutlierExposure,
     'grad_norm': GN.GradNorm,
-    'msad': MSAD.MSAD
+    'msad': msad.MSAD,
+    'ashb': ASHB.ASHB
 }
 
 ##################################################################

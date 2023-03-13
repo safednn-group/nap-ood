@@ -21,6 +21,23 @@ model_urls = {
 }
 
 
+def ash_b(x, percentile=65):
+    assert x.dim() == 4
+    assert 0 <= percentile <= 100
+    b, c, h, w = x.shape
+
+    # calculate the sum of the input per sample
+    s1 = x.sum(dim=[1, 2, 3])
+
+    n = x.shape[1:].numel()
+    k = n - int(np.round(n * percentile / 100.0))
+    t = x.view((b, c * h * w))
+    v, i = torch.topk(t, k, dim=1)
+    fill = s1 / k
+    fill = fill.unsqueeze(dim=1).expand(v.shape)
+    t.zero_().scatter_(dim=1, index=i, src=fill)
+    return x
+
 class VGG(nn.Module):
 
     def __init__(self, features, num_classes=1000, init_weights=True, relu_indices=None):
@@ -59,6 +76,14 @@ class VGG(nn.Module):
         # x = self.avgpool(x)
         x = x.clamp(max=threshold)
         x = torch.flatten(x, 1)
+        x = self.classifier(x)
+        return x
+
+    def forward_binarize(self, x, percentile=.65):
+        x = self.features(x)
+        x = x.clamp(max=threshold)
+        x = torch.flatten(x, 1)
+        x = ash_b(x, percentile)
         x = self.classifier(x)
         return x
 

@@ -76,11 +76,12 @@ Keywords:
 | 11    | K-MNNSVM, K-BNNSVM, K-VNNSVM | Similar to KNNSVM, but uses the latent representation of different (variational)-autoencoders.                                               | [link](methods/nearest_neighbor.py)            |
 | 12    | NeuronActivationPatterns     | The new method proposed in this paper.                                                                                                       | [link](methods/nap/nap.py)                     |
 | 13    | Mahalanobis [7]              | Mahalanobis distance on feature space.                                                                                                       | [link](methods/mahalanobis/integrated.py)      |
-| 14    | MSAD [8]                     | Anomaly detection with mean-shifted contrastive loss.                                                                                        | [link](methods/msad/integrated.py)             |
-| 15    | GradNorm [9]                 | A threshold on gradient modulus of ultimate or penultimate layer.                                                                            | [link](methods/grad_norm/integrated.py)        |
-| 16    | OutlierExposure [10]         | Probability calibration enhancement via fine-tuning a classifier with a loss that penalizes OOD samples.                                     | [link](methods/outlier_exposure/integrated.py) |
-| 17    | Energy [11]                  | Similar to OutlierExposure, except the fine-tuning is performed with energy loss.                                                            | [link](methods/energy/integrated.py)           |
-| 18    | ReAct [12]                   | Similar to Energy but feature activations are rectified.                                                                            | [link](methods/react/integrated.py)            |
+| 14    | MSAD [8]                     | Anomaly detection with mean-shifted contrastive loss.                                                                                        | [link](methods/msad.py)             |
+| 15    | GradNorm [9]                 | A threshold on gradient modulus of ultimate or penultimate layer.                                                                            | [link](methods/grad_norm.py)        |
+| 16    | OutlierExposure [10]         | Probability calibration enhancement via fine-tuning a classifier with a loss that penalizes OOD samples.                                     | [link](methods/outlier_exposure.py) |
+| 17    | Energy [11]                  | Similar to OutlierExposure, except the fine-tuning is performed with energy loss.                                                            | [link](methods/energy.py)           |
+| 18    | ReAct [12]                   | Similar to Energy but feature activations are rectified.                                                                            | [link](methods/react.py)            |
+| 19    | ASHB [13]                    | Anomaly detection with mean-shifted contrastive loss.                                                                                        | [link](methods/msad.py)             |
 
 
 
@@ -131,3 +132,4 @@ Create a conda environment that includes all necessary packages:
 10. Hendrycks, D., Mazeika, M., Dietterich, T.: Deep anomaly detection with outlier exposure (2019).
 11. Weitang Liu, Xiaoyun Wang, John Owens, and Yixuan Li. Energy-based out-of-distribution detection (2020).
 12. Yiyou Sun and Chuan Guo and Yixuan Li. ReAct: Out-of-distribution Detection With Rectified Activations (2021).
+13. A. Djurisic, N. Bozanic, A. Ashok, R. Liu Extremely Simple Activation Shaping for Out-of-Distribution Detection (2022).
