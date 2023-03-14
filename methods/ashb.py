@@ -2,8 +2,9 @@ from __future__ import print_function
 
 import numpy as np
 import tqdm
+import time
 from torch.autograd import Variable
-
+import torch.nn.functional as F
 import global_vars as Global
 from datasets import MirroredDataset
 from utils.iterative_trainer import IterativeTrainerConfig
@@ -16,6 +17,7 @@ from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 
 from methods import AbstractMethodInterface
 
+
 class ASHB(AbstractMethodInterface):
     def __init__(self, args):
         super(ASHB, self).__init__()
@@ -27,7 +29,7 @@ class ASHB(AbstractMethodInterface):
         self.known_loader = None
         self.unknown_loader = None
         self.train_loader = None
-        self.binarization_percentile = 0.65
+        self.binarization_percentile = 65
         self.seed = 1
         self.model_name = ""
         self.workspace_dir = "workspace/ashb"
@@ -38,7 +40,6 @@ class ASHB(AbstractMethodInterface):
         from models import get_ref_model_path
         h_path = get_ref_model_path(self.args, config.model.__class__.__name__, dataset.name)
         self.best_h_path = os.path.join(h_path, 'model.best.pth')
-
 
         if not os.path.isfile(self.best_h_path):
             raise NotImplementedError("Please use model_setup to pretrain the networks first!")
@@ -72,7 +73,7 @@ class ASHB(AbstractMethodInterface):
 
         # Set up the config
         config = IterativeTrainerConfig()
-
+        self.train_dataset_length = len(dataset)
         base_model_name = self.base_model.__class__.__name__
         if hasattr(self.base_model, 'preferred_name'):
             base_model_name = self.base_model.preferred_name()
@@ -93,8 +94,9 @@ class ASHB(AbstractMethodInterface):
 
         self.valid_dataset_name = dataset.datasets[1].name
         self.valid_dataset_length = len(dataset.datasets[0])
+        epochs = 10
+        self._fine_tune_model(epochs=epochs)
         return self._find_threshold()
-
 
     def test_H(self, dataset):
         self.base_model.eval()
@@ -113,9 +115,13 @@ class ASHB(AbstractMethodInterface):
                     counter += 1
                     # Get and prepare data.
                     input, target = image.to(self.args.device), label.to(self.args.device)
-                    logits = self.base_model.forward_binarize(input, softmax=False, threshold=self.binarization_percentile)
+                    logits = self.base_model.forward_binarize(input, softmax=False,
+                                                              percentile=self.binarization_percentile)
                     scores = self._get_energy_score(logits)
-                    classification = np.where(scores > self.threshold, 1, 0)
+                    if self.inverse:
+                        classification = np.where(scores < self.threshold, 1, 0)
+                    else:
+                        classification = np.where(scores > self.threshold, 1, 0)
                     correct += (classification == label.numpy()).sum()
                     if all_probs.size:
                         labels = np.concatenate((labels, label))
@@ -131,6 +137,140 @@ class ASHB(AbstractMethodInterface):
                     colored('%.4f%%' % (correct / labels.shape[0] * 100), 'red')))
         return correct / labels.shape[0], auroc, aupr
 
+    def _cosine_annealing(self, step, total_steps, lr_max, lr_min):
+        return lr_min + (lr_max - lr_min) * 0.5 * (
+                1 + np.cos(step / total_steps * np.pi))
+
+    def _fine_tune_model(self, epochs):
+        model_path = os.path.join(os.path.join(self.workspace_dir,
+                                               self.train_dataset_name + '_' + self.valid_dataset_name + '_' + self.model_name + '_s' + str(
+                                                   self.seed) + '_epoch_' + str(epochs - 1) + '.pt'))
+        if os.path.exists(model_path):
+            self.base_model.load_state_dict(torch.load(model_path))
+            return
+        if not os.path.exists(self.workspace_dir):
+            os.makedirs(self.workspace_dir)
+        if not os.path.isdir(self.workspace_dir):
+            raise Exception('%s is not a dir' % self.workspace_dir)
+
+        torch.manual_seed(self.seed)
+        np.random.seed(self.seed)
+
+        with open(os.path.join(self.workspace_dir,
+                               self.train_dataset_name + '_' + self.valid_dataset_name + '_' + self.model_name + '_s' + str(
+                                   self.seed) + '_training_results.csv'), 'w') as f:
+            f.write('epoch,time(s),train_loss,test_loss,test_error(%)\n')
+
+        print('Beginning Training\n')
+        self.optimizer = torch.optim.SGD(
+            self.base_model.parameters(), 0.001, momentum=0.9,
+            weight_decay=0.0005, nesterov=True)
+
+        self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer,
+                                                           lr_lambda=lambda step: self._cosine_annealing(step,
+                                                                                                         10 * self.valid_dataset_length,
+                                                                                                         1,
+                                                                                                         1e-6 / 0.001))
+        # Main loop
+        for epoch in range(0, epochs):
+            self.epoch = epoch
+
+            begin_epoch = time.time()
+
+            self._train_epoch()
+            self._eval_model()
+
+            # Save model
+            torch.save(self.base_model.state_dict(),
+                       os.path.join(os.path.join(self.workspace_dir,
+                                                 self.train_dataset_name + '_' + self.valid_dataset_name + '_' + self.model_name + '_s' + str(
+                                                     self.seed) + '_epoch_' + str(epoch) + '.pt')))
+
+            # Let us not waste space and delete the previous model
+            prev_path = os.path.join(os.path.join(self.workspace_dir,
+                                                  self.train_dataset_name + '_' + self.valid_dataset_name + '_' + self.model_name + '_s' + str(
+                                                      self.seed) + '_epoch_' + str(epoch - 1) + '.pt'))
+            if os.path.exists(prev_path): os.remove(prev_path)
+
+            # Show results
+            with open(
+                    os.path.join(self.workspace_dir,
+                                 self.train_dataset_name + '_' + self.valid_dataset_name + '_' + self.model_name + '_s' + str(
+                                     self.seed) + '_training_results.csv'), 'a') as f:
+                f.write('%03d,%05d,%0.6f,%0.5f,%0.2f\n' % (
+                    (epoch + 1),
+                    time.time() - begin_epoch,
+                    self._train_loss,
+                    self._test_loss,
+                    100 - 100. * self._test_accuracy,
+                ))
+
+            # # print state with rounded decimals
+            # print({k: round(v, 4) if isinstance(v, float) else v for k, v in state.items()})
+
+            print('Epoch {0:3d} | Time {1:5d} | Train Loss {2:.4f} | Test Loss {3:.3f} | Test Error {4:.2f}'.format(
+                (epoch + 1),
+                int(time.time() - begin_epoch),
+                self._train_loss,
+                self._test_loss,
+                100 - 100. * self._test_accuracy,
+            ))
+
+    def _train_epoch(self):
+        self.base_model.train()  # enter train mode
+        loss_avg = 0.0
+
+        # start at a random point of the outlier dataset; this induces more randomness without obliterating locality
+        self.unknown_loader.dataset.offset = np.random.randint(self.valid_dataset_length)
+        for in_set, out_set in zip(self.train_loader, self.unknown_loader):
+            data = torch.cat((in_set[0], out_set[0]), 0)
+            target = in_set[1]
+
+            data, target = data.cuda(), target.cuda()
+
+            # forward
+            x = self.base_model.forward_threshold(data, softmax=False, threshold=1)
+
+            # backward
+            self.scheduler.step()
+            self.optimizer.zero_grad()
+
+            loss = F.cross_entropy(x[:len(in_set[0])], target)
+            # cross-entropy from softmax distribution to uniform distribution
+
+            Ec_out = -torch.logsumexp(x[len(in_set[0]):], dim=1)
+            Ec_in = -torch.logsumexp(x[:len(in_set[0])], dim=1)
+            loss += 0.1 * (torch.pow(F.relu(Ec_in - (-23.)), 2).mean() + torch.pow(F.relu((-5.) - Ec_out),
+                                                                                   2).mean())
+
+            loss.backward()
+            self.optimizer.step()
+
+            # exponential moving average
+            loss_avg = loss_avg * 0.8 + float(loss) * 0.2
+        self._train_loss = loss_avg
+
+    def _eval_model(self):
+        self.base_model.eval()
+        loss_avg = 0.0
+        correct = 0
+        with torch.no_grad():
+            for data, target in self.train_loader:
+                data, target = data.cuda(), target.cuda()
+
+                # forward
+                output = self.base_model.forward_threshold(data, softmax=False, threshold=1)
+                loss = F.cross_entropy(output, target)
+
+                # accuracy
+                pred = output.data.max(1)[1]
+                correct += pred.eq(target.data).sum().item()
+
+                # test loss average
+                loss_avg += float(loss.data)
+
+        self._test_loss = loss_avg / self.train_dataset_length
+        self._test_accuracy = correct / self.train_dataset_length
 
     def _find_threshold(self):
         scores_known = np.array([])
@@ -157,27 +297,44 @@ class ASHB(AbstractMethodInterface):
                 else:
                     scores_unknown = scores
 
+        if scores_unknown.mean() < scores_known.mean():
+            self.inverse = True
+            cut_threshold = np.quantile(scores_known, .05)
+        else:
+            self.inverse = False
+            cut_threshold = np.quantile(scores_known, .95)
         min = np.max([scores_unknown.min(), scores_known.min()])
         max = np.min([scores_unknown.max(), scores_known.max()])
-        cut_threshold = np.quantile(scores_known, .95)
-        cut_correct_count = (scores_unknown > cut_threshold).sum()
-        cut_correct_count += (scores_known <= cut_threshold).sum()
+        if self.inverse:
+            cut_correct_count = (scores_unknown < cut_threshold).sum()
+            cut_correct_count += (scores_known >= cut_threshold).sum()
+        else:
+            cut_correct_count = (scores_unknown > cut_threshold).sum()
+            cut_correct_count += (scores_known <= cut_threshold).sum()
         best_correct_count = 0
         best_threshold = 0
         for i in np.linspace(min, max, num=1000):
             correct_count = 0
-            correct_count += (scores_unknown > i).sum()
-            correct_count += (scores_known <= i).sum()
+            if self.inverse:
+                correct_count += (scores_unknown < i).sum()
+                correct_count += (scores_known >= i).sum()
+            else:
+                correct_count += (scores_unknown > i).sum()
+                correct_count += (scores_known <= i).sum()
             if best_correct_count < correct_count:
                 best_correct_count = correct_count
                 best_threshold = i
-        if best_threshold > cut_threshold:
-            best_correct_count = cut_correct_count
-            best_threshold = cut_threshold
+        if self.inverse:
+            if best_threshold < cut_threshold:
+                best_correct_count = cut_correct_count
+                best_threshold = cut_threshold
+        else:
+            if best_threshold > cut_threshold:
+                best_correct_count = cut_correct_count
+                best_threshold = cut_threshold
         self.threshold = best_threshold
         acc = best_correct_count / (scores_known.shape[0] * 2)
         return acc
-
 
     def _get_energy_score(self, logits, temperature=1):
         scores = -(temperature * torch.logsumexp(logits.data.cpu() / temperature, dim=1).numpy())

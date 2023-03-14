@@ -79,11 +79,10 @@ class VGG(nn.Module):
         x = self.classifier(x)
         return x
 
-    def forward_binarize(self, x, percentile=.65):
+    def forward_binarize(self, x, percentile=65):
         x = self.features(x)
-        x = x.clamp(max=threshold)
-        x = torch.flatten(x, 1)
         x = ash_b(x, percentile)
+        x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
 

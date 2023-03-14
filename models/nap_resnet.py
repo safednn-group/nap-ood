@@ -21,7 +21,7 @@ model_urls = {
 }
 
 
-def ash_b(x, percentile=.65):
+def ash_b(x, percentile=65):
     assert x.dim() == 4
     assert 0 <= percentile <= 100
     b, c, h, w = x.shape
@@ -256,7 +256,7 @@ class ResNet(nn.Module):
 
         return x
 
-    def forward_binarize(self, x, percentile=.65):
+    def forward_binarize(self, x, percentile=65):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -268,8 +268,8 @@ class ResNet(nn.Module):
         x = self.layer4(x)
 
         x = self.avgpool(x)
-        x = torch.flatten(x, 1)
         x = ash_b(x, percentile)
+        x = torch.flatten(x, 1)
         x = self.fc(x)
 
         return x
