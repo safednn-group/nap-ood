@@ -50,6 +50,7 @@ class ASHB(AbstractMethodInterface):
         self.base_model = config.model
         self.base_model.eval()
         self.class_count = self.base_model.output_size()[1].item()
+        self.train_dataset_name = dataset.name
         self.add_identifier = self.base_model.__class__.__name__
         self.model_name = "VGG" if self.add_identifier.find("VGG") >= 0 else "Resnet"
         if hasattr(self.base_model, 'preferred_name'):
@@ -229,7 +230,7 @@ class ASHB(AbstractMethodInterface):
             data, target = data.cuda(), target.cuda()
 
             # forward
-            x = self.base_model.forward_threshold(data, softmax=False, threshold=1)
+            x = self.base_model.forward_binarize(data, softmax=False, percentile=self.binarization_percentile)
 
             # backward
             self.scheduler.step()
@@ -259,7 +260,7 @@ class ASHB(AbstractMethodInterface):
                 data, target = data.cuda(), target.cuda()
 
                 # forward
-                output = self.base_model.forward_threshold(data, softmax=False, threshold=1)
+                output = self.base_model.forward_binarize(data, softmax=False, percentile=self.binarization_percentile)
                 loss = F.cross_entropy(output, target)
 
                 # accuracy
