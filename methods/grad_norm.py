@@ -56,8 +56,8 @@ class GradNorm(AbstractMethodInterface):
 
     def method_identifier(self):
         output = "GradNorm"
-        # if len(self.add_identifier) > 0:
-        #     output = output + "/" + self.add_identifier
+        if len(self.add_identifier) > 0:
+            output = output + "/" + self.add_identifier
         return output
 
     def get_H_config(self, dataset, mirror):
@@ -207,6 +207,7 @@ class GradNorm(AbstractMethodInterface):
             return acc
 
     def _generate_execution_times(self, loader):
+        assert self.args.batch_size == 1
         import time
         import numpy as np
         n_times = 1000

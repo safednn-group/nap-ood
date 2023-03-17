@@ -58,10 +58,10 @@ if args.exp == 'test-eval':
     Simple evaluation
 """
 if args.exp == 'simple-eval':
-    d1_tasks = ['MNIST']
+    d1_tasks = ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet']
     d2_tasks = ['NormalNoise']
     d3_tasks = ['UniformNoise']
-    method_tasks = ["prob_threshold/0"]
+    method_tasks = ['ashb/0', 'ashb/1', 'energy/0', 'energy/1', 'react/0', 'react/1']
 ########################################################
 """
     Default Evaluation

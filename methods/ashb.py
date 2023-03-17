@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import pickle
+
 import numpy as np
 import tqdm
 import time
@@ -29,7 +31,7 @@ class ASHB(AbstractMethodInterface):
         self.known_loader = None
         self.unknown_loader = None
         self.train_loader = None
-        self.binarization_percentile = 65
+        self.binarization_percentile = 90
         self.seed = 1
         self.model_name = ""
         self.workspace_dir = "workspace/ashb"
@@ -58,6 +60,8 @@ class ASHB(AbstractMethodInterface):
 
     def method_identifier(self):
         output = "ASHB"
+        if len(self.add_identifier) > 0:
+            output = output + "/" + self.add_identifier
         return output
 
     def get_H_config(self, dataset, mirror):
@@ -95,8 +99,10 @@ class ASHB(AbstractMethodInterface):
 
         self.valid_dataset_name = dataset.datasets[1].name
         self.valid_dataset_length = len(dataset.datasets[0])
-        epochs = 10
-        self._fine_tune_model(epochs=epochs)
+        self._generate_execution_times(self.known_loader)
+        return 0
+        # epochs = 10
+        # self._fine_tune_model(epochs=epochs)
         return self._find_threshold()
 
     def test_H(self, dataset):
@@ -164,7 +170,7 @@ class ASHB(AbstractMethodInterface):
 
         print('Beginning Training\n')
         self.optimizer = torch.optim.SGD(
-            self.base_model.parameters(), 0.001, momentum=0.9,
+            self.base_model.parameters(), 0.001, momentum=0.9,  # 0.00002 for cifars, stl and timagenet
             weight_decay=0.0005, nesterov=True)
 
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer,
@@ -342,6 +348,7 @@ class ASHB(AbstractMethodInterface):
         return scores
 
     def _generate_execution_times(self, loader):
+        assert self.args.batch_size == 1
         import time
         import numpy as np
         n_times = 1000
@@ -360,3 +367,13 @@ class ASHB(AbstractMethodInterface):
 
         exec_times = exec_times.mean()
         print(exec_times)
+        if not os.path.exists("exec_times_ashb.pkl"):
+            prev_exec_times = {}
+        else:
+            with open("exec_times_ashb.pkl", "r") as f:
+                prev_exec_times = pickle.load(f)
+        if not prev_exec_times.get(self.method_identifier()):
+            prev_exec_times[self.method_identifier()] = []
+        prev_exec_times[self.method_identifier()].append(exec_times)
+        with open("exec_times_ashb.pkl", "w") as f:
+            pickle.dump(prev_exec_times, f)

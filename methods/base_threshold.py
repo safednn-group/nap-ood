@@ -317,6 +317,7 @@ class ProbabilityThreshold(AbstractMethodInterface):
         return test_average_acc.item(), auroc, aupr
 
     def _generate_execution_times(self, loader):
+        assert self.args.batch_size == 1
         import time
         import numpy as np
         n_times = 1000

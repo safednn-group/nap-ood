@@ -62,8 +62,8 @@ class ReAct(AbstractMethodInterface):
 
     def method_identifier(self):
         output = "ReAct"
-        # if len(self.add_identifier) > 0:
-        #     output = output + "/" + self.add_identifier
+        if len(self.add_identifier) > 0:
+            output = output + "/" + self.add_identifier
         return output
 
     def get_H_config(self, dataset, mirror):
@@ -102,6 +102,8 @@ class ReAct(AbstractMethodInterface):
 
         self.valid_dataset_name = dataset.datasets[1].name
         self.valid_dataset_length = len(dataset.datasets[0])
+        self._generate_execution_times(self.known_loader)
+        return 0
         epochs = 10
         self._fine_tune_model(epochs=epochs)
         return self._find_threshold()
@@ -328,6 +330,7 @@ class ReAct(AbstractMethodInterface):
         return scores
 
     def _generate_execution_times(self, loader):
+        assert self.args.batch_size == 1
         import time
         import numpy as np
         n_times = 1000
@@ -346,3 +349,14 @@ class ReAct(AbstractMethodInterface):
 
         exec_times = exec_times.mean()
         print(exec_times)
+        import pickle
+        if not os.path.exists("exec_times_ashb.pkl"):
+            prev_exec_times = {}
+        else:
+            with open("exec_times_ashb.pkl", "r") as f:
+                prev_exec_times = pickle.load(f)
+        if not prev_exec_times.get(self.method_identifier()):
+            prev_exec_times[self.method_identifier()] = []
+        prev_exec_times[self.method_identifier()].append(exec_times)
+        with open("exec_times_ashb.pkl", "w") as f:
+            pickle.dump(prev_exec_times, f)

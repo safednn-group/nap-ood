@@ -34,9 +34,10 @@ def ash_b(x, percentile=65):
     t = x.view((b, c * h * w))
     v, i = torch.topk(t, k, dim=1)
     fill = s1 / k
-    fill = fill.unsqueeze(dim=1).expand(v.shape)
-    t.zero_().scatter_(dim=1, index=i, src=fill)
-    return x
+    v = v[:, -1].unsqueeze(dim=1).expand(t.shape).reshape(x.shape)
+    fill = fill.unsqueeze(dim=1).expand(t.shape).reshape(x.shape)
+    y = torch.where(x >= v, fill, torch.zeros(1, device=x.device, dtype=x.dtype))
+    return y
 
 class VGG(nn.Module):
 

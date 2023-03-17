@@ -239,6 +239,8 @@ class TinyImagenet(AbstractDomainInterface):
                                             download=True)
 
         index_file = os.path.join('./datasets/permutation_files/', 'tinyimagenet.pth')
+        if not os.path.exists('./datasets/permutation_files/'):
+            os.makedirs('./datasets/permutation_files/')
         train_indices = None
         if os.path.isfile(index_file):
             train_indices = torch.load(index_file)
