@@ -1,11 +1,13 @@
-from __future__ import print_function
+"""
+EnergyOOD algorithm integrated with OD-test benchmark.
+Origin url: https://github.com/wetliu/energy_ood
+"""
 
+from __future__ import print_function
 import pickle
 import time
-
 import numpy as np
 import tqdm
-
 import global_vars as Global
 from datasets import MirroredDataset
 from utils.iterative_trainer import IterativeTrainerConfig
@@ -14,10 +16,8 @@ from termcolor import colored
 from torch.utils.data.dataloader import DataLoader
 import torch
 import os
-
 import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
-
 from methods import AbstractMethodInterface
 
 
@@ -104,8 +104,6 @@ class Energy(AbstractMethodInterface):
 
         self.valid_dataset_name = dataset.datasets[1].name
         self.valid_dataset_length = len(dataset.datasets[0])
-        self._generate_execution_times(self.known_loader)
-        return 0
         best_acc = 0
         epochs = 10
         for m_in in [-23]:
@@ -375,13 +373,3 @@ class Energy(AbstractMethodInterface):
 
         exec_times = exec_times.mean()
         print(exec_times)
-        if not os.path.exists("exec_times_ashb.pkl"):
-            prev_exec_times = {}
-        else:
-            with open("exec_times_ashb.pkl", "r") as f:
-                prev_exec_times = pickle.load(f)
-        if not prev_exec_times.get(self.method_identifier()):
-            prev_exec_times[self.method_identifier()] = []
-        prev_exec_times[self.method_identifier()].append(exec_times)
-        with open("exec_times_ashb.pkl", "w") as f:
-            pickle.dump(prev_exec_times, f)

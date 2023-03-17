@@ -1,3 +1,8 @@
+"""
+Neuron Activation Patterns algorithm integrated with OD-test benchmark
+Author Bartlomiej Olber
+Copyright (c) SafeDNN group. All rights reserved.
+"""
 import copy
 import json
 import os

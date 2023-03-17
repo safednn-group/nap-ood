@@ -1,3 +1,8 @@
+"""
+Neuron Activation Patterns runtime monitor implementation
+Author Bartlomiej Olber
+Copyright (c) SafeDNN group. All rights reserved.
+"""
 
 import torch
 import numpy as np

@@ -1,7 +1,11 @@
+"""
+ASH-B@90 algorithm integrated with OD-test benchmark.
+Finetuning part according to: https://github.com/wetliu/energy_ood
+Origin url: https://github.com/andrijazz/ash
+"""
+
 from __future__ import print_function
-
 import pickle
-
 import numpy as np
 import tqdm
 import time
@@ -99,10 +103,8 @@ class ASHB(AbstractMethodInterface):
 
         self.valid_dataset_name = dataset.datasets[1].name
         self.valid_dataset_length = len(dataset.datasets[0])
-        self._generate_execution_times(self.known_loader)
-        return 0
-        # epochs = 10
-        # self._fine_tune_model(epochs=epochs)
+        epochs = 10
+        self._fine_tune_model(epochs=epochs)
         return self._find_threshold()
 
     def test_H(self, dataset):
@@ -367,13 +369,3 @@ class ASHB(AbstractMethodInterface):
 
         exec_times = exec_times.mean()
         print(exec_times)
-        if not os.path.exists("exec_times_ashb.pkl"):
-            prev_exec_times = {}
-        else:
-            with open("exec_times_ashb.pkl", "r") as f:
-                prev_exec_times = pickle.load(f)
-        if not prev_exec_times.get(self.method_identifier()):
-            prev_exec_times[self.method_identifier()] = []
-        prev_exec_times[self.method_identifier()].append(exec_times)
-        with open("exec_times_ashb.pkl", "w") as f:
-            pickle.dump(prev_exec_times, f)

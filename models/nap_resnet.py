@@ -1,4 +1,9 @@
-import numpy
+"""
+ResNet source code with additional functions for OOD methods
+
+Origin url: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py
+"""
+
 import numpy as np
 import torch
 import torch.nn as nn

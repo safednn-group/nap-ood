@@ -1,5 +1,8 @@
+"""
+GradNorm algorithm integrated with OD-test benchmark.
+Origin url: https://github.com/deeplearning-wisc/gradnorm_ood
+"""
 from __future__ import print_function
-
 import numpy as np
 import tqdm
 from torch.autograd import Variable

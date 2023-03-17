@@ -1,10 +1,11 @@
+"""
+Outlier Exposure algorithm integrated with OD-test benchmark.
+Origin url: https://github.com/hendrycks/outlier-exposure
+"""
 from __future__ import print_function
-
 import time
-
 import numpy as np
 import tqdm
-
 import global_vars as Global
 from datasets import MirroredDataset
 from utils.iterative_trainer import IterativeTrainerConfig
@@ -15,7 +16,6 @@ import torch
 import os
 import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
-
 from methods import AbstractMethodInterface
 
 

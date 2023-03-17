@@ -1,3 +1,7 @@
+"""
+Mean Shifted Contrastive Loss for Anomaly Detection algorithm integrated with OD-test benchmark.
+Origin url: https://github.com/talreiss/Mean-Shifted-Anomaly-Detection
+"""
 from __future__ import print_function
 
 import copy

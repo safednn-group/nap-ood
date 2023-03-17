@@ -1,3 +1,9 @@
+"""
+VGG source code with additional functions for OOD methods
+
+Origin url: https://github.com/pytorch/vision/blob/main/torchvision/models/vgg.py
+"""
+
 import torch
 import torch.nn as nn
 import numpy as np

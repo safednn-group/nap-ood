@@ -1,3 +1,7 @@
+"""
+Mahalanobis OOD algorithm integrated with OD-test benchmark.
+Origin url: https://github.com/pokaxpoka/deep_Mahalanobis_detector
+"""
 from __future__ import print_function
 
 import numpy as np
