@@ -108,42 +108,6 @@ class ReAct(AbstractMethodInterface):
         self._fine_tune_model(epochs=epochs)
         return self._find_threshold()
 
-
-    def test_H(self, dataset):
-        self.base_model.eval()
-
-        with tqdm.tqdm(total=len(dataset)) as pbar:
-            with torch.no_grad():
-
-                correct = 0.0
-                all_probs = np.array([])
-                labels = np.array([])
-                dataset_iter = DataLoader(dataset, batch_size=self.args.batch_size, shuffle=False,
-                                          num_workers=self.args.workers, pin_memory=True)
-                counter = 0
-                for i, (image, label) in enumerate(dataset_iter):
-                    pbar.update()
-                    counter += 1
-                    # Get and prepare data.
-                    input, target = image.to(self.args.device), label.to(self.args.device)
-                    logits = self.base_model.forward_threshold(input, softmax=False, threshold=1)
-                    scores = self._get_energy_score(logits)
-                    classification = np.where(scores > self.threshold, 1, 0)
-                    correct += (classification == label.numpy()).sum()
-                    if all_probs.size:
-                        labels = np.concatenate((labels, label))
-                        all_probs = np.concatenate((all_probs, scores))
-                    else:
-                        labels = label
-                        all_probs = scores
-
-                auroc = roc_auc_score(labels, all_probs)
-                p, r, _ = precision_recall_curve(labels, all_probs)
-                aupr = auc(r, p)
-                print("Final Test average accuracy %s" % (
-                    colored('%.4f%%' % (correct / labels.shape[0] * 100), 'red')))
-        return correct / labels.shape[0], auroc, aupr
-
     def _cosine_annealing(self, step, total_steps, lr_max, lr_min):
         return lr_min + (lr_max - lr_min) * 0.5 * (
                 1 + np.cos(step / total_steps * np.pi))
@@ -248,7 +212,7 @@ class ReAct(AbstractMethodInterface):
             Ec_out = -torch.logsumexp(x[len(in_set[0]):], dim=1)
             Ec_in = -torch.logsumexp(x[:len(in_set[0])], dim=1)
             loss += 0.1 * (torch.pow(F.relu(Ec_in - (-23.)), 2).mean() + torch.pow(F.relu((-5.) - Ec_out),
-                                                                                 2).mean())
+                                                                                   2).mean())
 
             loss.backward()
             self.optimizer.step()
@@ -279,73 +243,10 @@ class ReAct(AbstractMethodInterface):
         self._test_loss = loss_avg / self.train_dataset_length
         self._test_accuracy = correct / self.train_dataset_length
 
-    def _find_threshold(self):
-        scores_known = np.array([])
-        scores_unknown = np.array([])
-        with torch.no_grad():
-            for i, (image, label) in enumerate(self.known_loader):
-
-                # Get and prepare data.
-                input, target = image.to(self.args.device), label.to(self.args.device)
-                logits = self.base_model.forward_threshold(input, softmax=False, threshold=1)
-                scores = self._get_energy_score(logits)
-                if scores_known.size:
-                    scores_known = np.concatenate((scores_known, scores))
-                else:
-                    scores_known = scores
-
-            for i, (image, label) in enumerate(self.unknown_loader):
-                # Get and prepare data.
-                input, target = image.to(self.args.device), label.to(self.args.device)
-                logits = self.base_model.forward_threshold(input, softmax=False, threshold=1)
-                scores = self._get_energy_score(logits)
-                if scores_unknown.size:
-                    scores_unknown = np.concatenate((scores_unknown, scores))
-                else:
-                    scores_unknown = scores
-
-        min = np.max([scores_unknown.min(), scores_known.min()])
-        max = np.min([scores_unknown.max(), scores_known.max()])
-        cut_threshold = np.quantile(scores_known, .95)
-        cut_correct_count = (scores_unknown > cut_threshold).sum()
-        cut_correct_count += (scores_known <= cut_threshold).sum()
-        best_correct_count = 0
-        best_threshold = 0
-        for i in np.linspace(min, max, num=1000):
-            correct_count = 0
-            correct_count += (scores_unknown > i).sum()
-            correct_count += (scores_known <= i).sum()
-            if best_correct_count < correct_count:
-                best_correct_count = correct_count
-                best_threshold = i
-        if best_threshold > cut_threshold:
-            best_correct_count = cut_correct_count
-            best_threshold = cut_threshold
-        self.threshold = best_threshold
-        acc = best_correct_count / (scores_known.shape[0] * 2)
-        return acc
+    def get_ood_score(self, input):
+        logits = self.base_model.forward_threshold(input, softmax=False, threshold=1)
+        return self._get_energy_score(logits)
 
     def _get_energy_score(self, logits, temperature=1):
         scores = -(temperature * torch.logsumexp(logits.data.cpu() / temperature, dim=1).numpy())
         return scores
-
-    def _generate_execution_times(self, loader):
-        assert self.args.batch_size == 1
-        import time
-        import numpy as np
-        n_times = 1000
-        exec_times = np.ones(n_times)
-
-        trainiter = iter(loader)
-        x = trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device)
-        with torch.no_grad():
-            for i in range(n_times):
-                start_time = time.time()
-                logits = self.base_model.forward_threshold(x, softmax=False, threshold=1)
-                scores = self._get_energy_score(logits)
-
-                _ = np.where(scores > self.threshold, 1, 0)
-                exec_times[i] = time.time() - start_time
-
-        exec_times = exec_times.mean()
-        print(exec_times)

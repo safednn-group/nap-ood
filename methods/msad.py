@@ -49,8 +49,6 @@ class MSAD(AbstractMethodInterface):
         h_path = get_ref_model_path(self.args, config.model.__class__.__name__, dataset.name)
         self.best_h_path = os.path.join(h_path, 'model.best.pth')
 
-        # trainer = IterativeTrainer(config, self.args)
-
         if not os.path.isfile(self.best_h_path):
             raise NotImplementedError("Please use model_setup to pretrain the networks first!")
         else:
@@ -71,7 +69,7 @@ class MSAD(AbstractMethodInterface):
             output = output + "/" + self.add_identifier
         return output
 
-    def get_H_config(self, dataset, mirror):
+    def get_H_config(self, dataset):
 
         dataset2 = copy.deepcopy(dataset)
         dataset2.transform = Transform()
@@ -82,7 +80,6 @@ class MSAD(AbstractMethodInterface):
                                        pin_memory=True, shuffle=True)
         # Set up the model
         model = Global.get_ref_classifier(self.args.D1)[self.default_model]().to(self.args.device)
-        # model.forward()
 
         # Set up the config
         config = IterativeTrainerConfig()

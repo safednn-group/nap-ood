@@ -15,13 +15,13 @@ import tqdm
 from scipy import stats
 from termcolor import colored
 from torch.utils.data.dataloader import DataLoader
+from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 
 import global_vars as Global
 from datasets import MirroredDataset
 from methods import AbstractMethodInterface
 from methods.nap.monitor import FullNetMonitor
 from utils.iterative_trainer import IterativeTrainerConfig
-from sklearn.metrics import roc_auc_score, auc, precision_recall_curve
 
 
 class NeuronActivationPatterns(AbstractMethodInterface):
@@ -49,7 +49,6 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         from models import get_ref_model_path
         h_path = get_ref_model_path(self.args, config.model.__class__.__name__, dataset.name)
         best_h_path = path.join(h_path, 'model.best.pth')
-
 
         if not path.isfile(best_h_path):
             raise NotImplementedError("Please use model_setup to pretrain the networks first!")
@@ -139,16 +138,13 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         else:
             with open(done_path, 'rb') as f:
                 self.monitor, self.nap_params, self.scaled_thresholds, self.thresholds, self.chosen_layers, \
-                self.add_factor, self.multiplier, acc = pickle.load(f)
+                    self.add_factor, self.multiplier, acc = pickle.load(f)
                 if not self.monitor:
                     self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                                   layers_shapes=self.monitored_layers_shapes)
                     self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
                 if self.nap_cfg["n_votes"] != self.chosen_layers.shape[0]:
                     raise ValueError("Config n_votes should be equal to the number of layers chosen during training")
-
-                if self.nap_cfg["use_tree"]:
-                    self.monitor.make_forest()
 
             return acc
 
@@ -169,8 +165,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
                     _, predicted = torch.max(outputs.data, 1)
                     distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                                     predicted.cpu().detach().numpy(),
-                                                                     tree=self.nap_cfg["use_tree"])
+                                                                     predicted.cpu().detach().numpy())
                     score = (distance[:, :] + self.add_factor) * self.multiplier - self.scaled_thresholds
 
                     score = score.sum(axis=1)
@@ -218,8 +213,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     outputs, intermediate_values, _ = self.base_model.forward_nap(input, nap_params=self.nap_params)
                     _, predicted = torch.max(outputs.data, 1)
                     distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                                     predicted.cpu().detach().numpy(),
-                                                                     tree=self.nap_cfg["use_tree"])
+                                                                     predicted.cpu().detach().numpy())
                     score = (distance[:, :] + self.add_factor) * self.multiplier - self.scaled_thresholds
                     score = score.sum(axis=1)
                     if self.nap_cfg["binary_voting"]:
@@ -272,8 +266,6 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                           layers_shapes=self.monitored_layers_shapes)
             self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
-            if self.nap_cfg["use_tree"]:
-                self.monitor.make_forest()
             return accuracies
 
     def _generate_thresholds_for_every_configuration(self):
@@ -352,8 +344,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=nap_params)
             _, predicted = torch.max(outputs.data, 1)
             distance = self.monitor.compute_hamming_distance(intermediate_values,
-                                                             predicted.cpu().detach().numpy(),
-                                                             tree=self.nap_cfg["use_tree"])
+                                                             predicted.cpu().detach().numpy())
 
             if hamming_distance.size:
                 hamming_distance = np.concatenate((hamming_distance, distance))
@@ -424,7 +415,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         count_class = self._count_classes(loader)
         if not monitor:
             monitor = self.monitor
-        monitor.set_class_patterns_count(count_class)
+        monitor.class_patterns_count = count_class
         dataiter = iter(loader)
         print(colored(f"Generating known activation patterns", 'green'))
         for img, label in tqdm.tqdm(dataiter):

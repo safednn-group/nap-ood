@@ -6,24 +6,19 @@ Copyright (c) SafeDNN group. All rights reserved.
 
 import torch
 import numpy as np
-# import methods.nap.numba_balltree.ball_tree as bt
 
 
 class FullNetMonitor(object):
 
     def __init__(self, class_count, device, layers_shapes):
-        self.layers_shapes = layers_shapes
-
-        self.class_count = class_count
-        self.neurons_count = 0
-        self.class_patterns_count = 0
+        self.class_patterns_count = dict()
         self.device = device
-        for layer in layers_shapes:
-            self.neurons_count += layer
+        if not isinstance(layers_shapes, list):
+            layers_shapes = [layers_shapes]
 
+        self.layers_shapes = layers_shapes
         self.known_patterns_set = dict()
         self.known_patterns_tensor = dict()
-        # self.forest = dict()
 
         for i in range(class_count):
             self.known_patterns_set[i] = dict()
@@ -32,16 +27,7 @@ class FullNetMonitor(object):
                 self.known_patterns_set[i][j] = set()
                 self.known_patterns_tensor[i][j] = torch.Tensor()
 
-    def set_neurons_to_monitor(self, neurons_to_monitor):
-        self.neurons_to_monitor = neurons_to_monitor
-        for klass in neurons_to_monitor:
-            self.neurons_to_monitor[klass] = np.concatenate(
-                (neurons_to_monitor[klass], np.arange(self.layers_shapes[0], self.neurons_count)))
-
-    def set_class_patterns_count(self, count):
-        self.class_patterns_count = count
-
-    def compute_hamming_distance(self, neuron_values, class_id, tree=False):
+    def compute_hamming_distance(self, neuron_values, class_id, mean=False):
 
         mat_torch = torch.zeros(neuron_values.shape, device=neuron_values.device)
         neuron_on_off_pattern = neuron_values.gt(mat_torch).type(torch.uint8).to(torch.device(self.device))
@@ -51,18 +37,19 @@ class FullNetMonitor(object):
             full_net_distances = []
             offset = 0
             for shape_id, shape in enumerate(self.layers_shapes):
-                # if tree:
-                #     lvl = self.forest[class_id[i]][shape_id].query(
-                #         np.reshape(neuron_on_off_pattern.cpu()[i, offset:offset + shape], (1, -1)))[0]
-                # else:
-                #     lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
-                #                                                                offset:offset + shape]).sum(
-                #         dim=1).min()
-                lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
-                                                                           offset:offset + shape]).sum(
-                    dim=1).min()
+                if self.known_patterns_tensor[class_id[i]][shape_id].numel():
+                    if mean:
+                        lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+                                                                                   offset:offset + shape]).sum(
+                            dim=1).float().mean()
+                    else:
+                        lvl = (self.known_patterns_tensor[class_id[i]][shape_id] ^ neuron_on_off_pattern[i,
+                                                                                   offset:offset + shape]).sum(
+                            dim=1).min()
+                else:
+                    lvl = shape
                 offset += shape
-                full_net_distances.append(lvl.item())
+                full_net_distances.append(int(lvl))
             distance.append(full_net_distances)
         distance = np.array(distance)
         return distance
@@ -95,12 +82,6 @@ class FullNetMonitor(object):
                     self.known_patterns_set[label[example_id]][shape_id].add(abs_np_slice.tobytes())
                 offset += shape
 
-    # def make_forest(self):
-    #     for i in range(self.class_count):
-    #         self.forest[i] = dict()
-    #         for j in range(len(self.known_patterns_tensor[i])):
-    #             self.forest[i][j] = bt.BallTree(self.known_patterns_tensor[i][j].cpu())
-
     def cut_duplicates(self):
         for i in self.known_patterns_tensor:
             for j in self.known_patterns_tensor[i]:
@@ -108,7 +89,3 @@ class FullNetMonitor(object):
                     self.known_patterns_tensor[i][j] = self.known_patterns_tensor[i][j][
                                                        :len(self.known_patterns_set[i][j]),
                                                        :]
-
-    def trim_class_zero(self, length):
-        for i in range(len(self.layers_shapes)):
-            self.known_patterns_tensor[0][i] = self.known_patterns_tensor[0][i][:length, :]

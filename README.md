@@ -57,27 +57,26 @@ In comparison to the original OD-test, we implemented the following changes:
 
 ## List of Implemented Methods
 
-| Index | Name                         | Short Description                                                                                                                            | Code                                           |
-|-------|------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
-| 1     | PbThreshold [1]              | A threshold on the maximum probability.                                                                                                      | [link](methods/base_threshold.py)              |
-| 2     | ScoreSVM                     | A SVM on the logits (pre-softmax).                                                                                                           | [link](methods/score_svm.py)                   |
-| 3     | LogisticSVM                  | A SVM on the logits of a network trained with k-way logistic loss function.                                                                  | [link](methods/logistic_threshold.py)          | 
-| 4     | MCDropout [2]                | MC-Dropout evaluation over 7 samples followed by a threshold on the entropy of average prediction.                                           | [link](methods/mcdropout.py)                   | 
-| 5     | KNNSVM                       | An SVM on the sorted Euclidean distance to K-nearest-neighbours.                                                                             | [link](methods/nearest_neighbor.py)            |
-| 6     | ODIN [3]                     | A threshold on the scaled softmax outputs of the perturbed input.                                                                            | [link](methods/odin.py)                        |
-| 7     | AEThreshold                  | A threshold on the autoencoder reconstruction error of the given input.                                                                      | [link](methods/reconstruction_error.py)        |
-| 8     | DeepEnsemble [4]             | Similar to MCDropout, except we average over the predictions of 5 networks that are trained independently with adversarial data augmentation. | [link](methods/deep_ensemble.py)               | 
-| 9     | PixelCNN++ [5]               | A threshold on the log-likelihood of each input.                                                                                             | [link](methods/pixelcnn.py)                    |
-| 10    | OpenMax [6]                  | Calibrated probability with additional unknown class and an SVM on top.                                                                      | [link](methods/openmax.py)                     |
-| 11    | K-MNNSVM, K-BNNSVM, K-VNNSVM | Similar to KNNSVM, but uses the latent representation of different (variational)-autoencoders.                                               | [link](methods/nearest_neighbor.py)            |
-| 12    | NeuronActivationPatterns     | The new method proposed in this paper.                                                                                                       | [link](methods/nap/nap.py)                     |
-| 13    | Mahalanobis [7]              | Mahalanobis distance on feature space.                                                                                                       | [link](methods/mahalanobis/integrated.py)      |
-| 14    | MSAD [8]                     | Anomaly detection with mean-shifted contrastive loss.                                                                                        | [link](methods/msad.py)             |
-| 15    | GradNorm [9]                 | A threshold on gradient modulus of ultimate or penultimate layer.                                                                            | [link](methods/grad_norm.py)        |
-| 16    | OutlierExposure [10]         | Probability calibration enhancement via fine-tuning a classifier with a loss that penalizes OOD samples.                                     | [link](methods/outlier_exposure.py) |
-| 17    | Energy [11]                  | Similar to OutlierExposure, except the fine-tuning is performed with energy loss.                                                            | [link](methods/energy.py)           |
-| 18    | ReAct [12]                   | Similar to Energy but feature activations are rectified.                                                                            | [link](methods/react.py)            |
-| 19    | ASHB [13]                    | Anomaly detection with mean-shifted contrastive loss.                                                                                        | [link](methods/msad.py)             |
+| Index | Name                         | Short Description                                                                                                                             | Code                                      |
+|-------|------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------|
+| 1     | PbThreshold [1]              | A threshold on the maximum probability.                                                                                                       | [link](methods/base_threshold.py)         |
+| 2     | ScoreSVM                     | A SVM on the logits (pre-softmax).                                                                                                            | [link](methods/score_svm.py)              |
+| 3     | LogisticSVM                  | A SVM on the logits of a network trained with k-way logistic loss function.                                                                   | [link](methods/logistic_threshold.py)     | 
+| 4     | MCDropout [2]                | MC-Dropout evaluation over 7 samples followed by a threshold on the entropy of average prediction.                                            | [link](methods/mcdropout.py)              | 
+| 5     | KNNSVM                       | An SVM on the sorted Euclidean distance to K-nearest-neighbours.                                                                              | [link](methods/nearest_neighbor.py)       |
+| 6     | ODIN [3]                     | A threshold on the scaled softmax outputs of the perturbed input.                                                                             | [link](methods/odin.py)                   |
+| 7     | AEThreshold                  | A threshold on the autoencoder reconstruction error of the given input.                                                                       | [link](methods/reconstruction_error.py)   |
+| 8     | DeepEnsemble [4]             | Similar to MCDropout, except we average over the predictions of 5 networks that are trained independently with adversarial data augmentation. | [link](methods/deep_ensemble.py)          |
+| 9     | OpenMax [5]                  | Calibrated probability with additional unknown class and an SVM on top.                                                                       | [link](methods/openmax.py)                |
+| 10    | K-MNNSVM, K-BNNSVM, K-VNNSVM | Similar to KNNSVM, but uses the latent representation of different (variational)-autoencoders.                                                | [link](methods/nearest_neighbor.py)       |
+| 11    | NeuronActivationPatterns     | The new method proposed in this paper.                                                                                                        | [link](methods/nap/nap.py)                |
+| 12    | Mahalanobis [6]              | Mahalanobis distance on feature space.                                                                                                        | [link](methods/mahalanobis/integrated.py) |
+| 13    | MSAD [7]                     | Anomaly detection with mean-shifted contrastive loss.                                                                                         | [link](methods/msad.py)                   |
+| 14    | GradNorm [8]                 | A threshold on gradient modulus of ultimate or penultimate layer.                                                                             | [link](methods/grad_norm.py)              |
+| 15    | OutlierExposure [9]          | Probability calibration enhancement via fine-tuning a classifier with a loss that penalizes OOD samples.                                      | [link](methods/outlier_exposure.py)       |
+| 16    | Energy [10]                  | Similar to OutlierExposure, except the fine-tuning is performed with energy loss.                                                             | [link](methods/energy.py)                 |
+| 17    | ReAct [11]                   | Similar to Energy but feature activations are rectified.                                                                                      | [link](methods/react.py)                  |
+| 18    | ASHB [12]                    | Binarization of the penultimate layer activations, then computing energy score.                                                               | [link](methods/ashb.py)                   |
 
 
 
@@ -86,7 +85,7 @@ In comparison to the original OD-test, we implemented the following changes:
 
 # What is new?
 
-We have extended the original OD-test by adding 7 new OOD detectors (indices 12-18 on the [list](#list-of-implemented-methods)), including NeuronActivationPatterns.
+We have extended the original OD-test by adding 7 new OOD detectors (indices 11-18 on the [list](#list-of-implemented-methods)), including NeuronActivationPatterns.
 AUROC is used to compare the methods alongside accuracy. The results of the extended OD-test are below.
 
 ## Average accuracy
@@ -120,12 +119,11 @@ Create a conda environment that includes all necessary packages:
 2. Y. Gal and Z. Ghahramani, “Dropout as a Bayesian Approximation: Representing Model Uncertainty in Deep Learning,” in ICML, 2016.
 3. S. Liang, Y. Li, and R. Srikant, “Enhancing The Reliability of Out-of-distribution Image Detection in Neural Networks,” ICLR, 2018.
 4. B. Lakshminarayanan, A. Pritzel, and C. Blundell, “Simple and Scalable Predictive Uncertainty Estimation using Deep Ensembles,” in NIPS, 2017.
-5. T. Salimans, A. Karpathy, X. Chen, and D. P. Kingma, “Pixelcnn++: Improving the pixelcnn with discretized logistic mixture likelihood and other modifications,” ICLR, 2017.
-6. A. Bendale and T. E. Boult, “Towards Open Set Deep Networks,” in CVPR, 2016.
-7. Lee, K., Lee, K., Lee, H., Shin, J.: A simple unified framework for detecting out-of-distribution samples and adversarial attacks (2018).
-8. Reiss, T., Hoshen, Y.: Mean-shifted contrastive loss for anomaly detection (2021).
-9. Huang, R., Geng, A., Li, Y.: On the importance of gradients for detecting distributional shifts in the wild (2021).
-10. Hendrycks, D., Mazeika, M., Dietterich, T.: Deep anomaly detection with outlier exposure (2019).
-11. Weitang Liu, Xiaoyun Wang, John Owens, and Yixuan Li. Energy-based out-of-distribution detection (2020).
-12. Yiyou Sun and Chuan Guo and Yixuan Li. ReAct: Out-of-distribution Detection With Rectified Activations (2021).
-13. A. Djurisic, N. Bozanic, A. Ashok, R. Liu Extremely Simple Activation Shaping for Out-of-Distribution Detection (2022).
+5. A. Bendale and T. E. Boult, “Towards Open Set Deep Networks,” in CVPR, 2016.
+6. Lee, K., Lee, K., Lee, H., Shin, J.: A simple unified framework for detecting out-of-distribution samples and adversarial attacks (2018).
+7. Reiss, T., Hoshen, Y.: Mean-shifted contrastive loss for anomaly detection (2021).
+8. Huang, R., Geng, A., Li, Y.: On the importance of gradients for detecting distributional shifts in the wild (2021). 
+9. Hendrycks, D., Mazeika, M., Dietterich, T.: Deep anomaly detection with outlier exposure (2019). 
+10. Weitang Liu, Xiaoyun Wang, John Owens, and Yixuan Li. Energy-based out-of-distribution detection (2020). 
+11. Yiyou Sun and Chuan Guo and Yixuan Li. ReAct: Out-of-distribution Detection With Rectified Activations (2021). 
+12. A. Djurisic, N. Bozanic, A. Ashok, R. Liu Extremely Simple Activation Shaping for Out-of-Distribution Detection (2022).

@@ -64,8 +64,8 @@ class Mahalanobis(AbstractMethodInterface):
 
     def method_identifier(self):
         output = "Mahalanobis"
-        # if len(self.add_identifier) > 0:
-        #     output = output + "/" + self.add_identifier
+        if len(self.add_identifier) > 0:
+            output = output + "/" + self.add_identifier
         return output
 
     def get_H_config(self, dataset, mirror):

@@ -13,10 +13,9 @@ import datasets.CIFAR as CIFAR
 import datasets.noise as noise
 import datasets.STL as STL
 import datasets.TinyImagenet as TI
-import datasets.GTSRB as GTSRB
 
 all_dataset_classes = [MNIST.MNIST, FMNIST.FashionMNIST, NMNIST.NotMNIST,
-                       CIFAR.CIFAR10, GTSRB.GTSRB, CIFAR.CIFAR100,
+                       CIFAR.CIFAR10, CIFAR.CIFAR100,
                        STL.STL10, TI.TinyImagenet,
                        noise.UniformNoise, noise.NormalNoise,
                        STL.STL10d32, TI.TinyImagenetd32]
@@ -29,15 +28,14 @@ all_dataset_classes = [MNIST.MNIST, FMNIST.FashionMNIST, NMNIST.NotMNIST,
 """
 d2_compatiblity = {
     # This can be used as d2 for            # this
-    'MNIST': ['FashionMNIST', 'CIFAR10', 'GTSRB', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
-    'NotMNIST': ['MNIST', 'FashionMNIST', 'CIFAR10', 'GTSRB', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32',
+    'MNIST': ['FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
+    'NotMNIST': ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32',
                  'TinyImagenetd32'],
-    'FashionMNIST': ['MNIST', 'CIFAR10', 'GTSRB', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
-    'CIFAR10': ['MNIST', 'FashionMNIST', 'GTSRB', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
-    'GTSRB': ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
-    'CIFAR100': ['MNIST', 'FashionMNIST', 'CIFAR10', 'GTSRB', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
-    'STL10': ['MNIST', 'FashionMNIST', 'GTSRB', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
-    'TinyImagenet': ['MNIST', 'FashionMNIST', 'CIFAR10', 'GTSRB', 'CIFAR100', 'STL10', 'STL10d32'],
+    'FashionMNIST': ['MNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
+    'CIFAR10': ['MNIST', 'FashionMNIST', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
+    'CIFAR100': ['MNIST', 'FashionMNIST', 'CIFAR10', 'STL10', 'TinyImagenet', 'STL10d32', 'TinyImagenetd32'],
+    'STL10': ['MNIST', 'FashionMNIST', 'CIFAR100', 'TinyImagenet', 'TinyImagenetd32'],
+    'TinyImagenet': ['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100', 'STL10', 'STL10d32'],
     # STL10 is not compatible with CIFAR10 because of the 9-overlapping classes.
     # Erring on the side of caution.
 }
@@ -54,7 +52,6 @@ mirror_augment = {
 
 import models.classifiers as CLS
 import models.autoencoders as AES
-import models.pixelcnn.model as PCNN
 
 """
     Each dataset has a list of compatible neural netwok architectures.
@@ -62,10 +59,9 @@ import models.pixelcnn.model as PCNN
     For instance, VGGs are all 0 and Resnets are all 1.
 """
 dataset_reference_classifiers = {
-    'MNIST': [CLS.MNIST_VGG, CLS.MNIST_Resnet, CLS.MNIST_Simple],
+    'MNIST': [CLS.MNIST_VGG, CLS.MNIST_Resnet],
     'FashionMNIST': [CLS.MNIST_VGG, CLS.MNIST_Resnet],
     'CIFAR10': [CLS.CIFAR10_VGG, CLS.CIFAR10_Resnet],
-    'GTSRB': [CLS.GTSRB_VGG, CLS.GTSRB_Resnet, CLS.GTSRB_Simple],
     'CIFAR100': [CLS.CIFAR100_VGG, CLS.CIFAR100_Resnet],
     'STL10': [CLS.STL10_VGG, CLS.STL10_Resnet],
     'TinyImagenet': [CLS.TinyImagenet_VGG, CLS.TinyImagenet_Resnet],
@@ -85,7 +81,6 @@ dataset_reference_autoencoders = {
     'MNIST': [ModelFactory(AES.Generic_AE, dims=(1, 28, 28), max_channels=256, depth=8, n_hidden=96)],
     'FashionMNIST': [ModelFactory(AES.Generic_AE, dims=(1, 28, 28), max_channels=256, depth=8, n_hidden=96)],
     'CIFAR10': [ModelFactory(AES.Generic_AE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
-    'GTSRB': [ModelFactory(AES.Generic_AE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
     'CIFAR100': [ModelFactory(AES.Generic_AE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
     'STL10': [ModelFactory(AES.Generic_AE, dims=(3, 96, 96), max_channels=512, depth=12, n_hidden=512)],
     'TinyImagenet': [ModelFactory(AES.Generic_AE, dims=(3, 64, 64), max_channels=512, depth=12, n_hidden=512)],
@@ -95,21 +90,11 @@ dataset_reference_vaes = {
     'MNIST': [ModelFactory(AES.Generic_VAE, dims=(1, 28, 28), max_channels=256, depth=8, n_hidden=96)],
     'FashionMNIST': [ModelFactory(AES.Generic_VAE, dims=(1, 28, 28), max_channels=256, depth=8, n_hidden=96)],
     'CIFAR10': [ModelFactory(AES.Generic_VAE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
-    'GTSRB': [ModelFactory(AES.Generic_VAE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
     'CIFAR100': [ModelFactory(AES.Generic_VAE, dims=(3, 32, 32), max_channels=512, depth=10, n_hidden=256)],
     'STL10': [ModelFactory(AES.Generic_VAE, dims=(3, 96, 96), max_channels=512, depth=12, n_hidden=512)],
     'TinyImagenet': [ModelFactory(AES.Generic_VAE, dims=(3, 64, 64), max_channels=512, depth=12, n_hidden=512)],
 }
 
-dataset_reference_pcnns = {
-    'MNIST': [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=32, input_channels=1, nr_logistic_mix=5)],
-    'FashionMNIST': [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=64, input_channels=1, nr_logistic_mix=5)],
-    'CIFAR10': [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
-    'GTSRB': [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
-    'CIFAR100': [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
-    'TinyImagenetd32': [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
-    'STL10d32': [ModelFactory(PCNN.PixelCNN, nr_resnet=5, nr_filters=160, input_channels=3, nr_logistic_mix=10)],
-}
 
 """
     This is where we keep a reference to all the methods.
@@ -124,7 +109,6 @@ import methods.binary_classifier as BinClass
 import methods.deep_ensemble as DE
 import methods.odin as ODIN
 import methods.reconstruction_error as RE
-import methods.pixelcnn as PCNN
 import methods.openmax as OM
 import methods.nap.nap as NAP
 import methods.mahalanobis.integrated as M
@@ -148,7 +132,6 @@ all_methods = {
     'deep_ensemble': DE.DeepEnsemble,
     'odin': ODIN.ODIN,
     'reconst_thresh': RE.ReconstructionThreshold,
-    'pixelcnn': PCNN.PixelCNN,
     'openmax': OM.OpenMax,
     'nap': NAP.NeuronActivationPatterns,
     'mahalanobis': M.Mahalanobis,
@@ -190,12 +173,6 @@ def get_ref_autoencoder(dataset):
 def get_ref_vae(dataset):
     if dataset in dataset_reference_vaes:
         return dataset_reference_vaes[dataset]
-    raise NotImplementedError()
-
-
-def get_ref_pixelcnn(dataset):
-    if dataset in dataset_reference_pcnns:
-        return dataset_reference_pcnns[dataset]
     raise NotImplementedError()
 
 

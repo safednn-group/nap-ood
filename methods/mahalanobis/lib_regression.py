@@ -5,7 +5,6 @@ import os
 import methods.mahalanobis.calculate_log as callog
 
 
-
 def block_split(X, Y, out, partition):
     """
     Split the data training and testing

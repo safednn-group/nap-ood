@@ -21,7 +21,6 @@ if args.exp == 'master':
     d3_tasks = ['UniformNoise', 'NormalNoise', 'MNIST', 'FashionMNIST', 'NotMNIST', 'CIFAR10', 'CIFAR100', 'STL10',
                 'TinyImagenet']
     method_tasks = [
-        'pixelcnn/0',
         'mcdropout/0',
         'prob_threshold/0', 'prob_threshold/1',
         'score_svm/0', 'score_svm/1',

@@ -1,6 +1,5 @@
 {
   "store_monitor": false,
-  "use_tree": false,
   "accuracy_criterion": true,
   "steps": 5,
   "binary_voting": true,
