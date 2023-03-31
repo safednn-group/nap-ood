@@ -69,7 +69,7 @@ class MSAD(AbstractMethodInterface):
             output = output + "/" + self.add_identifier
         return output
 
-    def get_H_config(self, dataset):
+    def get_H_config(self, dataset, mirror):
 
         dataset2 = copy.deepcopy(dataset)
         dataset2.transform = Transform()

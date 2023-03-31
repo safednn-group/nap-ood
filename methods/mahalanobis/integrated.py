@@ -105,15 +105,6 @@ class Mahalanobis(AbstractMethodInterface):
         self.valid_dataset_name = dataset.datasets[1].name
         self.valid_dataset_length = len(dataset.datasets[0])
         self._tune_hyperparameters()
-        print('saving results...')
-        save_dir = os.path.join('workspace/mahalanobis/', self.train_dataset_name, self.model_name)
-
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        np.save(os.path.join(save_dir, 'results'),
-                np.array([self.sample_mean, self.precision, self.best_lr.coef_, self.best_lr.intercept_,
-                          self.best_magnitude]))
 
     def test_H(self, dataset):
 
@@ -149,10 +140,6 @@ class Mahalanobis(AbstractMethodInterface):
 
     def _tune_hyperparameters(self):
         print('Tuning hyper-parameters...')
-
-        save_dir = os.path.join('workspace/mahalanobis/', self.train_dataset_name, self.model_name, 'tmp')
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
         # set information about feature extaction
         temp_x = torch.rand((2,) + self.input_shape)
         temp_x = Variable(temp_x).cuda()

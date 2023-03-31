@@ -99,17 +99,24 @@ class GradNorm(AbstractMethodInterface):
         return self._find_threshold()
 
     def get_ood_score(self, input):
-        logsoftmax = torch.nn.LogSoftmax(dim=-1).cuda()
-        inputs = Variable(input.cuda(), requires_grad=True)
-        self.base_model.zero_grad()
-        outputs = self.base_model(inputs, softmax=False)
-        targets = torch.ones((inputs.shape[0], self.class_count)).cuda()
-        loss = torch.mean(torch.sum(-targets * logsoftmax(outputs), dim=-1))
+        scores = []
+        with torch.enable_grad():
+            for img in input:
+                logsoftmax = torch.nn.LogSoftmax(dim=-1).cuda()
+                inputs = Variable(img.unsqueeze(0).cuda(), requires_grad=True)
+                self.base_model.train()
+                self.base_model.zero_grad()
+                outputs = self.base_model(inputs, softmax=False)
+                targets = torch.ones((inputs.shape[0], self.class_count)).cuda()
+                loss = torch.mean(torch.sum(-targets * logsoftmax(outputs), dim=-1))
 
-        loss.backward()
-        if self.model_name == "VGG":
-            layer_grad = self.base_model.model.classifier[-1].weight.grad.data
-        else:
-            layer_grad = self.base_model.model.layer4[-1].conv3.weight.grad.data
+                loss.backward()
+                if self.model_name == "VGG":
+                    layer_grad = self.base_model.model.classifier[-1].weight.grad.data
+                else:
+                    layer_grad = self.base_model.model.layer4[-1].conv3.weight.grad.data
 
-        return torch.sum(torch.abs(layer_grad)).cpu().numpy()
+                self.base_model.eval()
+                score = torch.sum(torch.abs(layer_grad)).cpu().numpy()
+                scores.append(score)
+        return np.array(scores)

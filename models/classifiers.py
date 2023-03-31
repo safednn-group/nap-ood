@@ -127,6 +127,7 @@ class MNIST_Resnet(Classifier):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 29, 4: 36, 5: 43, 6: 51, 7: 58, 8: 65, 9: 72, 10: 79, 11: 87}
         # Resnet50.
         self.model = Resnet.ResNet(Bottleneck, [2, 3, 5, 2], num_classes=10)
 
@@ -201,6 +202,9 @@ class CIFAR10_Resnet(Classifier):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 28, 4: 36, 5: 43, 6: 50, 7: 57, 8: 65, 9: 72, 10: 79, 11: 86,
+                             12: 93,
+                             13: 100, 14: 108, 15: 115}
         # Resnet50.
         self.model = Resnet.ResNet(Bottleneck, [3, 4, 6, 3], num_classes=10)
 
@@ -276,6 +280,9 @@ class CIFAR100_Resnet(Classifier):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 28, 4: 36, 5: 43, 6: 50, 7: 57, 8: 65, 9: 72, 10: 79, 11: 86,
+                             12: 93,
+                             13: 100, 14: 108, 15: 115}
         # Resnet50.
         self.model = Resnet.ResNet(Bottleneck, [3, 4, 6, 3], num_classes=100)
 
@@ -350,6 +357,9 @@ class STL10_Resnet(Classifier):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 28, 4: 36, 5: 43, 6: 50, 7: 57, 8: 65, 9: 72, 10: 79, 11: 86,
+                             12: 93,
+                             13: 100, 14: 108, 15: 115}
         # Resnet50.
         self.model = Resnet.ResNet(Bottleneck, [3, 4, 6, 3], num_classes=10)
 
@@ -424,6 +434,9 @@ class TinyImagenet_Resnet(Classifier):
         # Based on the imagenet normalization params.
         self.offset = 0.44900
         self.multiplier = 4.42477
+        self.relu_indices = {0: 6, 1: 14, 2: 21, 3: 28, 4: 36, 5: 43, 6: 50, 7: 57, 8: 65, 9: 72, 10: 79, 11: 86,
+                             12: 93,
+                             13: 100, 14: 108, 15: 115}
         # Resnet50.
         self.model = Resnet.ResNet(Bottleneck, [3, 4, 6, 3], num_classes=200)
 

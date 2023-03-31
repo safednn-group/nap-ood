@@ -233,8 +233,8 @@ class OutlierExposure(AbstractMethodInterface):
                 # test loss average
                 loss_avg += float(loss.data)
 
-        self._test_loss = loss_avg / len(self.train_loader)
-        self._test_accuracy = correct / len(self.train_loader)
+        self._test_loss = loss_avg / len(self.train_loader.dataset)
+        self._test_accuracy = correct / len(self.train_loader.dataset)
 
     def get_ood_score(self, input):
         logits = self.base_model(input, softmax=False)
