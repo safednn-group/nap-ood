@@ -89,13 +89,12 @@ class ResNet(TorchResNet):
         for name, layer in chain(self.layer1.named_children(), self.layer2.named_children(),
                                  self.layer3.named_children(), self.layer4.named_children()):
             x = layer.forward(x)
-            layer_counter_str = str(layer_counter)
-            if layer_counter_str in nap_params:
+            if layer_counter in nap_params:
                 intermediate = torch.flatten(
-                    self.pools[nap_params[layer_counter_str]["pool_type"]][nap_params[layer_counter_str]["pool_size"]](
+                    self.pools[nap_params[layer_counter]["pool_type"]][nap_params[layer_counter]["pool_size"]](
                         x), 1)
                 intermediate = torch.where(
-                    intermediate > torch.quantile(intermediate, nap_params[layer_counter_str]["quantile"],
+                    intermediate > torch.quantile(intermediate, nap_params[layer_counter]["quantile"],
                                                   dim=1).unsqueeze(1), intermediate, zero_tensor)
                 shapes.append(intermediate.shape[-1])
                 if prev.numel():

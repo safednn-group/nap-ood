@@ -142,7 +142,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 if not self.monitor:
                     self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                                   layers_shapes=self.monitored_layers_shapes)
-                    self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+                    self._add_class_patterns_to_monitor(self.train_loader)
                 if self.nap_cfg["n_votes"] != self.chosen_layers.shape[0]:
                     raise ValueError("Config n_votes should be equal to the number of layers chosen during training")
 
@@ -242,7 +242,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
 
     def _find_thresolds_for_every_layer(self):
         with torch.no_grad():
-            self._get_layers_shapes(self.nap_params)
+            self._get_layers_shapes()
             self.linspace = np.linspace(0.1, 0.9, num=self.nap_cfg["steps"])
             self.thresholds, self.accuracies = self._generate_thresholds_for_every_configuration()
             scores = self._compute_scores_for_configurations()
@@ -254,18 +254,18 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             self.chosen_layers = np.sort(accuracies.argsort()[::-1][:self.nap_cfg["n_votes"]])
             new_params = copy.deepcopy(self.nap_params)
             for l in self.nap_params:
-                layer_id = len(self.monitored_layers_shapes) - int(l) - 1
-                if int(layer_id) not in self.chosen_layers:
-                    new_params.pop(str(l))
+                layer_id = len(self.monitored_layers_shapes) - l - 1
+                if layer_id not in self.chosen_layers:
+                    new_params.pop(l)
             self.nap_params = new_params
-            self._get_layers_shapes(self.nap_params)
+            self._get_layers_shapes()
             self.scaled_thresholds = self.scaled_thresholds[self.chosen_layers]
             self.thresholds = self.thresholds[self.chosen_layers]
             self.add_factor = self.add_factor[self.chosen_layers]
             self.multiplier = self.multiplier[self.chosen_layers]
             self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                           layers_shapes=self.monitored_layers_shapes)
-            self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+            self._add_class_patterns_to_monitor(self.train_loader)
             return accuracies
 
     def _generate_thresholds_for_every_configuration(self):
@@ -281,11 +281,11 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 print(colored(f"Evaluating NAP configuration no.{counter} out of {2 * len(self.linspace)}", 'red'))
                 self.monitor = FullNetMonitor(self.class_count, self.nap_device,
                                               layers_shapes=self.monitored_layers_shapes)
-                self._add_class_patterns_to_monitor(self.train_loader, nap_params=self.nap_params)
+                self._add_class_patterns_to_monitor(self.train_loader)
                 print(colored(f"Generating Hamming distances for known validation samples", 'green'))
-                df_known = self._process_dataset(self.known_loader, nap_params=self.nap_params)
+                df_known = self._process_dataset(self.known_loader)
                 print(colored(f"Generating Hamming distances for unknown validation samples", 'green'))
-                df_unknown = self._process_dataset(self.unknown_loader, nap_params=self.nap_params)
+                df_unknown = self._process_dataset(self.unknown_loader)
                 print(colored(f"Finding the best threshold for every layer", 'green'))
                 thresholds[pool_type_id, :, i], accuracies[pool_type_id, :, i] = self._find_threshold(df_known,
                                                                                                       df_unknown)
@@ -333,7 +333,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                 new_acc[layer_id] = self.accuracies[1, layer_id]
         return new_th, new_acc
 
-    def _process_dataset(self, testloader, nap_params=None):
+    def _process_dataset(self, testloader):
         hamming_distance = np.array([])
         labels = np.array([])
         testiter = iter(testloader)
@@ -341,7 +341,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         for imgs, label in tqdm.tqdm(testiter):
             label = label.to(self.args.device)
             imgs = imgs.to(self.args.device)
-            outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=nap_params)
+            outputs, intermediate_values, _ = self.base_model.forward_nap(imgs, nap_params=self.nap_params)
             _, predicted = torch.max(outputs.data, 1)
             distance = self.monitor.compute_hamming_distance(intermediate_values,
                                                              predicted.cpu().detach().numpy())
@@ -390,12 +390,12 @@ class NeuronActivationPatterns(AbstractMethodInterface):
             accuracies.append(acc)
         return np.array(thresholds), accuracies
 
-    def _get_layers_shapes(self, nap_params):
+    def _get_layers_shapes(self):
         trainiter = iter(self.train_loader)
         with torch.no_grad():
             self.monitored_layers_shapes = \
                 self.base_model.forward_nap(trainiter.__next__()[0][0].unsqueeze(0).to(self.args.device),
-                                            nap_params=nap_params)[2]
+                                            nap_params=self.nap_params)[2]
             shapes = np.array(self.monitored_layers_shapes)
             self.shape_factors = shapes / shapes.min()
             self.max_factor = self.shape_factors.max()
@@ -411,7 +411,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
                     count_class[label[i].item()] = 1
         return count_class
 
-    def _add_class_patterns_to_monitor(self, loader, nap_params=None, monitor=None):
+    def _add_class_patterns_to_monitor(self, loader, monitor=None):
         count_class = self._count_classes(loader)
         if not monitor:
             monitor = self.monitor
@@ -421,7 +421,7 @@ class NeuronActivationPatterns(AbstractMethodInterface):
         for img, label in tqdm.tqdm(dataiter):
             label = label.to(self.args.device)
             img = img.to(self.args.device)
-            _, intermediate_values, shapes = self.base_model.forward_nap(img, nap_params=nap_params)
+            _, intermediate_values, shapes = self.base_model.forward_nap(img, nap_params=self.nap_params)
 
             monitor.add_neuron_pattern(intermediate_values, label.cpu().numpy())
         monitor.cut_duplicates()
