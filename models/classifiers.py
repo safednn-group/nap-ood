@@ -77,7 +77,7 @@ class MNIST_VGG(Classifier):
         self.relu_indices = {0: 2, 1: 6, 2: 9, 3: 13, 4: 16, 5: 20, 6: 23, 7: 26, 8: 29}
         # Reduced VGG16.
         self.cfg = [64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M']
-        self.model = VGG.VGG(self.make_layers(self.cfg, batch_norm=True), num_classes=10,
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True, in_channels=1), num_classes=10,
                              relu_indices=self.relu_indices)
         # MNIST would have a different sized feature map.
         self.model.classifier = nn.Sequential(
@@ -86,21 +86,6 @@ class MNIST_VGG(Classifier):
             nn.Linear(256, 10),
         )
         self.model._initialize_weights()
-
-    def make_layers(self, cfg, batch_norm=False):
-        layers = []
-        in_channels = 1
-        for v in cfg:
-            if v == 'M':
-                layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
-            else:
-                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
-                if batch_norm:
-                    layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
-                else:
-                    layers += [conv2d, nn.ReLU(inplace=True)]
-                in_channels = v
-        return nn.Sequential(*layers)
 
     def output_size(self):
         return torch.LongTensor([1, 10])
@@ -168,7 +153,8 @@ class CIFAR10_VGG(Classifier):
                              13: 44, 14: 47}
         # VGG16 minus last maxpool.
         self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512]
-        self.model = VGG.VGG(VGG.VGG.make_layers(self.cfg, batch_norm=True), num_classes=10, relu_indices=self.relu_indices)
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=10,
+                             relu_indices=self.relu_indices)
         # Cifar 10 would have a different sized feature map.
         self.model.classifier = nn.Sequential(
             nn.Linear(512 * 2 * 2, 4096), nn.ReLU(True), nn.Dropout(),
@@ -245,7 +231,7 @@ class CIFAR100_VGG(Classifier):
                              13: 44, 14: 47}
         # VGG16 minus last maxpool.
         self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512]
-        self.model = VGG.VGG(VGG.VGG.make_layers(self.cfg, batch_norm=True), num_classes=100,
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=100,
                              relu_indices=self.relu_indices)
         # Cifar 10 would have a different sized feature map.
         self.model.classifier = nn.Sequential(
@@ -323,7 +309,8 @@ class STL10_VGG(Classifier):
                              13: 45, 14: 48}
         # VGG16.
         self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M']
-        self.model = VGG.VGG(VGG.VGG.make_layers(self.cfg, batch_norm=True), num_classes=10, relu_indices=self.relu_indices)
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=10,
+                             relu_indices=self.relu_indices)
         # Cifar 10 would have a different sized feature map.
         self.model.classifier = nn.Sequential(
             nn.Linear(512 * 3 * 3, 4096), nn.ReLU(True), nn.Dropout(),
@@ -399,7 +386,7 @@ class TinyImagenet_VGG(Classifier):
         self.relu_indices = {0: 2, 1: 5, 2: 9, 3: 12, 4: 16, 5: 19, 6: 22, 7: 26, 8: 29, 9: 32, 10: 36, 11: 39, 12: 42,
                              13: 45, 14: 48}
         self.cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M']
-        self.model = VGG.VGG(VGG.VGG.make_layers(self.cfg, batch_norm=True), num_classes=200,
+        self.model = VGG.VGG(VGG.make_layers(self.cfg, batch_norm=True), num_classes=200,
                              relu_indices=self.relu_indices)
         # TinyImagenet would have a different sized feature map.
         self.model.classifier = nn.Sequential(
