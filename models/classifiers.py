@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-import models.newvgg as VGG
-import models.nap_resnet as Resnet
+import models.vgg as VGG
+import models.resnet as Resnet
 from torchvision.models.resnet import Bottleneck
 
 
