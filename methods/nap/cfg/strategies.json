@@ -1,0 +1,7 @@
+{
+  "store_monitor": false,
+  "accuracy_criterion": true,
+  "steps": 5,
+  "binary_voting": true,
+  "n_votes": 9
+}
