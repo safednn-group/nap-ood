@@ -127,3 +127,14 @@ Create a conda environment that includes all necessary packages:
 10. Weitang Liu, Xiaoyun Wang, John Owens, and Yixuan Li. Energy-based out-of-distribution detection (2020). 
 11. Yiyou Sun and Chuan Guo and Yixuan Li. ReAct: Out-of-distribution Detection With Rectified Activations (2021). 
 12. A. Djurisic, N. Bozanic, A. Ashok, R. Liu Extremely Simple Activation Shaping for Out-of-Distribution Detection (2022).
+
+# Bibtex
+
+```
+@inproceedings{Olber2023,
+    author = {B. Olber and K. Radlak and A. Popowicz and M.Szczepankiewicz and K. Chachula },
+    booktitle = {2023 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+    title = {{Detection of out-of-distribution samples using binary neuron activation patterns}},
+    year = {2023}
+}
+```
